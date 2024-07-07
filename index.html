@@ -6,6 +6,10 @@
     <title>Endless Turn-Based RPG</title>
     <style>
         canvas {
+            width: 100%;
+            height: auto;
+            max-width: 800px; /* or whatever your original canvas width is */
+          
             border: 1px solid black;
             display: block;
             margin: 0 auto;
@@ -76,18 +80,60 @@
             border: none;
             cursor: pointer;
         }
-        <!-- #developerGoldButton {
-            background-color: #FFD700;
-            color: #000;
-            padding: 10px 20px;
-            margin: 10px;
-            border: none;
-            cursor: pointer;
-        }
+        //#developerGoldButton {
+            //background-color: #FFD700;
+            //color: #000;
+            //padding: 10px 20px;
+            //margin: 10px;
+            //border: none;
+            //cursor: pointer;
+        //}
         
-        #developerGoldButton:hover {
-            background-color: #FFA500;
-        } -->
+        //#developerGoldButton:hover {
+        //    background-color: #FFA500;
+        //}
+        
+        @media (max-width: 768px) {
+    body {
+        font-size: 14px; /* Smaller base font size for mobile */
+    }
+
+    #gameButtons button {
+        font-size: 1.2em;
+        padding: 10px 20px;
+        margin: 5px;
+    }
+
+    #mobileMenu {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        z-index: 1000;
+    }
+
+    #menuToggle {
+        font-size: 24px;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+    }
+
+    #menuContent {
+        background: rgba(0,0,0,0.8);
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    #menuContent button {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+        padding: 10px;
+    }
+}
     </style>
 </head>
 <body>
@@ -264,6 +310,8 @@
         ];
 
         let enemies = []; // Initialize enemies array
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
         
         let duelEventsUnlocked = false;
 		
@@ -335,6 +383,11 @@
     document.getElementById('mainMenu').style.display = 'none';
     document.getElementById('characterSelectScreen').style.display = 'block';
     document.getElementById('continueJourneyFromCampButton').style.display = 'none';
+    // Call this when the page loads and whenever the window is resized
+
+
+// Call this function when the game starts
+//addTouchEventListeners();
 }
 
 
@@ -2297,6 +2350,93 @@ function useEnemySpecialSkill(enemy) {
             return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
     }
 }
+
+        // Touch controls
+        function addTouchControls() {
+            const canvas = document.getElementById('gameCanvas');
+            let startX, startY;
+        
+            canvas.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            });
+        
+            canvas.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const dx = endX - startX;
+                const dy = endY - startY;
+        
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    if (dx > 0) {
+                        // Swipe right action
+                    } else {
+                        // Swipe left action
+                    }
+                } else {
+                    if (dy > 0) {
+                        // Swipe down action
+                    } else {
+                        // Swipe up action
+                    }
+                }
+            });
+        }
+        
+        function resizeCanvas() {
+    const canvas = document.getElementById('gameCanvas');
+    const originalWidth = 800; // Your original canvas width
+    const originalHeight = 500; // Your original canvas height
+    const aspectRatio = originalWidth / originalHeight;
+
+    let width, height;
+
+    if (window.innerWidth < originalWidth || window.innerHeight < originalHeight) {
+        // On smaller screens, make it responsive
+        if (window.innerWidth / window.innerHeight > aspectRatio) {
+            height = Math.min(window.innerHeight, originalHeight);
+            width = height * aspectRatio;
+        } else {
+            width = Math.min(window.innerWidth, originalWidth);
+            height = width / aspectRatio;
+        }
+    } else {
+        // On larger screens, keep original size
+        width = originalWidth;
+        height = originalHeight;
+    }
+
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    // Adjust for high DPI displays
+    const scale = window.devicePixelRatio;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+}
+        
+        function createMobileMenu() {
+            const menu = document.createElement('div');
+            menu.id = 'mobileMenu';
+            menu.innerHTML = `
+                <button id="menuToggle">☰</button>
+                <div id="menuContent" style="display:none;">
+                    <button id="attackBtn">Attack</button>
+                    <button id="defendBtn">Defend</button>
+                    <button id="specialBtn">Special</button>
+                </div>
+            `;
+            document.body.appendChild(menu);
+        
+            document.getElementById('menuToggle').addEventListener('click', () => {
+                const content = document.getElementById('menuContent');
+                content.style.display = content.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+
+
 
 			//function addDeveloperGold() {
 			//	player.gold += 1500;
