@@ -600,18 +600,18 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
             animateDamage(); // Start damage animation
         }
 
-        function developerReset() {
-            player.health = player.maxHealth; // Reset player's health to max
-            player.defending = false; // Reset defending state
-            player.specialAttackCooldown = 0; // Reset special attack cooldown
+        //function developerReset() {
+         //   player.health = player.maxHealth; // Reset player's health to max
+        //    player.defending = false; // Reset defending state
+        //    player.specialAttackCooldown = 0; // Reset special attack cooldown
 
-            enemies = createEnemies(player.level); // Create new enemies for the player to battle
+        //    enemies = createEnemies(player.level); // Create new enemies for the player to battle
 
-            gameState = 'playerTurn'; // Set game state to player turn
+         //   gameState = 'playerTurn'; // Set game state to player turn
 
-            drawGame(); // Redraw the game state
-            animateDamage(); // Start damage animation
-        }
+        //    drawGame(); // Redraw the game state
+         //   animateDamage(); // Start damage animation
+        //}
 
         function showPlayerTurnNotification() {
             if (gameState !== 'victory' && gameState !== 'defeat') {
@@ -986,12 +986,12 @@ function playerDefend() {
             document.getElementById('redPillButton').onclick = buyRedPill;
             document.getElementById('continueJourneyButton').onclick = continueJourney;
             document.getElementById('returnToCampButton').onclick = returnToCamp;
-            document.getElementById('developerGoldButton').onclick = () => {
-                player.gold += 1500;
-                updateGoldMessage();
-                updateVictoryScreenStats();
-                alert("Added 1500 gold to the player!");
-            };
+            //document.getElementById('developerGoldButton').onclick = () => {
+            //    player.gold += 1500;
+            //    updateGoldMessage();
+            //    updateVictoryScreenStats();
+            //    alert("Added 1500 gold to the player!");
+            //}; 
             
             // In showVictoryScreen function
             healingPotionButton.disabled = false;
@@ -1012,10 +1012,10 @@ function playerDefend() {
             document.getElementById('redPillButton').style.display = 'inline-block';
             document.getElementById('continueJourneyButton').style.display = 'inline-block';
             document.getElementById('returnToCampButton').style.display = 'inline-block';
-            document.getElementById('developerGoldButton').style.display = 'inline-block';
+            //document.getElementById('developerGoldButton').style.display = 'inline-block';
 
             
-            document.getElementById('developerGoldButton').style.display = 'inline-block';
+            //document.getElementById('developerGoldButton').style.display = 'inline-block';
 
             canvas.style.display = 'none';
             document.getElementById('gameButtons').style.display = 'none';
@@ -1033,19 +1033,19 @@ function playerDefend() {
         
             document.getElementById('continueJourneyButton').style.display = 'inline-block';
             document.getElementById('returnToCampButton').style.display = 'inline-block';
-            document.getElementById('developerGoldButton').style.display = 'inline-block';
+            //document.getElementById('developerGoldButton').style.display = 'inline-block';
 
             currentBattleExpGained = 0; // Reset currentBattleExpGained for the next battle
             resetDamageDisplay(); // Reset damage display
 
             // Remove developer buttons if player reaches level 3 or 5
-            if (player.level >= 3) {
-                document.getElementById('developerButton').style.display = 'none';
-            }
-            if (player.level >= 5) {
-                document.getElementById('developerButton').style.display = 'none'; // Also hide level 3 button
-                document.getElementById('developerButton5').style.display = 'none';
-            }
+            //if (player.level >= 3) {
+            //    document.getElementById('developerButton').style.display = 'none';
+            //}
+            //if (player.level >= 5) {
+            //    document.getElementById('developerButton').style.display = 'none'; // Also hide level 3 button
+           //     document.getElementById('developerButton5').style.display = 'none';
+            //}
         }
         
         function hideVictoryScreen() {
@@ -2298,12 +2298,12 @@ function useEnemySpecialSkill(enemy) {
     }
 }
 
-function addDeveloperGold() {
-    player.gold += 1500;
-    updateGoldMessage();
-    updateVictoryScreenStats();
-    alert("Added 1500 gold to the player!");
-}
+			//function addDeveloperGold() {
+			//	player.gold += 1500;
+			//	updateGoldMessage();
+			//	updateVictoryScreenStats();
+			//	alert("Added 1500 gold to the player!");
+			//}
 
 //document.getElementById('developerGoldButton').onclick = addDeveloperGold;
 
