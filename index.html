@@ -1285,19 +1285,19 @@ function updateTentButtons() {
             
             if (duelEventsUnlocked) {
                 // Duel events unlocked
-                if (eventRoll <= 0.75) {
-                    return 'duel';
-                } else if (eventRoll <= 0.90) {
+                if (eventRoll < 0.70) {
+                    return 'battle';
+                } else if (eventRoll < 0.85) {
                     return 'story';
                 } else {
-                    return 'battle';
+                    return 'duel';
                 }
             } else {
                 // Duel events locked
-                if (eventRoll <= 0.60) { // 60% chance for story events (4 times more likely than battles)
-                    return 'story';
-                } else {
+                if (eventRoll < 0.85) {
                     return 'battle';
+                } else {
+                    return 'story';
                 }
             }
         }
