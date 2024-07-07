@@ -1,0 +1,2415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endless Turn-Based RPG</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto;
+            display: none; /* Initially hide the canvas */
+        }
+        #gameButtons, #gameNotifications, #gameVictoryScreen, #gameDefeatScreen, #campScreen, #storyEventScreen, #characterSelectScreen {
+            display: none; /* Initially hide all game elements */
+        }
+        #gameButtons {
+            text-align: center;
+            margin-top: 10px;
+        }
+        #mainMenu {
+            text-align: center;
+            margin-top: 100px;
+        }
+        #startGameButton {
+            font-size: 20px;
+            padding: 10px 20px;
+        }
+        #specialAttackButton {
+            display: none; /* Initially hide the special attack button */
+        }
+        #characterSelectScreen {
+            text-align: center;
+            margin-top: 100px;
+        }
+        .tentButton {
+        display: block;
+        width: 200px;
+        height: 50px;
+        margin: 10px auto;
+        font-size: 16px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        }
+        .tentButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #tentSquares {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .tentSquare {
+            width: 100px;
+            height: 100px;
+            background-color: #f0f0f0;
+            border: 2px solid #333;
+            margin: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        #continueJourneyFromCampButton {
+            display: block;
+            width: 200px;
+            height: 50px;
+            margin: 20px auto;
+            font-size: 16px;
+            background-color: #707070;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        <!-- #developerGoldButton {
+            background-color: #FFD700;
+            color: #000;
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        #developerGoldButton:hover {
+            background-color: #FFA500;
+        } -->
+    </style>
+</head>
+<body>
+    <div id="mainMenu">
+        <h1>Endless Turn-Based RPG</h1>
+        <button id="startGameButton">Start Game</button>
+    </div>
+    <div id="characterSelectScreen">
+        <h2>Select Your Character</h2>
+        <button id="warriorButton">Warrior</button>
+        <button id="mageButton">Mage</button>
+        <button id="clericButton">Cleric</button>
+        <button id="rogueButton">Rogue</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <div id="gameButtons">
+        <button id="attackButton">Attack</button>
+        <button id="defendButton">Defend</button>
+        <button id="specialAttackButton">Special Attack</button>
+        <button id="retreatButton">Retreat</button>
+        <!-- <button id="resetButton">Developer Reset</button> -->
+    </div>
+    <div id="gameNotifications">
+        <p id="notificationText"></p>
+    </div>
+    <div id="gameVictoryScreen" style="display: none; text-align: center;">
+        <h1>Victory!</h1>
+        <p id="victoryMessage"></p>
+        <p id="goldMessage"></p>
+        <!-- <button id="developerGoldButton">Developer Gold</button> -->
+                <div id="shop">
+            <h2>Shop</h2>
+            <button id="healingPotionButton">Buy Healing Potion (100 Gold)</button>
+            <button id="expBoosterButton">Buy EXP Booster (200 Gold)</button>
+            <button id="antidoteButton">Buy Antidote (300 Gold)</button>
+            <button id="lotusButton">Buy Lotus of Experience (500 Gold)</button>
+            <button id="redPillButton">Buy Red Pill (1000 Gold)</button>
+        </div>
+        <div id="skillSelection" style="display: none;">
+    <h2>Choose Your Special Skill</h2>
+    <div id="skillSelectionMageSkills" style="display: none;">
+        <button id="thunderButton">Thunder</button>
+        <button id="fireballButton">Fireball</button>
+        <button id="hailStormButton">Hail Storm</button>
+    </div>
+    <div id="skillSelectionWarriorSkills" style="display: none;">
+        <button id="doubleAttackButton">Double Attack</button>
+        <button id="stoneSkinButton">Stone Skin</button>
+        <button id="lifeAttackButton">Life Attack</button>
+    </div>
+    <div id="skillSelectionClericSkills" style="display: none;">
+        <button id="holyLightButton">Holy Light</button>
+        <button id="lifeTransferButton">Life Transfer</button>
+        <button id="shieldOfLightButton">Shield of Light</button>
+    </div>
+    <div id="skillSelectionRogueSkills" style="display: none;">
+        <button id="blindShotButton">Blind Shot</button>
+        <button id="toxicStabButton">Toxic Stab</button>
+        <button id="perfectParryButton">Perfect Parry</button>
+    </div>
+</div>
+        <button id="continueJourneyButton">Continue Journey</button>
+        <button id="returnToCampButton">Return to Camp</button>
+        <!-- <button id="developerButton">Level Up to 3</button>
+        <button id="developerButton5">Level Up to 5</button> -->
+    </div>
+    <div id="duelVictoryScreen" style="display: none; text-align: center;">
+        <h1>Duel Victory!</h1>
+        <p id="duelVictoryMessage"></p>
+        <button id="recruitButton">Recruit Character</button>
+        <button id="continueDuelJourneyButton">Continue Journey</button>
+    </div>
+    <div id="gameDefeatScreen" style="display: none; text-align: center;">
+        <h1>Defeat!</h1>
+        <p>You have been defeated.</p>
+        <button id="tryAgainButton">Try Again</button>
+    </div>
+    <div id="campScreen" style="display: none; text-align: center;">
+    <h1>Camp</h1>
+    <p>Store your gold in the Camp Bank for safekeeping.</p>
+    <button id="storeGoldButton">Store All Gold</button>
+    <p id="campMessage"></p>
+    <div id="tentSquares">
+        <div class="tentSquare">Player Tent</div>
+    </div>
+    <div id="tentUpgrades">
+        <button id="secondTentButton" class="tentButton">Buy Second Tent (1500 Gold)</button>
+        <button id="thirdTentButton" class="tentButton" style="display: none;">Buy Third Tent (2000 Gold)</button>
+        <button id="fourthTentButton" class="tentButton" style="display: none;">Buy Fourth Tent (2500 Gold)</button>
+        <button id="fifthTentButton" class="tentButton" style="display: none;">Buy Fifth Tent (3000 Gold)</button>
+    </div>
+    <button id="continueJourneyFromCampButton">Continue Journey</button>
+</div>
+    <div id="storyEventScreen" style="display: none; text-align: center;">
+        <h1>Story Event</h1>
+        <p id="storyText"></p>
+        <div id="storyChoices">
+            <button id="storyChoice1Button"></button>
+            <button id="storyChoice2Button"></button>
+            <button id="storyChoice3Button"></button>
+        </div>
+        <div id="storySkillSelection" style="display: none;">
+    <h2>Choose Your Special Skill</h2>
+    <div id="storySkillSelectionMageSkills" style="display: none;">
+        <button id="storyThunderButton">Thunder</button>
+        <button id="storyFireballButton">Fireball</button>
+        <button id="storyHailStormButton">Hail Storm</button>
+    </div>
+    <div id="storySkillSelectionWarriorSkills" style="display: none;">
+        <button id="storyDoubleAttackButton">Double Attack</button>
+        <button id="storyStoneSkinButton">Stone Skin</button>
+        <button id="storyLifeAttackButton">Life Attack</button>
+    </div>
+    <div id="storySkillSelectionClericSkills" style="display: none;">
+        <button id="storyHolyLightButton">Holy Light</button>
+        <button id="storyLifeTransferButton">Life Transfer</button>
+        <button id="storyShieldOfLightButton">Shield of Light</button>
+    </div>
+    <div id="storySkillSelectionRogueSkills" style="display: none;">
+        <button id="storyBlindShotButton">Blind Shot</button>
+        <button id="storyToxicStabButton">Toxic Stab</button>
+        <button id="storyPerfectParryButton">Perfect Parry</button>
+    </div>
+</div>
+        <p id="storyStats"></p>
+        <p id="storyLevelUpMessage" style="display: none;"></p>
+        <button id="continueJourneyFromStoryButton" style="display: none;">Continue Journey</button>
+        <button id="continueToBattleButton" style="display: none;">Continue to Battle</button>
+    </div>
+    <div id="duelEventScreen" style="display: none; text-align: center;">
+    <h2>Duel Challenge</h2>
+    <p id="duelText"></p>
+    <button id="startDuelButton">Start Duel</button>
+</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let player = {
+    class: '',
+    specialSkills: {},
+    health: 50,
+    maxHealth: 50,
+    minDamage: 1,
+    maxDamage: 6,
+    experience: 0,
+    level: 1,
+    xpToNextLevel: 20,
+    gold: 0,
+    campBank: 0,
+    expBooster: false,
+    defending: false,
+    specialAttackCooldown: 0,
+    specialSkillUnlocked: false,
+    specialSkill: null,
+    healthGain: 0,
+    minDamageGain: 0,
+    maxDamageGain: 0,
+    tents: 1,
+    poisonCounter: 0
+};
+
+        const enemyTypes = [
+            { type: 'Goblin', baseHP: 20, minDamage: 1, maxDamage: 6, xp: 10 },
+            { type: 'Wolf', baseHP: 25, minDamage: 2, maxDamage: 6, xp: 11 },
+            { type: 'Orc', baseHP: 30, minDamage: 2, maxDamage: 7, xp: 12 },
+            { type: 'Poisonous Plant', baseHP: 28, minDamage: 2, maxDamage: 8, xp: 13 },
+            { type: 'Werewolf', baseHP: 35, minDamage: 2, maxDamage: 9, xp: 14 },
+            { type: 'Troll', baseHP: 40, minDamage: 3, maxDamage: 8, xp: 15 },
+            { type: 'Dragon', baseHP: 50, minDamage: 5, maxDamage: 12, xp: 20 },
+            { type: 'Skeletal Warrior', baseHP: 45, minDamage: 4, maxDamage: 10, xp: 18 },
+            { type: 'Treant', baseHP: 75, minDamage: 6, maxDamage: 14, xp: 25 }
+        ];
+
+        let enemies = []; // Initialize enemies array
+        
+        let duelEventsUnlocked = false;
+		
+        let selectedEnemyIndex = 0; // Track the selected enemy
+
+        let damageDisplay = {
+            player: { damage: 0, x: 0, y: 0, alpha: 0 },
+            enemy: { damage: 0, x: 0, y: 0, alpha: 0 }
+        };
+
+        let healingDisplay = {
+            amount: 0,
+            x: 0,
+            y: 0,
+            alpha: 0
+        };
+
+        let gameState = 'mainMenu'; // Start with the main menu
+        let victoryExpGained = 0;
+        let currentBattleExpGained = 0; // Track XP gained from the current battle
+        let victoryLevelUpMessage = '';
+        let inStoryEvent = false; // Flag to indicate if we are in a story event
+        let treantEncountered = false; // Track if the player has encountered the Treant
+
+        // Flags for story events
+        let currentStory = null;
+        const STORY_OLD_MAN = 'old_man';
+        const STORY_TREANT = 'treant';
+
+        function createEnemyByType(type) {
+            const enemyType = enemyTypes.find(enemy => enemy.type === type);
+            return {
+                type: enemyType.type,
+                health: enemyType.baseHP,
+                maxHealth: enemyType.baseHP,
+                minDamage: enemyType.minDamage,
+                maxDamage: enemyType.maxDamage
+            };
+        }
+
+        function createEnemies(playerLevel) {
+            let enemies = [];
+            const doubleBattleChance = Math.random();
+            const numberOfEnemies = playerLevel >= 5 && doubleBattleChance <= 0.25 ? 2 : 1;
+
+            for (let i = 0; i < numberOfEnemies; i++) {
+                let possibleEnemies = treantEncountered ? enemyTypes : enemyTypes.filter(type => type.type !== 'Treant');
+                let enemyIndex;
+                if (playerLevel < 3) {
+                    enemyIndex = Math.floor(Math.random() * 2); // Goblin or Wolf
+                } else if (playerLevel < 4) {
+                    enemyIndex = Math.floor(Math.random() * 4); // Goblin, Wolf, Orc
+                } else if (playerLevel < 5) {
+                    enemyIndex = Math.floor(Math.random() * 5); // Goblin, Wolf, Orc, Werewolf
+                } else {
+                    enemyIndex = Math.floor(Math.random() * possibleEnemies.length);
+                }
+                enemies.push(createEnemyByType(possibleEnemies[enemyIndex].type));
+            }
+            return enemies.map(enemy => ({
+				...enemy,
+				stunnedTurns: 0,
+				burnedTurns: 0
+			}));
+		}
+
+        function startGame() {
+    console.log("startGame function called");
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('characterSelectScreen').style.display = 'block';
+    document.getElementById('continueJourneyFromCampButton').style.display = 'none';
+}
+
+
+        
+       
+        function startBattle(characterClass) {
+            console.log("Starting battle with class: " + characterClass);
+            player.class = characterClass;
+            player.health = 50;
+            player.maxHealth = 50;
+            player.minDamage = 1;
+            player.maxDamage = 6;
+            player.experience = 0;
+            player.level = 1;
+            player.xpToNextLevel = 20; // Make sure this is set to the correct initial value
+            setupClassSkills();
+            document.getElementById('characterSelectScreen').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'block';
+            document.getElementById('gameButtons').style.display = 'block';
+            document.getElementById('gameNotifications').style.display = 'block';
+            document.getElementById('continueJourneyFromCampButton').style.display = 'none'; // Hide this button
+            
+            // Show special attack button if skill is selected
+            if (player.specialSkill) {
+                document.getElementById('specialAttackButton').style.display = 'inline-block';
+                document.getElementById('specialAttackButton').textContent = player.specialSkill.name;
+            } else {
+                document.getElementById('specialAttackButton').style.display = 'none';
+            }
+            currentBattleExpGained = 0; // Reset XP gained for the new battle
+            gameState = 'playerTurn';
+            enemies = createEnemies(player.level);
+            drawGame();
+            animateDamage();
+        }
+
+// Modify the event listeners for character selection buttons
+document.getElementById('warriorButton').addEventListener('click', () => startBattle('Warrior'));
+document.getElementById('mageButton').addEventListener('click', () => startBattle('Mage'));
+document.getElementById('clericButton').addEventListener('click', () => startBattle('Cleric'));
+document.getElementById('rogueButton').addEventListener('click', () => startBattle('Rogue'));
+
+        function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw player
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(50, 180, 50, 50);
+    
+    if (player.class) {
+        ctx.fillStyle = 'black';
+        ctx.font = '16px Arial';
+        ctx.fillText(player.class, 50, 245);
+    }
+    // Draw enemies
+    enemies.forEach((enemy, index) => {
+        const baseYOffset = 180 + (index * 130);
+        const yOffset = index === 0 ? baseYOffset - 20 : baseYOffset;
+        const hpBarYOffset = yOffset - 30;
+        const hpTextYOffset = hpBarYOffset - 10;
+        const typeTextYOffset = yOffset + 75;
+
+        if (enemies.length > 1 && index === selectedEnemyIndex) {
+            ctx.strokeStyle = 'yellow';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(645, yOffset - 5, 60, 60);
+        }
+        
+        if (enemy.poisonCounter > 0) {
+            ctx.fillStyle = 'green';
+            ctx.font = '14px Arial';
+            ctx.fillText(`Poisoned (${enemy.poisonCounter} damage next)`, 650, statusY);
+            statusY += 20;
+        }
+        
+        ctx.fillStyle = 'red';
+        ctx.fillRect(650, yOffset, 50, 50);
+
+        ctx.fillStyle = 'green';
+        ctx.fillRect(540, hpBarYOffset, (enemy.health / enemy.maxHealth) * 200, 20);
+
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText(`Enemy Health: ${enemy.health}`, 540, hpTextYOffset);
+        ctx.fillText(`${enemy.type}`, 650, typeTextYOffset);
+        
+        if (player.specialSkill) {
+            document.getElementById('specialAttackButton').style.display = 'inline-block';
+            document.getElementById('specialAttackButton').textContent = player.specialSkill.name;
+        } else {
+            document.getElementById('specialAttackButton').style.display = 'none';
+        }
+
+        let statusY = typeTextYOffset + 20;
+        if (enemy.defending) {
+            ctx.fillStyle = 'black';
+            ctx.font = '14px Arial';
+            ctx.fillText('Defending', 650, statusY);
+            statusY += 20;
+        }
+        if (enemy.stunnedTurns > 0) {
+            ctx.fillStyle = 'yellow';
+            ctx.font = '14px Arial';
+            ctx.fillText('Stunned', 650, statusY);
+            statusY += 20;
+        }
+        if (enemy.burnedTurns > 0) {
+            ctx.fillStyle = 'orange';
+            ctx.font = '14px Arial';
+            ctx.fillText('Burned', 650, statusY);
+            statusY += 20;
+        }
+        if (enemy.exposed) {
+            ctx.fillStyle = 'purple';
+            ctx.font = '14px Arial';
+            ctx.fillText('Exposed', 650, statusY);
+            statusY += 20;
+        }
+        if (enemy.blind) {
+            ctx.fillStyle = 'gray';
+            ctx.font = '14px Arial';
+            ctx.fillText(`Blind (${enemy.blind}%)`, 650, statusY);
+            statusY += 20;
+        }
+        if (enemy.poison) {
+            ctx.fillStyle = 'green';
+            ctx.font = '14px Arial';
+            ctx.fillText(`Poison (${enemy.poison})`, 650, statusY);
+        }
+    });
+        
+      // Draw player stats
+    ctx.fillStyle = 'green';
+    ctx.fillRect(10, 10, (player.health / player.maxHealth) * 200, 20);
+
+    ctx.fillStyle = 'black';
+    ctx.font = '20px Arial';
+    ctx.fillText(`Player Health: ${player.health}`, 10, 50);
+    ctx.fillText(`Player Level: ${player.level}`, 10, 80);
+    ctx.fillText(`Player XP: ${player.experience}/${player.xpToNextLevel}`, 10, 110);
+    ctx.fillText(`Gold: ${player.gold}`, 10, 140);
+    ctx.fillText(`Camp Bank: ${player.campBank} Gold`, 10, 470);
+
+    if (player.specialAttackCooldown > 0) {
+        ctx.fillText(`Special Attack Cooldown: ${player.specialAttackCooldown}`, 10, 170);
+    }
+
+    // Draw player status effects
+    let playerStatusY = 200;
+    if (player.defending) {
+        ctx.fillStyle = 'blue';
+        ctx.font = '14px Arial';
+        ctx.fillText('Defending', 10, playerStatusY);
+        playerStatusY += 20;
+    }
+    if (player.burnedTurns > 0) {
+        ctx.fillStyle = 'orange';
+        ctx.font = '14px Arial';
+        ctx.fillText(`Burned (${player.burnedTurns} turns)`, 10, playerStatusY);
+        playerStatusY += 20;
+    }
+    if (player.poisonCounter > 0) {
+        ctx.fillStyle = 'green';
+        ctx.font = '14px Arial';
+        ctx.fillText(`Poisoned (${player.poisonCounter} damage next)`, 10, statusY);
+        statusY += 20;
+    }
+    if (player.blind) {
+        ctx.fillStyle = 'gray';
+        ctx.font = '14px Arial';
+        ctx.fillText(`Blinded (${player.blind}% chance)`, 10, playerStatusY);
+        playerStatusY += 20;
+    }
+    if (player.parry) {
+        ctx.fillStyle = 'purple';
+        ctx.font = '14px Arial';
+        ctx.fillText('Parry Ready', 10, playerStatusY);
+        playerStatusY += 20;
+    }
+    if (player.shieldOfLight > 0) {
+        ctx.fillStyle = 'yellow';
+        ctx.font = '14px Arial';
+        ctx.fillText(`Shield of Light (${player.shieldOfLight} turns)`, 10, playerStatusY);
+        playerStatusY += 20;
+    }
+
+    displayDamage();
+
+}
+
+        function displayDamage() {
+            ctx.font = '20px Arial';
+            ctx.fillStyle = `rgba(255, 0, 0, ${damageDisplay.enemy.alpha})`;
+            ctx.fillText(`-${damageDisplay.enemy.damage}`, damageDisplay.enemy.x, damageDisplay.enemy.y);
+
+            ctx.fillStyle = `rgba(0, 0, 255, ${damageDisplay.player.alpha})`;
+            ctx.fillText(`-${damageDisplay.player.damage}`, damageDisplay.player.x, damageDisplay.player.y);
+
+            ctx.fillStyle = `rgba(0, 255, 0, ${healingDisplay.alpha})`;
+            ctx.fillText(`+${healingDisplay.amount}`, healingDisplay.x, healingDisplay.y);
+        }
+
+        function animateDamage() {
+            const animationDuration = 1; // Duration of the animation in seconds
+            const framesPerSecond = 60; // Assuming 60 frames per second
+            const alphaDecrement = 1 / (animationDuration * framesPerSecond); // How much alpha decreases each frame
+            const positionDecrement = 1; // How much position decreases each frame
+
+            if (damageDisplay.enemy.alpha > 0) {
+                damageDisplay.enemy.y -= positionDecrement;
+                damageDisplay.enemy.alpha -= alphaDecrement;
+            }
+
+            if (damageDisplay.player.alpha > 0) {
+                damageDisplay.player.y -= positionDecrement;
+                damageDisplay.player.alpha -= alphaDecrement;
+            }
+
+            if (healingDisplay.alpha > 0) {
+                healingDisplay.y -= positionDecrement;
+                healingDisplay.alpha -= alphaDecrement;
+            }
+
+            drawGame();
+            if (damageDisplay.enemy.alpha > 0 || damageDisplay.player.alpha > 0 || healingDisplay.alpha > 0) {
+                requestAnimationFrame(animateDamage);
+            }
+        }
+
+        function resetDamageDisplay() {
+            damageDisplay = {
+                player: { damage: 0, x: 0, y: 0, alpha: 0 },
+                enemy: { damage: 0, x: 0, y: 0, alpha: 0 }
+            };
+
+            healingDisplay = {
+                amount: 0,
+                x: 0,
+                y: 0,
+                alpha: 0
+            };
+        }
+
+        function resetGame() {
+            player.health = player.maxHealth; // Reset player's health to max
+            player.experience = 0; // Reset current experience to 0
+            player.gold = 0; // Reset current gold to 0
+            player.expBooster = false; // Reset boosters
+            player.defending = false; // Reset defending flag
+            player.specialAttackCooldown = 0; // Reset special attack cooldown
+
+            // Retain player's level, level gains, Camp Bank gold, and special skill selection
+            enemies = createEnemies(player.level); // Create new enemies for the player to battle
+
+            gameState = 'playerTurn'; // Set game state to player turn
+
+            // Hide defeat screen and show game canvas and buttons
+            document.getElementById('gameDefeatScreen').style.display = 'none';
+            canvas.style.display = 'block';
+            document.getElementById('gameButtons').style.display = 'block';
+
+            drawGame(); // Redraw the game state
+            animateDamage(); // Start damage animation
+        }
+
+        function developerReset() {
+            player.health = player.maxHealth; // Reset player's health to max
+            player.defending = false; // Reset defending state
+            player.specialAttackCooldown = 0; // Reset special attack cooldown
+
+            enemies = createEnemies(player.level); // Create new enemies for the player to battle
+
+            gameState = 'playerTurn'; // Set game state to player turn
+
+            drawGame(); // Redraw the game state
+            animateDamage(); // Start damage animation
+        }
+
+        function showPlayerTurnNotification() {
+            if (gameState !== 'victory' && gameState !== 'defeat') {
+                const notificationElement = document.getElementById('notificationText');
+                notificationElement.textContent = 'Player Turn';
+                setTimeout(() => {
+                    if (gameState !== 'victory' && gameState !== 'defeat') {
+                        notificationElement.textContent = '';
+                    }
+                }, 1000);
+            }
+        }
+
+        function showEnemyTurnNotification() {
+            if (gameState !== 'victory' && gameState !== 'defeat') {
+                const notificationElement = document.getElementById('notificationText');
+                notificationElement.textContent = 'Enemy Turn';
+                setTimeout(() => {
+                    if (gameState !== 'victory' && gameState !== 'defeat') {
+                        notificationElement.textContent = '';
+                    }
+                }, 1000);
+            }
+        }
+
+        function playerAttack() {
+    if (gameState === 'playerTurn') {
+        showPlayerTurnNotification();
+
+        let damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
+        
+        if (enemies[selectedEnemyIndex].parryNextAttack) {
+            console.log("Enemy parried the attack!");
+            damageDisplay.player.damage = damage;
+            damageDisplay.player.x = 75;
+            damageDisplay.player.y = 150;
+            damageDisplay.player.alpha = 1;
+            player.health -= damage;
+            enemies[selectedEnemyIndex].parryNextAttack = false;
+            damage = 0;
+        } else {
+            if (enemies[selectedEnemyIndex].exposed) {
+                damage *= 2;
+                enemies[selectedEnemyIndex].exposed = false;
+            }
+            
+            if (enemies[selectedEnemyIndex].defending) {
+                damage = Math.floor(damage / 2);
+                enemies[selectedEnemyIndex].defending = false;
+            }
+
+            enemies[selectedEnemyIndex].health -= damage;
+
+            damageDisplay.enemy.damage = damage;
+            damageDisplay.enemy.x = 725;
+            damageDisplay.enemy.y = 150 + (selectedEnemyIndex * 130);
+            damageDisplay.enemy.alpha = 1;
+        }
+
+        if (player.specialAttackCooldown > 0) {
+            player.specialAttackCooldown--;
+        }
+        
+        // Apply poison damage to the enemy at the end of player's turn
+        if (enemies[selectedEnemyIndex].poisonCounter > 0) {
+            const poisonDamage = enemies[selectedEnemyIndex].poisonCounter;
+            enemies[selectedEnemyIndex].health -= poisonDamage;
+            console.log(`Enemy takes ${poisonDamage} poison damage`);
+            enemies[selectedEnemyIndex].poisonCounter++;
+        }
+
+        checkEnemyDefeat();
+
+        if (gameState !== 'victory' && gameState !== 'duelVictory') {
+            gameState = 'enemyTurn';
+            drawGame();
+            animateDamage();
+            setTimeout(() => {
+                handleEnemyTurn();
+            }, 1000);
+        }
+    }
+}
+  
+  function playerSpecialAttack() {
+      if (gameState === 'playerTurn' && player.specialAttackCooldown === 0 && player.specialSkill) {
+          showPlayerTurnNotification();
+  
+          const totalDamage = player.specialSkill.use();
+  
+          damageDisplay.enemy.damage = totalDamage;
+          damageDisplay.enemy.x = 725;
+          damageDisplay.enemy.y = 150;
+          damageDisplay.enemy.alpha = 1;
+  
+          if (player.specialSkill.name === "Life Attack") {
+              const healAmount = Math.floor(totalDamage / 2);
+              healingDisplay.amount = healAmount;
+              healingDisplay.x = 75;
+              healingDisplay.y = 100;
+              healingDisplay.alpha = 1;
+          }
+  
+          checkEnemyDefeat();
+  
+          if (gameState !== 'victory') {
+              gameState = 'enemyTurn';
+              drawGame();
+              animateDamage();
+              setTimeout(() => {
+                  handleEnemyTurn();
+              }, 1000);
+          }
+      } else {
+          if (!player.specialSkill) {
+              console.log("No special skill selected");
+              alert("No special skill selected!");
+          } else if (player.specialAttackCooldown > 0) {
+              console.log("Special attack on cooldown");
+              alert("Special attack is on cooldown!");
+          }
+      }
+}
+
+function checkEnemyDefeat() {
+    if (enemies[selectedEnemyIndex].health <= 0) {
+        let defeatedEnemyXP = 0;
+        if (enemies[selectedEnemyIndex].class) {  // Check for .class property to identify duel enemies
+            // This is a duel enemy
+            defeatedEnemyXP = 20; // Set a fixed XP for duel enemies, or calculate based on level
+        } else {
+            // This is a regular enemy
+            const enemyType = enemyTypes.find(type => type.type === enemies[selectedEnemyIndex].type);
+            defeatedEnemyXP = enemyType ? enemyType.xp : 0;
+        }
+        currentBattleExpGained += defeatedEnemyXP;
+        enemies.splice(selectedEnemyIndex, 1);
+        resetDamageDisplay();
+        selectedEnemyIndex = 0;
+        if (enemies.length === 0) {
+            if (enemies[0] && enemies[0].class) {  // Check if it was a duel
+                gameState = 'duelVictory';
+                clearNotification();
+                showDuelVictoryScreen();
+            } else {
+                gameState = 'victory';
+                clearNotification();
+                showVictoryScreen();
+            }
+        }
+    }
+}
+
+function playerDefend() {
+    if (gameState === 'playerTurn') {
+        player.defending = true;
+        gameState = 'enemyTurn';
+        showPlayerTurnNotification();
+        drawGame();
+        setTimeout(() => {
+            handleEnemyTurn();
+        }, 1000);
+    }
+}
+
+        function playerRetreat() {
+            showPlayerTurnNotification();
+            gameState = 'defeat';
+            drawGame();
+        }
+
+        function handleEnemyTurn() {
+            showEnemyTurnNotification();
+
+            const attackEnemies = (index) => {
+                if (index >= enemies.length) {
+                    gameState = 'playerTurn';
+                    drawGame();
+                    resetDamageDisplay();
+                    return;
+                }
+        
+                setTimeout(() => {
+                    let enemy = enemies[index];
+        
+                    if (enemy.stunnedTurns > 0) {
+                        enemy.stunnedTurns--;
+                        attackEnemies(index + 1);
+                        return;
+                    }
+        
+                    let damage = 0;
+    
+                if (enemy.type === 'Poisonous Plant' && Math.random() < 0.25 && enemy.poisonSkillCooldown === 0) {
+                    console.log("Poisonous Plant uses Poison attack!");
+                    if (player.poisonCounter === 0) {
+                        player.poisonCounter = 1;
+                        console.log("Player has been poisoned!");
+                    }
+                    enemy.poisonSkillCooldown = 3;
+                } else if (enemy.specialAttackCooldown <= 0) {
+                    damage = useEnemySpecialSkill(enemy);
+                    enemy.specialAttackCooldown = 3;
+                } else {
+                    damage = Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
+                    enemy.specialAttackCooldown--;
+                    if (enemy.poisonSkillCooldown > 0) enemy.poisonSkillCooldown--;
+                }
+    
+                if (player.blind) {
+                    if (Math.random() * 100 < player.blind) {
+                        damage = 0;
+                        console.log("Enemy attack missed due to blindness");
+                    }
+                    player.blind = Math.max(0, player.blind - 25);
+                }
+    
+                if (player.parry) {
+                    damageDisplay.enemy.damage = damage;
+                    damageDisplay.enemy.x = 725;
+                    damageDisplay.enemy.y = 150 + (index * 130);
+                    damageDisplay.enemy.alpha = 1;
+                    enemy.health -= damage;
+                    player.parry = false;
+                    damage = 0;
+                    console.log("Player parried the attack");
+                } else if (player.defending) {
+                    damage = Math.floor(damage / 2);
+                    player.defending = false;
+                } else if (player.shieldOfLight > 0) {
+                    damage = Math.max(0, damage - 6);
+                    player.shieldOfLight--;
+                    if (player.shieldOfLight === 0) {
+                        player.maxDamage -= 2;
+                        player.health = Math.min(player.health + 6, player.maxHealth);
+                    }
+                }
+                
+                player.health -= damage;
+    
+                damageDisplay.player.damage = damage;
+                damageDisplay.player.x = 75;
+                damageDisplay.player.y = 150 + (index * 30);
+                damageDisplay.player.alpha = 1;
+                
+                // Apply conditional damage to player
+                if (player.burnedTurns > 0) {
+                    const burnDamage = Math.floor(Math.random() * 4) + 1;
+                    player.health -= burnDamage;
+                    console.log(`Player took ${burnDamage} burn damage`);
+                    player.burnedTurns--;
+                }
+                
+                // Apply poison damage to player at the start of enemy turn (end of player turn)
+                    if (player.poisonCounter > 0) {
+                        const poisonDamage = player.poisonCounter;
+                        player.health -= poisonDamage;
+                        console.log(`Player takes ${poisonDamage} poison damage`);
+                        player.poisonCounter++;
+                    }
+                    
+                    // Apply conditional damage after the enemy attacks
+                    let conditionalDamage = 0;
+                    
+                    if (enemy.burnedTurns > 0) {
+                        const burnDamage = Math.floor(Math.random() * 4) + 1;
+                        enemy.health -= burnDamage;
+                        damageDisplay.enemy.damage = burnDamage;
+                        damageDisplay.enemy.x = 725;
+                        damageDisplay.enemy.y = 150 + (index * 130);
+                        damageDisplay.enemy.alpha = 1;
+                        
+                        enemy.burnedTurns--;
+                    }
+                    
+                    if (enemy.poison) {
+                        const poisonDamage = enemy.poison;
+                        enemy.health -= poisonDamage;
+                        damageDisplay.enemy.damage = poisonDamage;
+                        damageDisplay.enemy.x = 725;
+                        damageDisplay.enemy.y = 150 + (index * 130);
+                        damageDisplay.enemy.alpha = 1;
+                    }
+                    if (conditionalDamage > 0) {
+                        damageDisplay.enemy.damage = conditionalDamage;
+                        damageDisplay.enemy.x = 725;
+                        damageDisplay.enemy.y = 150 + (index * 130);
+                        damageDisplay.enemy.alpha = 1;
+                    }
+                    
+                    if (enemy.health <= 0) {
+                        const defeatedEnemyXP = enemyTypes.find(type => type.type === enemy.type).xp;
+                        currentBattleExpGained += defeatedEnemyXP;
+                        enemies.splice(index, 1);
+                        if (enemies.length === 0) {
+                            gameState = 'victory';
+                            clearNotification();
+                            showVictoryScreen();
+                            return;
+                        }
+                    }
+        
+                    if (player.health <= 0) {
+                        gameState = 'defeat';
+                        clearNotification();
+                        animateDamage();
+                        setTimeout(() => {
+                            showDefeatScreen();
+                        }, 1000);
+                        return;
+                    }
+        
+                    animateDamage();
+                    setTimeout(() => {
+                        // Move to the next enemy, or end the turn if all enemies have acted
+                attackEnemies(index + 1);
+                    }, 1000);
+                },1000);
+              };
+
+    attackEnemies(0);
+}
+
+        function checkVictory() {
+            if (enemies.length === 0) {
+                gameState = 'victory';
+                clearNotification();
+                showVictoryScreen();
+            }
+        }
+
+        function showVictoryScreen() {
+            const goldEarned = Math.floor(Math.random() * 201) + 100;
+            player.gold += goldEarned;
+
+            let totalExpGained = currentBattleExpGained;
+
+            if (player.expBooster) {
+                totalExpGained *= 2; // Double the XP if the booster is active
+                player.expBooster = false; // Reset the XP booster after use
+            }
+
+            player.experience += totalExpGained; // Add the total XP gained to the player's experience
+
+            victoryExpGained = totalExpGained; // Set victoryExpGained to the XP earned in the current battle
+
+            if (player.experience >= player.xpToNextLevel) {
+                checkBattleLevelUp();
+            }
+
+            let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
+
+            if (victoryLevelUpMessage) {
+                victoryMessage += `${victoryLevelUpMessage}<br>`;
+                victoryLevelUpMessage = ''; // Clear the message immediately after using it
+            }
+
+            victoryMessage += `Current Stats:<br>
+            Health: ${player.health}/${player.maxHealth}<br>
+            Min Damage: ${player.minDamage}<br>
+            Max Damage: ${player.maxDamage}<br>
+            XP: ${player.experience}/${player.xpToNextLevel}`;
+
+            const goldMessage = `You earned ${goldEarned} gold.<br>Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
+            document.getElementById('victoryMessage').innerHTML = victoryMessage;
+            document.getElementById('goldMessage').innerHTML = goldMessage;
+            
+            // Set up event listeners for all buttons
+            document.getElementById('healingPotionButton').onclick = buyHealingPotion;
+            document.getElementById('expBoosterButton').onclick = buyExpBooster;
+            document.getElementById('lotusButton').onclick = buyLotusOfExperience;
+            document.getElementById('redPillButton').onclick = buyRedPill;
+            document.getElementById('continueJourneyButton').onclick = continueJourney;
+            document.getElementById('returnToCampButton').onclick = returnToCamp;
+            document.getElementById('developerGoldButton').onclick = () => {
+                player.gold += 1500;
+                updateGoldMessage();
+                updateVictoryScreenStats();
+                alert("Added 1500 gold to the player!");
+            };
+            
+            // In showVictoryScreen function
+            healingPotionButton.disabled = false;
+            healingPotionButton.textContent = "Buy Healing Potion (100 Gold)";
+            expBoosterButton.disabled = false;
+            expBoosterButton.textContent = "Buy EXP Booster (200 Gold)";
+            lotusButton.disabled = false;
+            lotusButton.textContent = "Buy Lotus of Experience (500 Gold)";
+            redPillButton.disabled = false;
+            redPillButton.textContent = "Buy Red Pill (1000 Gold)";
+            antidoteButton.disabled = false;
+            antidoteButton.textContent = "Buy Antidote (300 Gold)";
+            
+            // Show/hide buttons as needed
+            document.getElementById('healingPotionButton').style.display = 'inline-block';
+            document.getElementById('expBoosterButton').style.display = 'inline-block';
+            document.getElementById('lotusButton').style.display = 'inline-block';
+            document.getElementById('redPillButton').style.display = 'inline-block';
+            document.getElementById('continueJourneyButton').style.display = 'inline-block';
+            document.getElementById('returnToCampButton').style.display = 'inline-block';
+            document.getElementById('developerGoldButton').style.display = 'inline-block';
+
+            
+            document.getElementById('developerGoldButton').style.display = 'inline-block';
+
+            canvas.style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
+        
+            const victoryScreen = document.getElementById('gameVictoryScreen');
+            victoryScreen.style.display = 'block';
+        
+            // Show skill selection if player reaches level 3 and hasn't already chosen a skill
+            if (player.level >= 3 && !player.specialSkill) {
+                console.log("Showing skill selection in victory screen");
+                showBattleSkillSelection();
+            } else {
+                document.getElementById('skillSelection').style.display = 'none';
+            }
+        
+            document.getElementById('continueJourneyButton').style.display = 'inline-block';
+            document.getElementById('returnToCampButton').style.display = 'inline-block';
+            document.getElementById('developerGoldButton').style.display = 'inline-block';
+
+            currentBattleExpGained = 0; // Reset currentBattleExpGained for the next battle
+            resetDamageDisplay(); // Reset damage display
+
+            // Remove developer buttons if player reaches level 3 or 5
+            if (player.level >= 3) {
+                document.getElementById('developerButton').style.display = 'none';
+            }
+            if (player.level >= 5) {
+                document.getElementById('developerButton').style.display = 'none'; // Also hide level 3 button
+                document.getElementById('developerButton5').style.display = 'none';
+            }
+        }
+        
+        function hideVictoryScreen() {
+            document.getElementById('gameVictoryScreen').style.display = 'none';
+        }
+        
+
+        function showDefeatScreen() {
+            canvas.style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
+
+            const defeatScreen = document.getElementById('gameDefeatScreen');
+            defeatScreen.style.display = 'block';
+            resetDamageDisplay(); // Reset damage display
+        }
+
+        function hideDefeatScreen() {
+            const defeatScreen = document.getElementById('gameDefeatScreen');
+            defeatScreen.style.display = 'none';
+            canvas.style.display = 'block';
+            document.getElementById('gameButtons').style.display = 'block';
+        }
+
+        function continueJourney() {
+			console.log("Entering continueJourney function");
+			hideVictoryScreen();
+			hideStoryEventScreen();
+			hideCampScreen();
+			
+			const eventType = getEventType();
+			console.log("Event type selected:", eventType);
+			
+			switch(eventType) {
+				case 'duel':
+					console.log("Starting duel event");
+					startDuelEvent();
+					break;
+				case 'story':
+					console.log("Starting story event");
+					if (Math.random() <= 0.5) {
+						showStoryEvent1();
+					} else {
+						showStoryEvent2();
+					}
+					break;
+				case 'battle':
+					console.log("Starting battle");
+					enemies = createEnemies(player.level);
+					gameState = 'playerTurn';
+					canvas.style.display = 'block';
+					document.getElementById('gameButtons').style.display = 'block';
+					drawGame();
+					break;
+			}
+		}
+
+        function returnToCamp() {
+            hideVictoryScreen();
+            document.getElementById('storyLevelUpMessage').style.display = 'none';
+            showCampScreen();
+        }
+
+        function showCampScreen() {
+			hideDuelEventScreen();
+			hideVictoryScreen();
+			hideStoryEventScreen();
+			canvas.style.display = 'none';
+			document.getElementById('gameButtons').style.display = 'none';
+			
+			const campScreen = document.getElementById('campScreen');
+			campScreen.style.display = 'block';
+			document.getElementById('storeGoldButton').onclick = storeGoldInCamp;
+			
+			// Update tent squares
+			const tentSquares = document.getElementById('tentSquares');
+			tentSquares.innerHTML = '<div class="tentSquare">Player Tent</div>'; // Always show Player Tent
+			
+			// Add tents for recruited characters
+			const recruitedCharacters = player.recruitedCharacters || [];
+			for (let i = 0; i < recruitedCharacters.length; i++) {
+				const character = recruitedCharacters[i];
+				const tentSquare = document.createElement('div');
+				tentSquare.className = 'tentSquare';
+				tentSquare.textContent = `${character.class}\n${character.specialSkill}`;
+				tentSquares.appendChild(tentSquare);
+			}
+			
+			// Add empty tents up to the player's tent count
+			for (let i = recruitedCharacters.length + 2; i <= player.tents; i++) {
+				const tentSquare = document.createElement('div');
+				tentSquare.className = 'tentSquare';
+				tentSquare.textContent = `Tent ${i}`;
+				tentSquares.appendChild(tentSquare);
+			}
+			
+			// Ensure the continue journey button is visible
+			document.getElementById('continueJourneyFromCampButton').style.display = 'block';
+			
+			updateCampMessage();
+			updateTentButtons();
+		}
+
+function updateCampMessage() {
+    document.getElementById('campMessage').innerHTML = `Current Gold: ${player.gold}<br>Camp Bank: ${player.campBank} Gold<br>Tents: ${player.tents}`;
+}
+
+function updateTentButtons() {
+    const tentCosts = [1500, 2000, 2500, 3000];
+    for (let i = 2; i <= 5; i++) {
+        const button = document.getElementById(`${getTentNumberWord(i)}TentButton`);
+        if (i === player.tents + 1) {
+            button.style.display = 'block';
+            button.disabled = player.campBank < tentCosts[i - 2];
+        } else {
+            button.style.display = 'none';
+        }
+    }
+}
+
+        function getEventType() {
+            const eventRoll = Math.random();
+            
+            if (duelEventsUnlocked) {
+                // Duel events unlocked
+                if (eventRoll <= 0.75) {
+                    return 'duel';
+                } else if (eventRoll <= 0.90) {
+                    return 'story';
+                } else {
+                    return 'battle';
+                }
+            } else {
+                // Duel events locked
+                if (eventRoll <= 0.60) { // 60% chance for story events (4 times more likely than battles)
+                    return 'story';
+                } else {
+                    return 'battle';
+                }
+            }
+        }
+    
+        
+        
+        function updateTentButtons() {
+            const tentCosts = [1500, 2000, 2500, 3000];
+            for (let i = 2; i <= 5; i++) {
+                const button = document.getElementById(`${getTentNumberWord(i)}TentButton`);
+                if (i === player.tents + 1) {
+                    button.style.display = 'block';
+                    button.disabled = player.campBank < tentCosts[i - 2];
+                } else {
+                    button.style.display = 'none';
+                }
+            }
+        }
+
+        function hideCampScreen() {
+			document.getElementById('campScreen').style.display = 'none';
+		}
+
+        function storeGoldInCamp() {
+            player.campBank += player.gold;
+            player.gold = 0;
+            updateCampMessage();
+            updateTentButtons();
+        }
+
+        function hideVictoryScreen() {
+			document.getElementById('gameVictoryScreen').style.display = 'none';
+		}
+		
+		function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Wrap each purchase function with the debounce
+const debouncedBuyHealingPotion = debounce(buyHealingPotion, 300);
+const debouncedBuyExpBooster = debounce(buyExpBooster, 300);
+const debouncedBuyLotusOfExperience = debounce(buyLotusOfExperience, 300);
+const debouncedBuyRedPill = debounce(buyRedPill, 300);
+
+// Update event listeners
+document.getElementById('healingPotionButton').addEventListener('click', debouncedBuyHealingPotion);
+document.getElementById('expBoosterButton').addEventListener('click', debouncedBuyExpBooster);
+document.getElementById('lotusButton').addEventListener('click', debouncedBuyLotusOfExperience);
+document.getElementById('redPillButton').addEventListener('click', debouncedBuyRedPill);
+
+        function removeAllEventListeners(element) {
+    const newElement = element.cloneNode(true);
+    element.parentNode.replaceChild(newElement, element);
+    return newElement;
+}
+
+// Remove and re-add event listeners
+const healingPotionButton = removeAllEventListeners(document.getElementById('healingPotionButton'));
+const expBoosterButton = removeAllEventListeners(document.getElementById('expBoosterButton'));
+const lotusButton = removeAllEventListeners(document.getElementById('lotusButton'));
+const redPillButton = removeAllEventListeners(document.getElementById('redPillButton'));
+
+// Add new event listeners
+healingPotionButton.addEventListener('click', buyHealingPotion);
+expBoosterButton.addEventListener('click', buyExpBooster);
+lotusButton.addEventListener('click', buyLotusOfExperience);
+redPillButton.addEventListener('click', buyRedPill);
+
+// Update the purchase functions to include a check for multiple purchases
+let lastPurchaseTime = 0;
+const PURCHASE_COOLDOWN = 1000; // 1 second cooldown
+
+        function buyHealingPotion() {
+            const now = Date.now();
+            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
+                console.log("Purchase attempted too soon");
+                return;
+            }
+            lastPurchaseTime = now;
+        
+            console.log("Attempting to buy healing potion");
+            console.log("Current gold:", player.gold);
+            
+            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
+                console.log("Shop is not open");
+                return;
+            }
+            
+            if (player.gold < 100) {
+                console.log("Not enough gold");
+                alert("Not enough gold!");
+                return;
+            }
+            
+            console.log("Purchasing potion");
+            player.gold -= 100;
+            player.health += 25;
+            if (player.health > player.maxHealth) {
+                player.health = player.maxHealth;
+            }
+            healingPotionButton.disabled = true;
+            healingPotionButton.textContent = "Sold Out";
+            updateGoldMessage();
+            updateVictoryScreenStats();
+            drawGame();
+            console.log("Potion purchased successfully");
+        }
+
+// Apply similar changes to buyExpBooster, buyLotusOfExperience, and buyRedPill functions
+
+        function buyExpBooster() {
+          
+          const now = Date.now();
+            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
+                console.log("Purchase attempted too soon");
+                return;
+            }
+            lastPurchaseTime = now;
+            
+            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
+                console.log("Shop is not open");
+                return;
+            }
+            
+            if (player.gold < 200) {
+                console.log("Not enough gold");
+                alert("Not enough gold!");
+                return;
+            }
+    
+            
+                player.gold -= 200;
+                player.expBooster = true;
+                expBoosterButton.disabled = true;
+                expBoosterButton.textContent = "Sold Out";
+                updateGoldMessage();
+            
+        }
+        
+        function buyAntidote() {
+            const now = Date.now();
+            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
+                console.log("Purchase attempted too soon");
+                return;
+            }
+            lastPurchaseTime = now;
+        
+            console.log("Attempting to buy antidote");
+            console.log("Current gold:", player.gold);
+            
+            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
+                console.log("Shop is not open");
+                return;
+            }
+            
+            if (player.gold < 300) {
+                console.log("Not enough gold");
+                alert("Not enough gold!");
+                return;
+            }
+        
+            if (player.poisonCounter === 0) {
+        if (!confirm("You do not seem poisoned. Are you sure you wish to purchase an Antidote?")) {
+            console.log("Antidote purchase cancelled");
+            return;
+        }
+    }
+        
+            
+            console.log("Purchasing antidote");
+            player.gold -= 300;
+            player.poisonCounter = 0;
+            antidoteButton.disabled = true;
+            antidoteButton.textContent = "Sold Out";
+            updateGoldMessage();
+            updateVictoryScreenStats();
+            drawGame();
+            console.log("Antidote purchased successfully");
+            alert("You've used the Antidote. Any poison effect has been removed.");
+        }
+
+const antidoteButton = removeAllEventListeners(document.getElementById('antidoteButton'));
+antidoteButton.addEventListener('click', buyAntidote);
+
+        function buyLotusOfExperience() {
+          
+          const now = Date.now();
+            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
+                console.log("Purchase attempted too soon");
+                return;
+            }
+            lastPurchaseTime = now;
+            
+            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
+                console.log("Shop is not open");
+                return;
+            }
+            
+            if (player.gold < 500) {
+                console.log("Not enough gold");
+                alert("Not enough gold!");
+                return;
+            }
+                  player.gold -= 500;
+                  player.experience += 10;
+                  checkBattleLevelUp();  // Changed from checkLevelUp to checkBattleLevelUp
+                  lotusButton.disabled = true;
+                  lotusButton.textContent = "Sold Out";
+                  updateGoldMessage();
+                  updateVictoryScreenStats();
+                  drawGame();
+                  
+              }
+
+        function buyRedPill() {
+          
+          const now = Date.now();
+            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
+                console.log("Purchase attempted too soon");
+                return;
+            }
+            lastPurchaseTime = now;
+            
+            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
+                console.log("Shop is not open");
+                return;
+            }
+            
+            if (player.gold < 1000) {
+                console.log("Not enough gold");
+                alert("Not enough gold!");
+                return;
+            }
+                player.gold -= 1000;
+                player.minDamage += 1;
+                redPillButton.disabled = true;
+                redPillButton.textContent = "Sold Out";
+                updateGoldMessage();
+                updateVictoryScreenStats();
+                drawGame();
+                
+            }
+
+        function checkStoryLevelUp() {
+    while (player.experience >= player.xpToNextLevel) {
+        player.level++;
+        player.experience -= player.xpToNextLevel;
+        player.xpToNextLevel += 20;
+
+        player.healthGain = Math.floor(Math.random() * 5) + 3;
+        player.maxHealth += player.healthGain;
+        player.health = player.maxHealth;
+
+        player.minDamageGain = 0;
+        player.maxDamageGain = 0;
+        if (Math.random() <= 0.25) {
+            player.minDamage += 1;
+            player.minDamageGain = 1;
+        }
+
+        const maxDamageIncreaseRoll = Math.random() * 100;
+        if (maxDamageIncreaseRoll <= 60) {
+            player.maxDamage += 1;
+            player.maxDamageGain = 1;
+        } else if (maxDamageIncreaseRoll <= 90) {
+            player.maxDamage += 2;
+            player.maxDamageGain = 2;
+        } else {
+            player.maxDamage += 3;
+            player.maxDamageGain = 3;
+        }
+
+        let levelUpMessage = `You leveled up! Gained ${player.healthGain} health, +${player.minDamageGain} min damage, +${player.maxDamageGain} max damage.`;
+
+        // Show special skill selection when reaching level 3
+        if (player.level === 3 && !player.specialSkillUnlocked) {
+            console.log("Triggering skill selection for " + player.class);
+            player.specialSkillUnlocked = true;
+            showStorySkillSelection();
+            updateStoryScreenStats();
+            showLevelUpMessage(levelUpMessage);
+            return; // Exit the function to prevent further level-ups until skill is chosen
+        }
+
+        updateStoryScreenStats();
+        showLevelUpMessage(levelUpMessage);
+    }
+}
+
+function checkBattleLevelUp() {
+    let leveledUp = false;
+    while (player.experience >= player.xpToNextLevel) {
+        leveledUp = true;
+        player.level++;
+        player.experience -= player.xpToNextLevel;
+        player.xpToNextLevel += 20;
+
+        player.healthGain = Math.floor(Math.random() * 5) + 3;
+        player.maxHealth += player.healthGain;
+        player.health = player.maxHealth;
+
+        player.minDamageGain = 0;
+        player.maxDamageGain = 0;
+        if (Math.random() <= 0.25) {
+            player.minDamage += 1;
+            player.minDamageGain = 1;
+        }
+
+        const maxDamageIncreaseRoll = Math.random() * 100;
+        if (maxDamageIncreaseRoll <= 60) {
+            player.maxDamage += 1;
+            player.maxDamageGain = 1;
+        } else if (maxDamageIncreaseRoll <= 90) {
+            player.maxDamage += 2;
+            player.maxDamageGain = 2;
+        } else {
+            player.maxDamage += 3;
+            player.maxDamageGain = 3;
+        }
+
+        let levelUpMessage = `You leveled up! Gained ${player.healthGain} health, +${player.minDamageGain} min damage, +${player.maxDamageGain} max damage.`;
+        victoryLevelUpMessage += levelUpMessage + '<br>';
+
+        // Show special skill selection when reaching level 3
+        if (player.level === 3 && !player.specialSkillUnlocked) {
+            console.log("Triggering skill selection for " + player.class);
+            player.specialSkillUnlocked = true;
+            showBattleSkillSelection();
+            break; // Exit the loop after showing skill selection
+        }
+    }
+    return leveledUp;
+}
+
+        function updateGoldMessage() {
+            document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
+        }
+
+        function updateVictoryScreenStats() {
+            let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
+
+            if (victoryLevelUpMessage) {
+                victoryMessage += `${victoryLevelUpMessage}<br>`;
+            }
+
+            victoryMessage += `Current Stats:<br>
+            Health: ${player.health}/${player.maxHealth}<br>
+            Min Damage: ${player.minDamage}<br>
+            Max Damage: ${player.maxDamage}<br>
+            XP: ${player.experience}/${player.xpToNextLevel}`;
+
+            document.getElementById('victoryMessage').innerHTML = victoryMessage;
+            document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
+        }
+
+        function clearNotification() {
+            const notificationElement = document.getElementById('notificationText');
+            notificationElement.textContent = '';
+        }
+
+        function showStoryEvent1() {
+            console.log("Entering showStoryEvent1");
+            inStoryEvent = true;
+            currentStory = STORY_OLD_MAN;
+            document.getElementById('storyLevelUpMessage').style.display = 'none';
+            document.getElementById('storyLevelUpMessage').innerHTML = '';
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
+            document.getElementById('storyEventScreen').style.display = 'block';
+            document.getElementById('storyText').innerHTML = "You encounter an old man on the road. He asks if you can spare 100 gold for some food and a warm bed.";
+
+            document.getElementById('storyChoice1Button').textContent = "Give the old man 100 gold";
+            document.getElementById('storyChoice2Button').textContent = "Ask what he is doing on the road";
+            document.getElementById('storyChoice3Button').textContent = "Ignore him and keep walking";
+
+            // Remove previous event listeners before adding new ones
+            removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+            document.getElementById('storyChoice1Button').addEventListener('click', handleOldManChoice1);
+            document.getElementById('storyChoice2Button').addEventListener('click', handleOldManChoice2);
+            document.getElementById('storyChoice3Button').addEventListener('click', handleOldManChoice3);
+
+            document.getElementById('storyChoices').style.display = 'block';
+            document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+            document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden initially
+            document.getElementById('storyStats').style.display = 'none'; // Hide stats initially
+        }
+
+        function handleOldManChoice1() {
+            console.log("Executing handleOldManChoice1");
+            if (currentStory !== STORY_OLD_MAN) return;
+            if (player.gold >= 100) {
+                player.gold -= 100;
+                player.minDamage += 1;
+                player.maxDamage += 1;
+                let xpGained = player.expBooster ? 20 : 10; // Double XP if booster is active
+                player.experience += xpGained;
+                document.getElementById('storyText').innerHTML = `The old man teaches you to be a better fighter. You gain +1 min damage, +1 max damage, and ${xpGained} XP.`;
+                checkStoryLevelUp();
+                player.expBooster = false; // Reset the XP booster after use
+
+                // Show level-up message if player leveled up
+                if (player.experience >= player.xpToNextLevel) {
+                    showLevelUpMessage();
+                }
+            } else {
+                document.getElementById('storyText').innerHTML = "You don't have enough gold to give.";
+            }
+            showFinalContinueButton(); // Show final continue button and update stats
+        }
+
+        function handleOldManChoice2() {
+            console.log("Executing handleOldManChoice2");
+            if (currentStory !== STORY_OLD_MAN) return;
+            document.getElementById('storyText').innerHTML = "The old man explains that he is going to visit his family but since age has caught up to him, the trip is slow and he has exhausted all the gold he had.";
+
+            document.getElementById('storyChoice1Button').textContent = "Give him 100 gold";
+            document.getElementById('storyChoice2Button').textContent = "Give him 200 gold";
+            document.getElementById('storyChoice3Button').textContent = "Walk away and continue the journey";
+
+            // Remove previous event listeners before adding new ones
+            removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+            document.getElementById('storyChoice1Button').addEventListener('click', handleOldManChoice1_2);
+            document.getElementById('storyChoice2Button').addEventListener('click', handleOldManChoice2_2);
+            document.getElementById('storyChoice3Button').addEventListener('click', handleOldManChoice3_2);
+
+            document.getElementById('storyChoices').style.display = 'block';
+        }
+
+        function handleOldManChoice1_2() {
+            console.log("Executing handleOldManChoice1_2");
+            if (currentStory !== STORY_OLD_MAN) return;
+            if (player.gold >= 100) {
+                player.gold -= 100;
+                player.minDamage += 1;
+                player.maxDamage += 1;
+                let xpGained = player.expBooster ? 20 : 10; // Double XP if booster is active
+                player.experience += xpGained;
+                document.getElementById('storyText').innerHTML = `The old man teaches you to be a better fighter. You gain +1 min damage, +1 max damage, and ${xpGained} XP.`;
+                checkStoryLevelUp();
+                player.expBooster = false; // Reset the XP booster after use
+
+                // Show level-up message if player leveled up
+                if (player.experience >= player.xpToNextLevel) {
+                    showLevelUpMessage();
+                }
+            } else {
+                document.getElementById('storyText').innerHTML = "You don't have enough gold to give.";
+            }
+            showFinalContinueButton(); // Show final continue button and update stats
+        }
+
+        function handleOldManChoice2_2() {
+            console.log("Executing handleOldManChoice2_2");
+            if (currentStory !== STORY_OLD_MAN) return;
+            if (player.gold >= 200) {
+                player.gold -= 200;
+                player.minDamage += 1;
+                player.maxDamage += 2;
+                let xpGained = player.expBooster ? 20 : 10; // Double XP if booster is active
+                player.experience += xpGained;
+                document.getElementById('storyText').innerHTML = `The old man is deeply grateful and teaches you advanced combat techniques. You gain +1 min damage, +2 max damage, and ${xpGained} XP.`;
+                checkStoryLevelUp();
+                player.expBooster = false; // Reset the XP booster after use
+
+                // Show level-up message if player leveled up
+                if (player.experience >= player.xpToNextLevel) {
+                    showLevelUpMessage();
+                }
+            } else {
+                document.getElementById('storyText').innerHTML = "You don't have enough gold to give.";
+            }
+            showFinalContinueButton(); // Show final continue button and update stats
+        }
+
+        function handleOldManChoice3() {
+            console.log("Executing handleOldManChoice3");
+            if (currentStory !== STORY_OLD_MAN) return;
+            document.getElementById('storyText').innerHTML = "You ignore the old man and keep walking.";
+            showFinalContinueButton(); // Show final continue button and update stats
+        }
+
+        function handleOldManChoice3_2() {
+            console.log("Executing handleOldManChoice3_2");
+            if (currentStory !== STORY_OLD_MAN) return;
+            document.getElementById('storyText').innerHTML = "You walk away and continue your journey.";
+            showFinalContinueButton(); // Show final continue button and update stats
+        }
+
+        function showStoryEvent2() {
+            console.log("Entering showStoryEvent2");
+            inStoryEvent = true;
+            currentStory = STORY_TREANT;
+            document.getElementById('storyLevelUpMessage').style.display = 'none';
+            document.getElementById('storyLevelUpMessage').innerHTML = '';
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
+            document.getElementById('storyEventScreen').style.display = 'block';
+            document.getElementById('storyText').innerHTML = "You find a tree that seems to be murmuring to itself. You get close to the tree and have 3 options.";
+
+            document.getElementById('storyChoice1Button').textContent = "Poke the tree with your weapon";
+            document.getElementById('storyChoice2Button').textContent = "Ask if it's alright";
+            document.getElementById('storyChoice3Button').textContent = "Leave right away";
+
+            // Remove previous event listeners before adding new ones
+            removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+            document.getElementById('storyChoice1Button').addEventListener('click', handleTreePoke1);
+            document.getElementById('storyChoice2Button').addEventListener('click', handleTreeAsk);
+            document.getElementById('storyChoice3Button').addEventListener('click', handleTreeLeave);
+
+            document.getElementById('storyChoices').style.display = 'block';
+            document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+            document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden initially
+            document.getElementById('storyStats').style.display = 'none'; // Hide stats initially
+        }
+
+        function handleTreePoke1() {
+            console.log("Executing handleTreePoke1");
+            if (currentStory !== STORY_TREANT) return;
+            document.getElementById('storyText').innerHTML = "The tree asks why you are bothering it, as it is having trouble sleeping. It would appreciate if you could leave it alone.";
+
+            document.getElementById('storyChoice1Button').textContent = "Poke it again";
+            document.getElementById('storyChoice2Button').textContent = "Ask why it needs to sleep";
+            document.getElementById('storyChoice3Button').textContent = "Walk away";
+
+            // Remove previous event listeners before adding new ones
+            removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+            document.getElementById('storyChoice1Button').addEventListener('click', handleTreePoke2);
+            document.getElementById('storyChoice2Button').addEventListener('click', handleTreeAsk2);
+            document.getElementById('storyChoice3Button').addEventListener('click', handleTreeLeave);
+
+            document.getElementById('storyChoices').style.display = 'block';
+            document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+            document.getElementById('continueToBattleButton').style.display = 'none';
+        }
+
+        function handleTreePoke2() {
+            console.log("Executing handleTreePoke2");
+            if (currentStory !== STORY_TREANT) return;
+            document.getElementById('storyText').innerHTML = "The tree says it wishes to be left alone and does not want to be hurt or hurt anyone but will defend itself to rest.";
+
+            document.getElementById('storyChoice1Button').textContent = "Poke it a third time";
+            document.getElementById('storyChoice2Button').textContent = "Ask why it needs to sleep";
+            document.getElementById('storyChoice3Button').textContent = "Walk away";
+
+            // Remove previous event listeners before adding new ones
+            removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+            document.getElementById('storyChoice1Button').addEventListener('click', handleTreePoke3);
+            document.getElementById('storyChoice2Button').addEventListener('click', handleTreeAsk2);
+            document.getElementById('storyChoice3Button').addEventListener('click', handleTreeLeave);
+
+            document.getElementById('storyChoices').style.display = 'block';
+            document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+            document.getElementById('continueToBattleButton').style.display = 'none';
+        }
+
+        function handleTreePoke3() {
+            console.log("Executing handleTreePoke3");
+            if (currentStory !== STORY_TREANT) return;
+            document.getElementById('storyText').innerHTML = "The tree gets angry and you are thrown into a battle against the Treant!";
+            document.getElementById('storyChoices').style.display = 'none';
+
+            document.getElementById('continueToBattleButton').style.display = 'inline-block';
+            document.getElementById('continueToBattleButton').onclick = function() {
+                hideStoryEventScreen();
+                treantEncountered = true;
+                startTreantBattle();
+            };
+        }
+
+        function handleTreeAsk() {
+            console.log("Executing handleTreeAsk");
+            if (currentStory !== STORY_TREANT) return;
+            document.getElementById('storyText').innerHTML = "The tree explains that its autumn has ended and it must sleep for the winter. It thanks you for listening and hands you a fruit that heals you completely, grants +5 HP, +1 max damage, and 15 XP.";
+
+            if (player.expBooster) {
+                player.experience += 30; // Double XP if booster is active
+                player.expBooster = false; // Reset the XP booster after use
+            } else {
+                player.experience += 15;
+            }
+
+            player.health = player.maxHealth;
+            player.maxHealth += 5;
+            player.maxDamage += 1;
+
+            checkStoryLevelUp();
+            updateStoryScreenStats(); // Update stats on story screen
+
+            showFinalContinueButton(); // Show final continue button and update stats
+
+            // Show level-up message if player leveled up
+            if (player.experience >= player.xpToNextLevel) {
+                showLevelUpMessage();
+            }
+        }
+
+        function handleTreeAsk2() {
+            console.log("Executing handleTreeAsk2");
+            if (currentStory !== STORY_TREANT) return;
+            document.getElementById('storyText').innerHTML = "The tree explains that its autumn has ended and it must sleep for the winter. It thanks you for listening and hands you a fruit that heals you completely, grants +5 HP, +1 max damage, and 15 XP.";
+        
+            if (player.expBooster) {
+                player.experience += 30; // Double XP if booster is active
+                player.expBooster = false; // Reset the XP booster after use
+            } else {
+                player.experience += 15;
+            }
+        
+            player.health = player.maxHealth;
+            player.maxHealth += 5;
+            player.maxDamage += 1;
+        
+            checkStoryLevelUp();
+            updateStoryScreenStats(); // Update stats on story screen
+        
+            showFinalContinueButton(); // Show final continue button and update stats
+        
+            // Show level-up message if player leveled up
+            if (player.experience >= player.xpToNextLevel) {
+                showLevelUpMessage();
+            }
+        }
+
+        function handleTreeLeave() {
+            console.log("Executing handleTreeLeave");
+            if (currentStory !== STORY_TREANT) return;
+            document.getElementById('storyText').innerHTML = "You walk away, finding the whole situation very strange.";
+            showFinalContinueButton(); // Show final continue button and update stats
+        }
+
+        function showFinalContinueButton() {
+            console.log("Executing showFinalContinueButton");
+            updateStoryScreenStats(); // Update stats on story screen
+            document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
+            document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block'; // Show final continue button
+            document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
+            document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
+        }
+
+        function startTreantBattle() {
+            console.log("Executing startTreantBattle");
+            treantEncountered = true;
+            enemies = [createEnemyByType('Treant')];
+            gameState = 'playerTurn';
+            drawGame();
+            canvas.style.display = 'block';
+            document.getElementById('gameButtons').style.display = 'block';
+        }
+
+        function continueJourneyFromCamp() {
+			console.log("Executing continueJourneyFromCamp");
+			hideCampScreen();
+			document.getElementById('continueJourneyFromCampButton').style.display = 'none';
+			
+			continueJourney();
+		}
+        
+        function continueJourneyFromStory() {
+            console.log("Executing continueJourneyFromStory");
+            hideStoryEventScreen();
+            
+            continueJourney();
+        }
+		
+		function hideDuelEventScreen() {
+			document.getElementById('duelEventScreen').style.display = 'none';
+		}
+
+        function hideStoryEventScreen() {
+			document.getElementById('storyEventScreen').style.display = 'none';
+		}
+
+        function updateStoryScreenStats() {
+            console.log("Executing updateStoryScreenStats");
+            const statsMessage = `Health: ${player.health}/${player.maxHealth}<br>
+            Min Damage: ${player.minDamage}<br>
+            Max Damage: ${player.maxDamage}<br>
+            XP: ${player.experience}/${player.xpToNextLevel}<br>
+            Current Gold: ${player.gold}<br><br>
+            Camp Bank: ${player.campBank} Gold`;
+
+            document.getElementById('storyStats').innerHTML = statsMessage;
+        }
+
+        // Utility function to remove event listeners
+        function removeEventListeners(...buttonIds) {
+            buttonIds.forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                const oldElement = button.cloneNode(true);
+                button.parentNode.replaceChild(oldElement, button);
+            });
+        }
+
+        function showStorySkillSelection() {
+            console.log("Showing story skill selection for " + player.class);
+            const skillSelection = 'storySkillSelection';
+            
+            document.getElementById(skillSelection).style.display = 'block';
+            document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+        
+            document.getElementById(skillSelection + 'MageSkills').style.display = 'none';
+            document.getElementById(skillSelection + 'WarriorSkills').style.display = 'none';
+            document.getElementById(skillSelection + 'ClericSkills').style.display = 'none';
+            document.getElementById(skillSelection + 'RogueSkills').style.display = 'none';
+        
+            if (player.class === 'Mage') {
+                document.getElementById(skillSelection + 'MageSkills').style.display = 'block';
+            } else if (player.class === 'Warrior') {
+                document.getElementById(skillSelection + 'WarriorSkills').style.display = 'block';
+            } else if (player.class === 'Cleric') {
+                document.getElementById(skillSelection + 'ClericSkills').style.display = 'block';
+            } else if (player.class === 'Rogue') {
+                document.getElementById(skillSelection + 'RogueSkills').style.display = 'block';
+            }
+        }
+
+        function showBattleSkillSelection() {
+            console.log("Showing battle skill selection for " + player.class);
+            const skillSelection = 'skillSelection';
+            
+            document.getElementById(skillSelection).style.display = 'block';
+            document.getElementById('continueJourneyButton').style.display = 'none';
+        
+            document.getElementById(skillSelection + 'MageSkills').style.display = 'none';
+            document.getElementById(skillSelection + 'WarriorSkills').style.display = 'none';
+            document.getElementById(skillSelection + 'ClericSkills').style.display = 'none';
+            document.getElementById(skillSelection + 'RogueSkills').style.display = 'none';
+        
+            if (player.class === 'Mage') {
+                document.getElementById(skillSelection + 'MageSkills').style.display = 'block';
+            } else if (player.class === 'Warrior') {
+                document.getElementById(skillSelection + 'WarriorSkills').style.display = 'block';
+            } else if (player.class === 'Cleric') {
+                document.getElementById(skillSelection + 'ClericSkills').style.display = 'block';
+            } else if (player.class === 'Rogue') {
+                document.getElementById(skillSelection + 'RogueSkills').style.display = 'block';
+            }
+        }
+
+        function showLevelUpMessage() {
+            let levelUpMessage = `You leveled up! Gained ${player.healthGain} health, +${player.minDamageGain} min damage, +${player.maxDamageGain} max damage.`;
+            document.getElementById('storyLevelUpMessage').innerHTML = levelUpMessage;
+            document.getElementById('storyLevelUpMessage').style.display = 'block';
+            
+            // Clear the message after 5 seconds
+            setTimeout(() => {
+                document.getElementById('storyLevelUpMessage').style.display = 'none';
+                document.getElementById('storyLevelUpMessage').innerHTML = '';
+            }, 5000);
+        }
+        
+        function setupClassSkills() {
+          if (player.class === 'Mage') {
+              player.specialSkills = {
+                  Thunder: {
+                      name: "Thunder",
+                      use: function() {
+                          const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
+                          enemies[selectedEnemyIndex].health -= damage;
+                          enemies[selectedEnemyIndex].stunnedTurns = 1;
+                          player.specialAttackCooldown = 3;
+                          return damage;
+                      }
+                  },
+                  Fireball: {
+                      name: "Fireball",
+                      use: function() {
+                          const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 2;
+                          enemies[selectedEnemyIndex].health -= damage;
+                          enemies[selectedEnemyIndex].burnedTurns = 2;
+                          player.specialAttackCooldown = 3;
+                          return damage;
+                      }
+                  },
+                  HailStorm: {
+                      name: "Hail Storm",
+                      use: function() {
+                          let totalDamage = 0;
+                          enemies.forEach(enemy => {
+                              const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
+                              enemy.health -= damage;
+                              totalDamage += damage;
+                          });
+                          player.specialAttackCooldown = 3;
+                          return totalDamage;
+                      }
+                  }
+              };
+          } else if (player.class === 'Warrior') {
+              player.specialSkills = {
+                  DoubleAttack: {
+                      name: "Double Attack",
+                      use: function() {
+                          let totalDamage = 0;
+                          for (let i = 0; i < 2; i++) {
+                              const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
+                              enemies[selectedEnemyIndex].health -= damage;
+                              totalDamage += damage;
+                          }
+                          player.specialAttackCooldown = 3;
+                          return totalDamage;
+                      }
+                  },
+                  StoneSkin: {
+                      name: "Stone Skin",
+                      use: function() {
+                          const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
+                          enemies[selectedEnemyIndex].health -= damage;
+                          player.defending = true;
+                          player.specialAttackCooldown = 2;
+                          return damage;
+                      }
+                  },
+                  LifeAttack: {
+                      name: "Life Attack",
+                      use: function() {
+                          const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
+                          enemies[selectedEnemyIndex].health -= damage;
+                          const healAmount = Math.floor(damage / 2);
+                          player.health = Math.min(player.health + healAmount, player.maxHealth);
+                          player.specialAttackCooldown = 3;
+                          return damage;
+                      }
+                  }
+                  
+              };
+          } else if (player.class === 'Cleric') {
+              player.specialSkills = {
+                  HolyLight: {
+                      name: "Holy Light",
+                      use: function() {
+                          const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
+                          enemies[selectedEnemyIndex].health -= damage;
+                          enemies[selectedEnemyIndex].exposed = true;
+                          player.specialAttackCooldown = 3;
+                          return damage;
+                      }
+                  },
+                  LifeTransfer: {
+                      name: "Life Transfer",
+                      use: function() {
+                          const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
+                          enemies[selectedEnemyIndex].health -= damage;
+                          player.health = Math.min(player.health + damage, player.maxHealth);
+                          player.specialAttackCooldown = 3;
+                          return damage;
+                      }
+                  },
+                  ShieldOfLight: {
+                      name: "Shield of Light",
+                      use: function() {
+                          player.shieldOfLight = 2;
+                          player.maxDamage += 2;
+                          player.specialAttackCooldown = 3;
+                          return 0;
+                      }
+                  }
+              };
+          } else if (player.class === 'Rogue') {
+        player.specialSkills = {
+            BlindShot: {
+                name: "Blind Shot",
+                use: function() {
+                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
+                    enemies[selectedEnemyIndex].health -= damage;
+                    enemies[selectedEnemyIndex].blind = 100;
+                    player.specialAttackCooldown = 4;
+                    return damage;
+                }
+            },
+            ToxicStab: {
+                name: "Toxic Stab",
+                use: function() {
+                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 2;
+                    enemies[selectedEnemyIndex].health -= damage;
+                    enemies[selectedEnemyIndex].poison = (enemies[selectedEnemyIndex].poison || 0) + 1;
+                    player.specialAttackCooldown = 3;
+                    return damage;
+                }
+            },
+            PerfectParry: {
+                name: "Perfect Parry",
+                use: function() {
+                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
+                    enemies[selectedEnemyIndex].health -= damage;
+                    player.parry = true;
+                    player.specialAttackCooldown = 3;
+                    return damage;
+                }
+            }
+        };
+        }
+       }
+
+        function selectSpecialSkill(skillName) {
+            console.log("Selecting special skill: " + skillName);
+            player.specialSkill = player.specialSkills[skillName];
+            
+            // Update button label and show it
+            document.getElementById('specialAttackButton').innerText = skillName;
+            document.getElementById('specialAttackButton').style.display = 'inline-block';
+        
+            // Hide the skill selection after choosing a skill
+            document.getElementById('skillSelection').style.display = 'none';
+            document.getElementById('storySkillSelection').style.display = 'none';
+        
+            if (inStoryEvent) {
+                document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block';
+            } else {
+                // This is for the victory screen
+                document.getElementById('continueJourneyButton').style.display = 'inline-block';
+            }
+        
+            drawGame();
+        }
+
+function buyTent(tentNumber, cost) {
+    if (player.campBank >= cost) {
+        player.campBank -= cost;
+        player.tents++;
+        document.getElementById(`${getTentNumberWord(tentNumber)}TentButton`).style.display = 'none';
+        if (tentNumber < 5) {
+            document.getElementById(`${getTentNumberWord(tentNumber + 1)}TentButton`).style.display = 'block';
+        }
+        
+        // Add new tent square
+        const tentSquares = document.getElementById('tentSquares');
+        const newTentSquare = document.createElement('div');
+        newTentSquare.className = 'tentSquare';
+        newTentSquare.textContent = `Tent ${tentNumber}`;
+        tentSquares.appendChild(newTentSquare);
+        
+        if (!duelEventsUnlocked) {
+            duelEventsUnlocked = true;
+            console.log("Duel events unlocked!");
+            alert("You've unlocked Duel Events!");
+        }
+        
+        updateCampMessage();
+    } else {
+        alert("Not enough gold in the Camp Bank!");
+    }
+}
+
+function getTentNumberWord(number) {
+    const words = ['', 'second', 'third', 'fourth', 'fifth'];
+    return words[number - 1];
+}
+
+function updateCampMessage() {
+    document.getElementById('campMessage').innerHTML = `Current Gold: ${player.gold}<br>Camp Bank: ${player.campBank} Gold<br>Tents: ${player.tents}`;
+}
+
+function startDuelEvent() {
+    console.log("Starting duel event");
+    const classes = ['Warrior', 'Mage', 'Cleric', 'Rogue'];
+    const enemyClass = classes[Math.floor(Math.random() * classes.length)];
+    const enemy = createEnemyCharacter(enemyClass);
+    
+    document.getElementById('gameCanvas').style.display = 'none';
+    document.getElementById('gameButtons').style.display = 'none';
+    document.getElementById('duelEventScreen').style.display = 'block';
+    document.getElementById('duelText').innerHTML = `You've encountered a ${enemyClass} who challenges you to a duel!`;
+    document.getElementById('startDuelButton').onclick = () => startDuelBattle(enemy);
+}
+
+function createEnemyCharacter(characterClass) {
+    const enemy = {
+        type: characterClass,  // Add this line
+        class: characterClass,
+        health: 50,
+        maxHealth: 50,
+        minDamage: 1,
+        maxDamage: 6,
+        specialSkill: getRandomSkill(characterClass),
+        specialAttackCooldown: 0  // Add this line
+    };
+    return enemy;
+}
+
+function getRandomSkill(characterClass) {
+    // Return a random skill based on the character class
+    const skills = {
+        Warrior: ['DoubleAttack', 'StoneSkin', 'LifeAttack'],
+        Mage: ['Thunder', 'Fireball', 'HailStorm'],
+        Cleric: ['HolyLight', 'LifeTransfer', 'ShieldOfLight'],
+        Rogue: ['BlindShot', 'ToxicStab', 'PerfectParry']
+    };
+    return skills[characterClass][Math.floor(Math.random() * skills[characterClass].length)];
+}
+
+function startDuelBattle(enemy) {
+    console.log("Starting duel battle");
+    currentBattleExpGained = 0;
+    enemies = [enemy];
+    gameState = 'playerTurn';  // Change this from 'duel' to 'playerTurn'
+    document.getElementById('duelEventScreen').style.display = 'none';
+    document.getElementById('gameCanvas').style.display = 'block';
+    document.getElementById('gameButtons').style.display = 'block';
+    
+    // Ensure all battle buttons are enabled
+    document.getElementById('attackButton').disabled = false;
+    document.getElementById('defendButton').disabled = false;
+    document.getElementById('specialAttackButton').disabled = false;
+    document.getElementById('retreatButton').disabled = false;
+    
+    drawGame();
+    showPlayerTurnNotification();
+}
+
+function showDuelVictoryScreen() {
+    const victoryScreen = document.getElementById('duelVictoryScreen');
+    victoryScreen.style.display = 'block';
+    canvas.style.display = 'none';
+    document.getElementById('gameButtons').style.display = 'none';
+
+    document.getElementById('duelVictoryMessage').innerHTML = `You've defeated the ${enemies[0].class}!`;
+    document.getElementById('recruitButton').onclick = recruitCharacter;
+    document.getElementById('continueDuelJourneyButton').onclick = continueDuelJourney;
+}
+
+function recruitCharacter() {
+    if (player.recruitedCharacters === undefined) {
+        player.recruitedCharacters = [];
+    }
+    if (player.recruitedCharacters.length < player.tents - 1) {
+        player.recruitedCharacters.push(enemies[0]);
+        alert(`You've recruited the ${enemies[0].class}!`);
+        document.getElementById('recruitButton').style.display = 'none';
+    } else {
+        alert("You don't have enough tents to recruit this character!");
+    }
+}
+
+function continueDuelJourney() {
+    document.getElementById('duelVictoryScreen').style.display = 'none';
+    
+    continueJourney();
+}
+
+function useEnemySpecialSkill(enemy) {
+    console.log(`Enemy ${enemy.class} using special skill: ${enemy.specialSkill}`);
+    switch(enemy.specialSkill) {
+        // Warrior Skills
+        case 'DoubleAttack':
+            let damage1 = Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
+            let damage2 = Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
+            return damage1 + damage2;
+        case 'StoneSkin':
+            enemy.defending = true;
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
+        case 'LifeAttack':
+            let lifeDamage = Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
+            enemy.health = Math.min(enemy.health + Math.floor(lifeDamage / 2), enemy.maxHealth);
+            return lifeDamage;
+
+        // Mage Skills
+        case 'Thunder':
+            player.stunnedTurns = 1;
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 2;
+        case 'Fireball':
+            player.burnedTurns = 2;
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 2;
+        case 'HailStorm':
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 3;
+
+        // Cleric Skills
+        case 'HolyLight':
+            player.exposed = true;
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 1;
+        case 'LifeTransfer':
+            let transferDamage = Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 1;
+            enemy.health = Math.min(enemy.health + transferDamage, enemy.maxHealth);
+            return transferDamage;
+        case 'ShieldOfLight':
+            enemy.shieldOfLight = 2;
+            enemy.maxDamage += 2;
+            return 0;
+
+        // Rogue Skills
+        case 'BlindShot':
+            player.blind = 100;
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 1;
+        case 'ToxicStab':
+            const damage = Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 2;
+            player.health -= damage;
+            if (player.poisonCounter === 0) {
+                player.poisonCounter = 1;
+                console.log("Player has been poisoned!");
+            }
+            return damage;
+        case 'PerfectParry':
+            player.parryNextAttack = true;  // Set a flag for the player to parry the next attack
+            console.log("Enemy used Perfect Parry, player's next attack will be parried");
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage + 1;
+
+        default:
+            console.log("Unknown enemy skill, using default attack");
+            return Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
+    }
+}
+
+function addDeveloperGold() {
+    player.gold += 1500;
+    updateGoldMessage();
+    updateVictoryScreenStats();
+    alert("Added 1500 gold to the player!");
+}
+
+//document.getElementById('developerGoldButton').onclick = addDeveloperGold;
+
+
+        // In-game skill buttons
+        document.getElementById('thunderButton').addEventListener('click', () => selectSpecialSkill('Thunder'));
+        document.getElementById('fireballButton').addEventListener('click', () => selectSpecialSkill('Fireball'));
+        document.getElementById('hailStormButton').addEventListener('click', () => selectSpecialSkill('HailStorm'));
+        document.getElementById('doubleAttackButton').addEventListener('click', () => selectSpecialSkill('DoubleAttack'));
+        document.getElementById('stoneSkinButton').addEventListener('click', () => selectSpecialSkill('StoneSkin'));
+        document.getElementById('lifeAttackButton').addEventListener('click', () => selectSpecialSkill('LifeAttack'));
+        document.getElementById('holyLightButton').addEventListener('click', () => selectSpecialSkill('HolyLight'));
+        document.getElementById('lifeTransferButton').addEventListener('click', () => selectSpecialSkill('LifeTransfer'));
+        document.getElementById('shieldOfLightButton').addEventListener('click', () => selectSpecialSkill('ShieldOfLight'));
+        document.getElementById('blindShotButton').addEventListener('click', () => selectSpecialSkill('BlindShot'));
+        document.getElementById('toxicStabButton').addEventListener('click', () => selectSpecialSkill('ToxicStab'));
+        document.getElementById('perfectParryButton').addEventListener('click', () => selectSpecialSkill('PerfectParry'));
+        
+        // Story event skill buttons
+        document.getElementById('storyThunderButton').addEventListener('click', () => selectSpecialSkill('Thunder'));
+        document.getElementById('storyFireballButton').addEventListener('click', () => selectSpecialSkill('Fireball'));
+        document.getElementById('storyHailStormButton').addEventListener('click', () => selectSpecialSkill('HailStorm'));
+        document.getElementById('storyDoubleAttackButton').addEventListener('click', () => selectSpecialSkill('DoubleAttack'));
+        document.getElementById('storyStoneSkinButton').addEventListener('click', () => selectSpecialSkill('StoneSkin'));
+        document.getElementById('storyLifeAttackButton').addEventListener('click', () => selectSpecialSkill('LifeAttack'));
+        document.getElementById('storyHolyLightButton').addEventListener('click', () => selectSpecialSkill('HolyLight'));
+        document.getElementById('storyLifeTransferButton').addEventListener('click', () => selectSpecialSkill('LifeTransfer'));
+        document.getElementById('storyShieldOfLightButton').addEventListener('click', () => selectSpecialSkill('ShieldOfLight'));
+        document.getElementById('storyBlindShotButton').addEventListener('click', () => selectSpecialSkill('BlindShot'));
+        document.getElementById('storyToxicStabButton').addEventListener('click', () => selectSpecialSkill('ToxicStab'));
+        document.getElementById('storyPerfectParryButton').addEventListener('click', () => selectSpecialSkill('PerfectParry'));
+
+
+        // Add event listeners for main menu and gameplay buttons
+        document.getElementById('startGameButton').addEventListener('click', startGame);
+        //document.getElementById('warriorButton').addEventListener('click', startBattle); // Start the game with Warrior
+        document.getElementById('attackButton').addEventListener('click', playerAttack);
+        document.getElementById('defendButton').addEventListener('click', playerDefend);
+        document.getElementById('specialAttackButton').addEventListener('click', playerSpecialAttack);
+        document.getElementById('retreatButton').addEventListener('click', playerRetreat);
+        //document.getElementById('resetButton').addEventListener('click', developerReset); // Add event listener for reset button
+
+        // Add event listeners for shop buttons
+        document.getElementById('healingPotionButton').addEventListener('click', buyHealingPotion);
+        document.getElementById('expBoosterButton').addEventListener('click', buyExpBooster);
+        document.getElementById('lotusButton').addEventListener('click', buyLotusOfExperience);
+        document.getElementById('redPillButton').addEventListener('click', buyRedPill);
+        
+        document.getElementById('secondTentButton').addEventListener('click', () => buyTent(2, 1500));
+        document.getElementById('thirdTentButton').addEventListener('click', () => buyTent(3, 2000));
+        document.getElementById('fourthTentButton').addEventListener('click', () => buyTent(4, 2500));
+        document.getElementById('fifthTentButton').addEventListener('click', () => buyTent(5, 3000));
+
+        // Add event listeners for victory screen buttons
+        document.getElementById('continueJourneyButton').onclick = continueJourney;
+        document.getElementById('returnToCampButton').addEventListener('click', returnToCamp);
+        //document.getElementById('developerButton').addEventListener('click', () => {
+           // player.level = 3;
+            //checkLevelUp();
+            //updateVictoryScreenStats();
+        //});
+        //document.getElementById('developerButton5').addEventListener('click', () => {
+           // player.level = 5;
+           // checkLevelUp();
+            //updateVictoryScreenStats();
+        //});
+
+        // Add event listeners for defeat screen buttons
+        document.getElementById('tryAgainButton').addEventListener('click', () => {
+            hideDefeatScreen();
+            resetGame();
+        });
+
+        // Add event listeners for camp screen buttons
+        document.getElementById('storeGoldButton').addEventListener('click', storeGoldInCamp);
+        document.getElementById('continueJourneyFromCampButton').onclick = function() {
+			console.log("Continue journey from camp button clicked");
+			continueJourneyFromCamp();
+		};
+
+        // Add event listeners for story event screen buttons
+        document.getElementById('storyChoice1Button').addEventListener('click', () => {
+            console.log("storyChoice1Button clicked");
+            if (currentStory === STORY_OLD_MAN) {
+                handleOldManChoice1();
+            } else if (currentStory === STORY_TREANT) {
+                handleTreePoke1();
+            }
+        });
+        document.getElementById('storyChoice2Button').addEventListener('click', () => {
+            console.log("storyChoice2Button clicked");
+            if (currentStory === STORY_OLD_MAN) {
+                handleOldManChoice2();
+            } else if (currentStory === STORY_TREANT) {
+                handleTreeAsk();
+            }
+        });
+        document.getElementById('storyChoice3Button').addEventListener('click', () => {
+            console.log("storyChoice3Button clicked");
+            if (currentStory === STORY_OLD_MAN) {
+                handleOldManChoice3();
+            } else if (currentStory === STORY_TREANT) {
+                handleTreeLeave();
+            }
+        });
+        document.getElementById('continueJourneyFromStoryButton').onclick = continueJourney;
+    </script>
+</body>
+</html>
