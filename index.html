@@ -5,112 +5,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Endless Turn-Based RPG</title>
     <style>
-        canvas {
-            
-            width: 800px;
-            height: 500px;
-            border: 1px solid black;
-            display: block;
-            margin: 0 auto;
-            display: none; /* Initially hide the canvas */
-        }
-        #gameButtons, #gameNotifications, #gameVictoryScreen, #gameDefeatScreen, #campScreen, #storyEventScreen, #characterSelectScreen {
-            display: none; /* Initially hide all game elements */
-        }
-        #gameButtons {
-            text-align: center;
-            margin-top: 10px;
-        }
-        #mainMenu {
-            text-align: center;
-            margin-top: 100px;
-        }
-        #startGameButton {
-            font-size: 20px;
-            padding: 10px 20px;
-        }
-        #specialAttackButton {
-            display: none; /* Initially hide the special attack button */
-        }
-        #characterSelectScreen {
-            text-align: center;
-            margin-top: 100px;
-        }
-        .tentButton {
-        display: block;
-        width: 200px;
-        height: 50px;
-        margin: 10px auto;
-        font-size: 16px;
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        cursor: pointer;
-        }
-        .tentButton:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        #tentSquares {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-        .tentSquare {
-            width: 100px;
-            height: 100px;
-            background-color: #f0f0f0;
-            border: 2px solid #333;
-            margin: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-        #continueJourneyFromCampButton {
-            display: block;
-            width: 200px;
-            height: 50px;
-            margin: 20px auto;
-            font-size: 16px;
-            background-color: #707070;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        //#developerGoldButton {
+        #gameCanvas {
+    display: none;
+    border: 1px solid black;
+    margin: 0 auto;
+    width: 800px;
+    height: 500px;
+}
+
+#gameButtons, #gameNotifications, #gameVictoryScreen, #gameDefeatScreen, #campScreen, #storyEventScreen, #characterSelectScreen {
+    display: none; /* Initially hide all game elements */
+}
+
+#gameButtons {
+    display: none;
+    text-align: center;
+    margin: 10px;
+    
+}
+
+#gameButtons button {
+    margin: 0 5px;
+}
+
+#mainMenu {
+    text-align: center;
+    margin-top: 100px;
+}
+
+#startGameButton {
+    font-size: 20px;
+    padding: 10px 20px;
+}
+
+#specialAttackButton {
+    display: none; /* Initially hide the special attack button */
+}
+
+#characterSelectScreen {
+    text-align: center;
+    margin-top: 100px;
+}
+
+.tentButton {
+    display: block;
+    width: 200px;
+    height: 50px;
+    margin: 10px auto;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.tentButton:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+#tentSquares {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.tentSquare {
+    width: 100px;
+    height: 100px;
+    background-color: #f0f0f0;
+    border: 2px solid #333;
+    margin: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#continueJourneyFromCampButton {
+    display: block;
+    width: 200px;
+    height: 50px;
+    margin: 20px auto;
+    font-size: 16px;
+    background-color: #707070;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.bigButton {
+    font-size: 1em;
+    padding: 5px 10px;
+    margin: 5px;
+}
+
+/* Add any additional styles for other elements here */
+        #developerGoldButton {
             //background-color: #FFD700;
             //color: #000;
             //padding: 10px 20px;
             //margin: 10px;
             //border: none;
             //cursor: pointer;
-        //}
+        }
         
-        //#developerGoldButton:hover {
-        //    background-color: #FFA500;
-        //}
+        #developerGoldButton:hover {
+           background-color: #FFA500;
+        }
         
-        @media (max-width: 800px) {
-    canvas {
+        
+        @media (max-width: 768px) {
+    #gameCanvas {
         width: 100%;
         height: auto;
         max-width: 800px;
+        max-height: 500px;
     }
 
-#gameCanvas {
-    display: block;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-    #gameButtons button {
-        font-size: 1.2em;
-        padding: 10px 20px;
-        margin: 5px;
+    #gameButtons {
+        position: fixed;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-around;
+        padding: 10px;
+        background-color: rgba(255, 255, 255, 0.8);
+        margin-top: 0;
+        width: 100%;
     }
 
     #mobileMenu {
@@ -142,6 +166,11 @@
         margin: 5px 0;
         padding: 10px;
     }
+
+    .bigButton {
+        font-size: 1.2em;
+        padding: 10px 20px;
+    }
 }
     </style>
 </head>
@@ -158,11 +187,11 @@
         <button id="rogueButton">Rogue</button>
     </div>
     <canvas id="gameCanvas" width="800" height="500"></canvas>
-    <div id="gameButtons">
-        <button id="attackButton">Attack</button>
-        <button id="defendButton">Defend</button>
-        <button id="specialAttackButton">Special Attack</button>
-        <button id="retreatButton">Retreat</button>
+    <div id="gameButtons" style="display: none;">
+    <button id="attackButton">Attack</button>
+    <button id="defendButton">Defend</button>
+    <button id="specialAttackButton">Special Attack</button>
+    <button id="retreatButton">Retreat</button>
         <!-- <button id="resetButton">Developer Reset</button> -->
     </div>
     <div id="gameNotifications">
@@ -180,6 +209,11 @@
             <button id="antidoteButton">Buy Antidote (300 Gold)</button>
             <button id="lotusButton">Buy Lotus of Experience (500 Gold)</button>
             <button id="redPillButton">Buy Red Pill (1000 Gold)</button>
+        </div>
+        <br><br>
+        <div id="journeyButtons">
+            <button id="continueJourneyButton" class="bigButton">Continue Journey</button>
+            <button id="returnToCampButton" class="bigButton">Return to Camp</button>
         </div>
         <div id="skillSelection" style="display: none;">
     <h2>Choose Your Special Skill</h2>
@@ -203,10 +237,11 @@
         <button id="toxicStabButton">Toxic Stab</button>
         <button id="perfectParryButton">Perfect Parry</button>
     </div>
+    
 </div>
-        <button id="continueJourneyButton">Continue Journey</button>
+        <!-- <button id="continueJourneyButton">Continue Journey</button>
         <button id="returnToCampButton">Return to Camp</button>
-        <!-- <button id="developerButton">Level Up to 3</button>
+        <button id="developerButton">Level Up to 3</button>
         <button id="developerButton5">Level Up to 5</button> -->
     </div>
     <div id="duelVictoryScreen" style="display: none; text-align: center;">
@@ -319,7 +354,6 @@
         ];
 
         let enemies = []; // Initialize enemies array
-
         
         let duelEventsUnlocked = false;
 		
@@ -348,6 +382,20 @@
         let currentStory = null;
         const STORY_OLD_MAN = 'old_man';
         const STORY_TREANT = 'treant';
+        
+        function initGame() {
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
+            document.getElementById('gameNotifications').style.display = 'none';
+            document.getElementById('gameVictoryScreen').style.display = 'none';
+            document.getElementById('gameDefeatScreen').style.display = 'none';
+            document.getElementById('campScreen').style.display = 'none';
+            document.getElementById('storyEventScreen').style.display = 'none';
+            document.getElementById('characterSelectScreen').style.display = 'none';
+        }
+
+// Call initGame immediately
+initGame();
 
         function createEnemyByType(type) {
             const enemyType = enemyTypes.find(enemy => enemy.type === type);
@@ -386,14 +434,28 @@
 			}));
 		}
 		
+		// Call this when the page loads
+
+		
 		        // Call this function when the window is resized
 		let resizeTimeout;
-    window.addEventListener('resize', function() {
-        if (isMobileDevice()) {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(resizeGame, 100);
-        }
-    });
+		
+    function addButtonListeners() {
+    document.getElementById('attackButton').onclick = playerAttack;
+    document.getElementById('defendButton').onclick = playerDefend;
+    document.getElementById('retreatButton').onclick = playerRetreat;
+    document.getElementById('specialAttackButton').onclick = playerSpecialAttack;
+}
+
+window.addEventListener('resize', function() {
+    if (isMobileDevice()) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            resizeGame();
+            addButtonListeners();
+        }, 100);
+    }
+});
 
 		// Call it initially to set up the correct size
 		//resizeGame();
@@ -403,6 +465,9 @@
     document.getElementById('mainMenu').style.display = 'none';
     document.getElementById('characterSelectScreen').style.display = 'block';
     document.getElementById('continueJourneyFromCampButton').style.display = 'none';
+    document.getElementById('gameButtons').style.display = 'none';
+    document.getElementById('gameCanvas').style.display = 'none';
+    addButtonListeners();
     
     if (isMobileDevice()) {
         resizeGame();
@@ -410,41 +475,46 @@
 }
 
 
-        
-       
         function startBattle(characterClass) {
-            console.log("Starting battle with class: " + characterClass);
-            player.class = characterClass;
-            player.health = 50;
-            player.maxHealth = 50;
-            player.minDamage = 1;
-            player.maxDamage = 6;
-            player.experience = 0;
-            player.level = 1;
-            player.xpToNextLevel = 20; // Make sure this is set to the correct initial value
-            setupClassSkills();
-            document.getElementById('characterSelectScreen').style.display = 'none';
-            document.getElementById('gameCanvas').style.display = 'block';
-            document.getElementById('gameButtons').style.display = 'block';
-            document.getElementById('gameNotifications').style.display = 'block';
-            document.getElementById('continueJourneyFromCampButton').style.display = 'none'; // Hide this button
-            
-            // Show special attack button if skill is selected
-            if (player.specialSkill) {
-                document.getElementById('specialAttackButton').style.display = 'inline-block';
-                document.getElementById('specialAttackButton').textContent = player.specialSkill.name;
-            } else {
-                document.getElementById('specialAttackButton').style.display = 'none';
-            }
-            currentBattleExpGained = 0; // Reset XP gained for the new battle
-            gameState = 'playerTurn';
-            enemies = createEnemies(player.level);
-            if (isMobileDevice()) {
-                resizeGame();
-            }
-            drawGame();
-            animateDamage();
-        }
+    console.log("Starting battle with class: " + characterClass);
+    player.class = characterClass;
+    setupClassSkills();
+    document.getElementById('characterSelectScreen').style.display = 'none';
+    document.getElementById('gameCanvas').style.display = 'block';
+    
+    const gameButtons = document.getElementById('gameButtons');
+    console.log("Game buttons before:", gameButtons.style.display);
+    gameButtons.style.display = 'block';
+    console.log("Game buttons after:", gameButtons.style.display);
+    
+    document.getElementById('gameNotifications').style.display = 'block';
+    document.getElementById('continueJourneyFromCampButton').style.display = 'none';
+    
+    // Show special attack button if skill is selected
+    if (player.specialSkill) {
+        document.getElementById('specialAttackButton').style.display = 'inline-block';
+        document.getElementById('specialAttackButton').textContent = player.specialSkill.name;
+    } else {
+        document.getElementById('specialAttackButton').style.display = 'none';
+    }
+    
+    currentBattleExpGained = 0;
+    gameState = 'playerTurn';
+    enemies = createEnemies(player.level);
+    
+    if (isMobileDevice()) {
+        resizeGame();
+    } else {
+        // Ensure correct positioning for PC
+        gameButtons.style.position = 'static';
+        gameButtons.style.width = '800px';
+        gameButtons.style.marginTop = '10px';
+        gameButtons.style.textAlign = 'center';
+    }
+    
+    drawGame();
+    animateDamage();
+}
 
 // Modify the event listeners for character selection buttons
 document.getElementById('warriorButton').addEventListener('click', () => startBattle('Warrior'));
@@ -1165,6 +1235,9 @@ function playerDefend() {
         
         function hideVictoryScreen() {
             document.getElementById('gameVictoryScreen').style.display = 'none';
+            document.getElementById('gameVictoryScreen').style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'none';
         }
         
 
@@ -1189,6 +1262,7 @@ function playerDefend() {
 			hideVictoryScreen();
 			hideStoryEventScreen();
 			hideCampScreen();
+			document.getElementById('gameButtons').style.display = 'none';
 			
 			const eventType = getEventType();
 			console.log("Event type selected:", eventType);
@@ -1220,6 +1294,7 @@ function playerDefend() {
         function returnToCamp() {
             hideVictoryScreen();
             document.getElementById('storyLevelUpMessage').style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
             showCampScreen();
         }
 
@@ -1319,6 +1394,9 @@ function updateTentButtons() {
 
         function hideCampScreen() {
 			document.getElementById('campScreen').style.display = 'none';
+			document.getElementById('gameVictoryScreen').style.display = 'none';
+      document.getElementById('gameButtons').style.display = 'none';
+      document.getElementById('gameCanvas').style.display = 'none';
 		}
 
         function storeGoldInCamp() {
@@ -1330,6 +1408,9 @@ function updateTentButtons() {
 
         function hideVictoryScreen() {
 			document.getElementById('gameVictoryScreen').style.display = 'none';
+			document.getElementById('gameVictoryScreen').style.display = 'none';
+      document.getElementById('gameButtons').style.display = 'none';
+      document.getElementById('gameCanvas').style.display = 'none';
 		}
 		
 		function debounce(func, wait) {
@@ -2437,7 +2518,7 @@ function handleTouch(event) {
         
         function resizeGame() {
             if (!isMobileDevice()) {
-                return; // Don't resize on non-mobile devices
+                return;
             }
         
             const game = document.getElementById('gameCanvas');
@@ -2447,7 +2528,7 @@ function handleTouch(event) {
             let newWidth, newHeight;
         
             if (windowAspectRatio > gameAspectRatio) {
-                newHeight = window.innerHeight;
+                newHeight = window.innerHeight - 100; // Leave space for buttons
                 newWidth = newHeight * gameAspectRatio;
             } else {
                 newWidth = window.innerWidth;
@@ -2457,14 +2538,12 @@ function handleTouch(event) {
             game.style.width = `${newWidth}px`;
             game.style.height = `${newHeight}px`;
         
+            // Only change the actual canvas dimensions on mobile
             game.width = newWidth;
             game.height = newHeight;
         
-            const scaleX = newWidth / 800;
-            const scaleY = newHeight / 500;
-        
             const ctx = game.getContext('2d');
-            ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+            ctx.setTransform(newWidth / 800, 0, 0, newHeight / 500, 0, 0);
         
             if (gameState !== 'mainMenu') {
                 drawGame();
