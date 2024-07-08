@@ -907,6 +907,9 @@ function drawGame() {
         if (player.specialAttackCooldown > 0) {
             console.log("Special attack on cooldown:", player.specialAttackCooldown);
         }
+        if (!player.specialSkill) {
+            console.log("Player does not have a special skill");
+        }
     }
 }
 
@@ -1523,6 +1526,8 @@ const PURCHASE_COOLDOWN = 1000; // 1 second cooldown
             updateVictoryScreenStats();
             drawGame();
             console.log("Potion purchased successfully");
+            autoSave();
+            
         }
 
 // Apply similar changes to buyExpBooster, buyLotusOfExperience, and buyRedPill functions
@@ -1553,6 +1558,7 @@ const PURCHASE_COOLDOWN = 1000; // 1 second cooldown
                 expBoosterButton.disabled = true;
                 expBoosterButton.textContent = "Sold Out";
                 updateGoldMessage();
+                autoSave();
             
         }
         
@@ -1596,6 +1602,7 @@ const PURCHASE_COOLDOWN = 1000; // 1 second cooldown
             drawGame();
             console.log("Antidote purchased successfully");
             alert("You've used the Antidote. Any poison effect has been removed.");
+            autoSave();
         }
 
 const antidoteButton = removeAllEventListeners(document.getElementById('antidoteButton'));
@@ -1628,6 +1635,7 @@ antidoteButton.addEventListener('click', buyAntidote);
                   updateGoldMessage();
                   updateVictoryScreenStats();
                   drawGame();
+                  autoSave();
                   
               }
 
@@ -1657,6 +1665,7 @@ antidoteButton.addEventListener('click', buyAntidote);
                 updateGoldMessage();
                 updateVictoryScreenStats();
                 drawGame();
+                autoSave();
                 
             }
 
@@ -2646,7 +2655,10 @@ canvas.addEventListener('touchend', handleTouch);
         
         function saveGame() {
             const gameData = {
-                player: player,
+                player: {
+                    ...player,
+                    specialSkill: player.specialSkill ? { name: player.specialSkill.name } : null
+                },
                 enemies: enemies,
                 gameState: gameState,
                 currentStory: currentStory,
@@ -2669,13 +2681,18 @@ canvas.addEventListener('touchend', handleTouch);
                 treantEncountered = gameData.treantEncountered;
                 duelEventsUnlocked = gameData.duelEventsUnlocked;
                 
+                // Reconstruct the special skill
+                if (player.specialSkill) {
+                    setupClassSkills();
+                    player.specialSkill = player.specialSkills[player.specialSkill.name];
+                }
+                
                 setupGameAfterLoad();
                 startGame(false); // Call startGame with isNewGame set to false
             } else {
                 alert('No saved game found!');
             }
         }
-        
         function autoSave() {
             saveGame();
             console.log('Game auto-saved');
@@ -2693,12 +2710,16 @@ canvas.addEventListener('touchend', handleTouch);
         }
         
         function setupGameAfterLoad() {
-            setupClassSkills();
             updateGameUI();
             resizeGame();
             if (gameState === 'playerTurn' || gameState === 'enemyTurn') {
                 drawGame();
             }
+            
+            // Re-add event listener for special attack button
+            const specialAttackButton = document.getElementById('specialAttackButton');
+            specialAttackButton.removeEventListener('click', playerSpecialAttack);
+            specialAttackButton.addEventListener('click', playerSpecialAttack);
         }
         
         function updateGameUI() {
