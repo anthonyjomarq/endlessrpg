@@ -2643,46 +2643,30 @@ canvas.addEventListener('touchend', handleTouch);
 
     let newWidth, newHeight;
 
+    if (windowWidth / windowHeight > gameAspectRatio) {
+        newHeight = Math.min(windowHeight - 100, 500); // Cap at original height
+        newWidth = newHeight * gameAspectRatio;
+    } else {
+        newWidth = Math.min(windowWidth, 800); // Cap at original width
+        newHeight = newWidth / gameAspectRatio;
+    }
+
+    gameContainer.style.width = `${newWidth}px`;
+    game.style.width = `${newWidth}px`;
+    game.style.height = `${newHeight}px`;
+
+    // Only change actual canvas dimensions on mobile
     if (isMobileDevice()) {
-        // For mobile, use the full screen width and adjust height
-        newWidth = windowWidth;
-        newHeight = windowWidth / gameAspectRatio;
-
-        // If the height is too tall, adjust based on window height instead
-        if (newHeight > windowHeight) {
-            newHeight = windowHeight;
-            newWidth = windowHeight * gameAspectRatio;
-        }
-
-        // Set the canvas size to match the screen
         game.width = newWidth;
         game.height = newHeight;
-
-        // Scale the context
-        const ctx = game.getContext('2d');
-        const scaleX = newWidth / 800;
-        const scaleY = newHeight / 500;
-        ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
     } else {
-        // For desktop, use the previous logic
-        if (windowWidth / windowHeight > gameAspectRatio) {
-            newHeight = Math.min(windowHeight - 100, 500);
-            newWidth = newHeight * gameAspectRatio;
-        } else {
-            newWidth = Math.min(windowWidth, 800);
-            newHeight = newWidth / gameAspectRatio;
-        }
-
         game.width = 800;
         game.height = 500;
     }
 
-    gameContainer.style.width = `${newWidth}px`;
-    gameContainer.style.height = `${newHeight}px`;
-    game.style.width = `${newWidth}px`;
-    game.style.height = `${newHeight}px`;
+    const ctx = game.getContext('2d');
+    ctx.setTransform(game.width / 800, 0, 0, game.height / 500, 0, 0);
 
-    // Redraw the game
     if (gameState !== 'mainMenu') {
         drawGame();
     }
@@ -2834,8 +2818,9 @@ function drawTurnIndicator() {
     const rectWidth = textWidth + padding * 2;
     const rectHeight = fontSize + padding * 2;
     
+    // Always position at the bottom center of the 800x500 game area
     const rectX = (800 - rectWidth) / 2;
-    const rectY = 500 - rectHeight - 10; // 10px from the bottom of the 500px height canvas
+    const rectY = 500 - rectHeight - 10; // 10px from the bottom
     
     ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
     ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
