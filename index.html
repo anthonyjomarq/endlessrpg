@@ -774,6 +774,9 @@ function drawGame() {
     gameButtons.style.justifyContent = 'center';
     gameButtons.style.width = '100%';
 
+    // Reset button states
+    updateButtonStates();
+
     drawGame();
     animateDamage();
 }
@@ -2863,14 +2866,16 @@ function updateButtonStates() {
             button.disabled = !isPlayerTurn;
             
             if (buttonId === 'specialAttackButton') {
-                if (isPlayerTurn && player.specialAttackCooldown === 0) {
+                if (isPlayerTurn && player.specialAttackCooldown === 0 && player.specialSkill) {
                     button.classList.add('available');
                     button.classList.remove('cooldown');
+                    button.disabled = false;
                 } else {
                     button.classList.remove('available');
                     if (player.specialAttackCooldown > 0) {
                         button.classList.add('cooldown');
                     }
+                    button.disabled = true;
                 }
             }
         }
