@@ -573,6 +573,7 @@ window.addEventListener('resize', function() {
     
     currentBattleExpGained = 0;
     gameState = 'playerTurn';
+    updateButtonStates();
     enemies = createEnemies(player.level);
     
     if (isMobileDevice()) {
@@ -596,6 +597,9 @@ function drawGame() {
     const ctx = canvas.getContext('2d');
     
     ctx.clearRect(0, 0, 800, 500);
+    
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
 
     // Draw player
     ctx.fillStyle = 'blue';
@@ -619,7 +623,7 @@ function drawGame() {
     if (player.defending) drawStatus('Defending', 'blue');
     if (player.burnedTurns > 0) drawStatus(`Burned (${player.burnedTurns} turns)`, 'orange');
     if (player.poisonCounter && player.poisonCounter > 0) {
-        const poisonStatus = `Poisoned (${player.poisonCounter} damage next)`;
+        const poisonStatus = `Poisoned (${player.poisonCounter - 1} damage next turn)`;
         drawStatus(poisonStatus, 'purple');
         if (poisonStatus !== lastPoisonStatus) {
             console.log(`Drawing poison status: ${poisonStatus}`);
@@ -655,7 +659,7 @@ function drawGame() {
 
         ctx.fillStyle = 'black';
         ctx.font = '20px Arial';
-        ctx.fillText(`Enemy Health: ${enemy.health}`, 540, hpTextYOffset);
+        ctx.fillText(`Enemy Health: ${enemy.health}`, 540, hpBarYOffset - 25); // Changed from hpTextYOffset to hpBarYOffset - 10
         ctx.fillText(`${enemy.type}`, 650, typeTextYOffset);
 
         let statusY = typeTextYOffset + 20;
@@ -687,6 +691,7 @@ function drawGame() {
 
     displayDamage();
     updateSpecialAttackButton();
+    drawTurnIndicator();
 }
 
         function displayDamage() {
@@ -743,26 +748,35 @@ function drawGame() {
         }
 
         function resetGame() {
-            player.health = player.maxHealth; // Reset player's health to max
-            player.experience = 0; // Reset current experience to 0
-            player.gold = 0; // Reset current gold to 0
-            player.expBooster = false; // Reset boosters
-            player.defending = false; // Reset defending flag
-            player.specialAttackCooldown = 0; // Reset special attack cooldown
+    player.health = player.maxHealth;
+    player.experience = 0;
+    player.gold = 0;
+    player.expBooster = false;
+    player.defending = false;
+    player.specialAttackCooldown = 0;
+    player.poisonCounter = 0;
+    player.burnedTurns = 0;
+    player.blind = 0;
+    player.shieldOfLight = 0;
+    player.parry = false;
 
-            // Retain player's level, level gains, Camp Bank gold, and special skill selection
-            enemies = createEnemies(player.level); // Create new enemies for the player to battle
+    enemies = createEnemies(player.level);
+    gameState = 'playerTurn';
 
-            gameState = 'playerTurn'; // Set game state to player turn
+    hideDefeatScreen();
+    
+    const gameContainer = document.getElementById('gameContainer');
+    gameContainer.style.display = 'flex';
+    
+    canvas.style.display = 'block';
+    const gameButtons = document.getElementById('gameButtons');
+    gameButtons.style.display = 'flex';
+    gameButtons.style.justifyContent = 'center';
+    gameButtons.style.width = '100%';
 
-            // Hide defeat screen and show game canvas and buttons
-            document.getElementById('gameDefeatScreen').style.display = 'none';
-            canvas.style.display = 'block';
-            document.getElementById('gameButtons').style.display = 'block';
-
-            drawGame(); // Redraw the game state
-            animateDamage(); // Start damage animation
-        }
+    drawGame();
+    animateDamage();
+}
 
         //function developerReset() {
          //   player.health = player.maxHealth; // Reset player's health to max
@@ -804,6 +818,7 @@ function drawGame() {
         function playerAttack() {
     if (gameState === 'playerTurn') {
         showPlayerTurnNotification();
+        //updateButtonStates();
         
         if (player.specialAttackCooldown > 0) {
             player.specialAttackCooldown--;
@@ -848,11 +863,12 @@ function drawGame() {
             console.log(`Enemy takes ${poisonDamage} poison damage`);
             enemies[selectedEnemyIndex].poisonCounter++;
         }
-
+        applyPoisonDamage(); // Apply poison damage at the end of the turn
         checkEnemyDefeat();
 
         if (gameState !== 'victory' && gameState !== 'duelVictory') {
             gameState = 'enemyTurn';
+            updateButtonStates();
             drawGame();
             animateDamage();
             setTimeout(() => {
@@ -891,11 +907,12 @@ function drawGame() {
 
         player.specialAttackCooldown = 3; // Set cooldown after using the skill
         console.log("Set special attack cooldown to:", player.specialAttackCooldown);
-
+        applyPoisonDamage(); // Apply poison damage at the end of the turn
         checkEnemyDefeat();
 
         if (gameState !== 'victory') {
             gameState = 'enemyTurn';
+            updateButtonStates();
             drawGame();
             animateDamage();
             setTimeout(() => {
@@ -948,10 +965,13 @@ function playerDefend() {
             player.specialAttackCooldown--;
             console.log("Special attack cooldown decreased to:", player.specialAttackCooldown);
         }
-    if (gameState === 'playerTurn') {
+    if (gameState !== 'victory' && gameState !== 'duelVictory') {
         player.defending = true;
+        //
+        applyPoisonDamage(); // Apply poison damage at the end of the turn
         gameState = 'enemyTurn';
         showPlayerTurnNotification();
+        updateButtonStates();
         drawGame();
         setTimeout(() => {
             handleEnemyTurn();
@@ -1009,9 +1029,11 @@ function playerDefend() {
 
         function handleEnemyTurn() {
     showEnemyTurnNotification();
+    updateButtonStates();
     const attackEnemies = (index) => {
         if (index >= enemies.length) {
             gameState = 'playerTurn';
+            updateButtonStates();
             drawGame();
             resetDamageDisplay();
             return;
@@ -1088,16 +1110,7 @@ function playerDefend() {
                 player.burnedTurns--;
             }
 
-            // Apply poison damage to player at the start of enemy turn (end of player turn)
-            // Apply poison damage to player at the start of enemy turn (end of player turn)
-if (player.poisonCounter && player.poisonCounter > 0) {
-    const poisonDamage = player.poisonCounter;
-    player.health -= poisonDamage;
-    console.log(`Player takes ${poisonDamage} poison damage`);
-    damageDisplay.player.damage += poisonDamage;
-    player.poisonCounter++; // Increment the poison counter
-    console.log(`Poison counter increased to ${player.poisonCounter}`);
-}
+            
 
             // Apply conditional damage after the enemy attacks
             let conditionalDamage = 0;
@@ -1253,15 +1266,22 @@ if (player.poisonCounter && player.poisonCounter > 0) {
             victoryScreen.style.display = 'block';
         
             // Show skill selection if player reaches level 3 and hasn't already chosen a skill
+            // Check if player needs to select a skill
             if (player.level >= 3 && !player.specialSkill) {
-                console.log("Showing skill selection in victory screen");
+                console.log("Player needs to select a special skill");
+                document.getElementById('skillSelection').style.display = 'block';
+                document.getElementById('continueJourneyButton').style.display = 'none';
+                document.getElementById('returnToCampButton').style.display = 'none';
                 showBattleSkillSelection();
             } else {
+                console.log("Player doesn't need to select a special skill");
                 document.getElementById('skillSelection').style.display = 'none';
+                document.getElementById('continueJourneyButton').style.display = 'inline-block';
+                document.getElementById('returnToCampButton').style.display = 'inline-block';
             }
         
-            document.getElementById('continueJourneyButton').style.display = 'inline-block';
-            document.getElementById('returnToCampButton').style.display = 'inline-block';
+            //document.getElementById('continueJourneyButton').style.display = 'inline-block';
+           //document.getElementById('returnToCampButton').style.display = 'inline-block';
             //document.getElementById('developerGoldButton').style.display = 'inline-block';
 
             currentBattleExpGained = 0; // Reset currentBattleExpGained for the next battle
@@ -1288,15 +1308,23 @@ if (player.poisonCounter && player.poisonCounter > 0) {
         
 
         function showDefeatScreen() {
-            canvas.style.display = 'none';
-            document.getElementById('gameButtons').style.display = 'none';
+    canvas.style.display = 'none';
+    document.getElementById('gameButtons').style.display = 'none';
 
-            const defeatScreen = document.getElementById('gameDefeatScreen');
-            defeatScreen.style.display = 'block';
-            resetDamageDisplay(); // Reset damage display
-            autoSave();
-            updateLoadGameButton();
-        }
+    // Reset all player status conditions
+    player.poisonCounter = 0;
+    player.burnedTurns = 0;
+    player.blind = 0;
+    player.shieldOfLight = 0;
+    player.parry = false;
+    player.defending = false;
+
+    const defeatScreen = document.getElementById('gameDefeatScreen');
+    defeatScreen.style.display = 'block';
+    resetDamageDisplay();
+    autoSave();
+    updateLoadGameButton();
+}
 
         function hideDefeatScreen() {
             const defeatScreen = document.getElementById('gameDefeatScreen');
@@ -2077,6 +2105,7 @@ function checkBattleLevelUp() {
             treantEncountered = true;
             enemies = [createEnemyByType('Treant')];
             gameState = 'playerTurn';
+            updateButtonStates();
             drawGame();
             canvas.style.display = 'block';
             document.getElementById('gameButtons').style.display = 'block';
@@ -2155,6 +2184,7 @@ function checkBattleLevelUp() {
     
     skillSelection.style.display = 'block';
     document.getElementById('continueJourneyButton').style.display = 'none';
+    document.getElementById('returnToCampButton').style.display = 'none';
 
     const mageSkills = document.getElementById('skillSelectionMageSkills');
     const warriorSkills = document.getElementById('skillSelectionWarriorSkills');
@@ -2321,12 +2351,6 @@ function checkBattleLevelUp() {
     player.specialSkill = player.specialSkills[skillName];
     console.log("Selected skill:", player.specialSkill);
     
-    // Ensure the use function is properly set
-    if (!player.specialSkill.use) {
-        console.error("Special skill 'use' function is not defined!");
-        return;
-    }
-    
     // Hide the skill selection after choosing a skill
     document.getElementById('skillSelection').style.display = 'none';
     document.getElementById('storySkillSelection').style.display = 'none';
@@ -2334,12 +2358,15 @@ function checkBattleLevelUp() {
     // Update the special attack button
     updateSpecialAttackButton();
 
+    // Show the appropriate buttons
     if (inStoryEvent) {
         document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block';
     } else {
-        // This is for the victory screen
         document.getElementById('continueJourneyButton').style.display = 'inline-block';
+        document.getElementById('returnToCampButton').style.display = 'inline-block';
     }
+
+    console.log("Journey and Camp buttons should now be visible");
 
     // Save the game after selecting a skill
     saveGame();
@@ -2462,6 +2489,7 @@ function startDuelBattle(enemy) {
     document.getElementById('specialAttackButton').disabled = false;
     document.getElementById('retreatButton').disabled = false;
     
+    updateButtonStates();
     drawGame();
     showPlayerTurnNotification();
 }
@@ -2571,7 +2599,18 @@ function useEnemySpecialSkill(enemy) {
     const x = (touch.pageX - rect.left) * scaleX;
     const y = (touch.pageY - rect.top) * scaleY;
     
-    // Check if the touch is on a button and trigger the appropriate action
+    // Check if touch is on an enemy
+    for (let i = 0; i < enemies.length; i++) {
+        const enemyX = 650;
+        const enemyY = 180 + (i * 130);
+        if (x >= enemyX && x <= enemyX + 50 && y >= enemyY && y <= enemyY + 50) {
+            selectedEnemyIndex = i;
+            drawGame(); // Redraw to show selection
+            return;
+        }
+    }
+    
+    // If not on an enemy, check if touch is on a button
     if (isPointInButton(x, y, 'attackButton')) {
         playerAttack();
     } else if (isPointInButton(x, y, 'defendButton')) {
@@ -2582,6 +2621,9 @@ function useEnemySpecialSkill(enemy) {
         playerSpecialAttack();
     }
 }
+
+// Add this event listener
+canvas.addEventListener('touchend', handleTouch);
 
 function isPointInButton(x, y, buttonId) {
     const button = document.getElementById(buttonId);
@@ -2741,6 +2783,105 @@ canvas.addEventListener('touchend', handleTouch);
             const savedGame = localStorage.getItem('rpgGameSave');
             loadGameButton.disabled = !savedGame;
         }
+        
+        function applyPoisonDamage() {
+    if (player.poisonCounter && player.poisonCounter > 0) {
+        const poisonDamage = player.poisonCounter;
+        player.health -= poisonDamage;
+        console.log(`Player takes ${poisonDamage} poison damage. Health reduced to ${player.health}`);
+        damageDisplay.player.damage += poisonDamage;
+        damageDisplay.player.x = 75;
+        damageDisplay.player.y = 150;
+        damageDisplay.player.alpha = 1;
+        player.poisonCounter++;
+        console.log(`Poison counter increased to ${player.poisonCounter}`);
+
+        if (player.health <= 0) {
+            console.log("Player died from poison");
+            gameState = 'defeat';
+            setTimeout(() => {
+                showDefeatScreen();
+            }, 1000);
+        }
+    }
+}
+
+function drawTurnIndicator() {
+    //console.log("Drawing turn indicator:", gameState);
+    ctx.save(); // Save the current context state
+    
+    const text = gameState === 'playerTurn' ? "Player's Turn" : "Enemy Turn";
+    const fontSize = 24;
+    ctx.font = `bold ${fontSize}px Arial`;
+    
+    // Measure the text width
+    const textWidth = ctx.measureText(text).width;
+    
+    // Calculate the background rectangle dimensions
+    const padding = 10;
+    const rectWidth = textWidth + padding * 2;
+    const rectHeight = fontSize + padding * 2;
+    const rectX = (canvas.width - rectWidth) / 2;
+    const rectY = canvas.height - rectHeight - 5; // 5px from bottom
+    
+    // Draw the background rectangle
+    ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; // Semi-transparent red
+    ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
+    
+    // Draw the text
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, canvas.width / 2, canvas.height - rectHeight / 2 - 5);
+    
+    ctx.restore(); // Restore the context state
+}
+
+function updateSpecialAttackButton() {
+    const specialAttackButton = document.getElementById('specialAttackButton');
+    if (player.specialSkill && player.specialSkillUnlocked) {
+        specialAttackButton.style.display = 'inline-block';
+        if (player.specialAttackCooldown > 0) {
+            specialAttackButton.textContent = `${player.specialSkill.name} (${player.specialAttackCooldown})`;
+            specialAttackButton.classList.remove('available');
+            specialAttackButton.classList.add('cooldown');
+            specialAttackButton.disabled = true;
+        } else {
+            specialAttackButton.textContent = player.specialSkill.name;
+            specialAttackButton.classList.add('available');
+            specialAttackButton.classList.remove('cooldown');
+            specialAttackButton.disabled = false;
+        }
+    } else {
+        specialAttackButton.style.display = 'none';
+    }
+}
+
+function updateButtonStates() {
+    const buttons = ['attackButton', 'defendButton', 'retreatButton', 'specialAttackButton'];
+    const isPlayerTurn = gameState === 'playerTurn';
+
+    buttons.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = !isPlayerTurn;
+            
+            if (buttonId === 'specialAttackButton') {
+                if (isPlayerTurn && player.specialAttackCooldown === 0) {
+                    button.classList.add('available');
+                    button.classList.remove('cooldown');
+                } else {
+                    button.classList.remove('available');
+                    if (player.specialAttackCooldown > 0) {
+                        button.classList.add('cooldown');
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Call this function in drawGame and after each turn
 
 
 			//function addDeveloperGold() {
