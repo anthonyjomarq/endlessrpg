@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Endless Turn-Based RPG</title>
     <style>
     
@@ -26,8 +26,7 @@
 #gameCanvas {
     max-width: 100%;
     max-height: 100%;
-    width: auto;
-    height: auto;
+    object-fit: contain;
 }
 
 #gameButtons, #gameNotifications, #gameVictoryScreen, #gameDefeatScreen, #campScreen, #storyEventScreen, #characterSelectScreen {
@@ -2648,38 +2647,20 @@ window.addEventListener('load', setInitialZoom);
 window.addEventListener('resize', setInitialZoom);
         
         function resizeGame() {
-            const gameContainer = document.getElementById('gameContainer');
-            const game = document.getElementById('gameCanvas');
-            const gameAspectRatio = 800 / 500;
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-        
-            let newWidth, newHeight;
-        
-            if (windowWidth / windowHeight > gameAspectRatio) {
-                newHeight = windowHeight;
-                newWidth = newHeight * gameAspectRatio;
-            } else {
-                newWidth = windowWidth;
-                newHeight = newWidth / gameAspectRatio;
-            }
-        
-            game.style.width = `${newWidth}px`;
-            game.style.height = `${newHeight}px`;
-        
-            if (isMobileDevice()) {
-                game.width = newWidth;
-                game.height = newHeight;
-            } else {
-                game.width = 800;
-                game.height = 500;
-            }
-        
-            const ctx = game.getContext('2d');
-            ctx.setTransform(game.width / 800, 0, 0, game.height / 500, 0, 0);
-        
-            drawGame();
-        }
+    const gameContainer = document.getElementById('gameContainer');
+    const game = document.getElementById('gameCanvas');
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    game.width = windowWidth;
+    game.height = windowHeight;
+
+    const ctx = game.getContext('2d');
+    const scale = Math.min(windowWidth / 800, windowHeight / 500);
+    ctx.setTransform(scale, 0, 0, scale, (windowWidth - 800 * scale) / 2, (windowHeight - 500 * scale) / 2);
+
+    drawGame();
+}
         
         function createMobileMenu() {
             const menu = document.createElement('div');
@@ -2816,7 +2797,7 @@ window.addEventListener('resize', setInitialZoom);
 }
 
 function drawTurnIndicator() {
-    ctx.save();
+    //ctx.save();
     
     const text = gameState === 'playerTurn' ? "Player's Turn" : "Enemy Turn";
     const fontSize = 24;
@@ -2838,7 +2819,7 @@ function drawTurnIndicator() {
     ctx.textBaseline = "middle";
     ctx.fillText(text, canvas.width / 2, canvas.height - rectHeight / 2 - 10);
     
-    ctx.restore();
+    //ctx.restore();
 }
 
 function updateSpecialAttackButton() {
