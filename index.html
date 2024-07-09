@@ -2,22 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Endless Turn-Based RPG</title>
     <style>
     
-    #gameContainer {
+    body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#gameContainer {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    max-width: 800px;
-    margin: 0 auto;
+    justify-content: center;
 }
-        #gameCanvas {
-    display: none;
-    border: 1px solid black;
-    width: 100%;
-    max-width: 800px;
+
+#gameCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
     height: auto;
 }
 
@@ -168,6 +177,7 @@
         height: auto;
         max-width: 800px;
         max-height: 500px;
+        aspect-ratio: 8 / 5;
     }
 
     #gameButtons {
@@ -547,6 +557,7 @@ window.addEventListener('resize', function() {
     updateLoadGameButton();
     
     if (isMobileDevice()) {
+        setInitialZoom();
         resizeGame();
     }
 }
@@ -2633,6 +2644,8 @@ function isPointInButton(x, y, buttonId) {
 
 // Only add touch listeners once
 canvas.addEventListener('touchend', handleTouch);
+window.addEventListener('load', setInitialZoom);
+window.addEventListener('resize', setInitialZoom);
         
         function resizeGame() {
             const gameContainer = document.getElementById('gameContainer');
@@ -2644,18 +2657,16 @@ canvas.addEventListener('touchend', handleTouch);
             let newWidth, newHeight;
         
             if (windowWidth / windowHeight > gameAspectRatio) {
-                newHeight = Math.min(windowHeight - 100, 500); // Cap at original height
+                newHeight = windowHeight;
                 newWidth = newHeight * gameAspectRatio;
             } else {
-                newWidth = Math.min(windowWidth, 800); // Cap at original width
+                newWidth = windowWidth;
                 newHeight = newWidth / gameAspectRatio;
             }
         
-            gameContainer.style.width = `${newWidth}px`;
             game.style.width = `${newWidth}px`;
             game.style.height = `${newHeight}px`;
         
-            // Only change actual canvas dimensions on mobile
             if (isMobileDevice()) {
                 game.width = newWidth;
                 game.height = newHeight;
@@ -2667,9 +2678,7 @@ canvas.addEventListener('touchend', handleTouch);
             const ctx = game.getContext('2d');
             ctx.setTransform(game.width / 800, 0, 0, game.height / 500, 0, 0);
         
-            if (gameState !== 'mainMenu') {
-                drawGame();
-            }
+            drawGame();
         }
         
         function createMobileMenu() {
@@ -2807,22 +2816,17 @@ canvas.addEventListener('touchend', handleTouch);
 }
 
 function drawTurnIndicator() {
-    //console.log("Drawing turn indicator:", gameState);
-    ctx.save(); // Save the current context state
+    ctx.save();
     
     const text = gameState === 'playerTurn' ? "Player's Turn" : "Enemy Turn";
     const fontSize = 24;
     ctx.font = `bold ${fontSize}px Arial`;
     
-    // Measure the text width
-    const textWidth = ctx.measureText(text).width;
-    
-    // Calculate the background rectangle dimensions
-    const padding = 10;
-    const rectWidth = textWidth + padding * 2;
-    const rectHeight = fontSize + padding * 2;
+    // Use fixed position at the bottom center of the canvas
+    const rectWidth = 200;
+    const rectHeight = 40;
     const rectX = (canvas.width - rectWidth) / 2;
-    const rectY = canvas.height - rectHeight - 5; // 5px from bottom
+    const rectY = canvas.height - rectHeight - 10; // 10px from bottom
     
     // Draw the background rectangle
     ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; // Semi-transparent red
@@ -2832,9 +2836,9 @@ function drawTurnIndicator() {
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, canvas.width / 2, canvas.height - rectHeight / 2 - 5);
+    ctx.fillText(text, canvas.width / 2, canvas.height - rectHeight / 2 - 10);
     
-    ctx.restore(); // Restore the context state
+    ctx.restore();
 }
 
 function updateSpecialAttackButton() {
@@ -2879,6 +2883,30 @@ function updateButtonStates() {
             }
         }
     });
+}
+
+function setInitialZoom() {
+    if (isMobileDevice()) {
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const gameAspectRatio = 800 / 500; // Your game's aspect ratio
+        
+        let zoom;
+        if (screenWidth / screenHeight > gameAspectRatio) {
+            zoom = screenHeight / 500;
+        } else {
+            zoom = screenWidth / 800;
+        }
+        
+        // Adjust zoom to ensure the entire game is visible
+        zoom = Math.min(zoom, 1);
+        
+        // Apply the zoom
+        document.body.style.zoom = zoom;
+        // For browsers that don't support zoom
+        document.body.style.transform = `scale(${zoom})`;
+        document.body.style.transformOrigin = 'top left';
+    }
 }
 
 // Call this function in drawGame and after each turn
