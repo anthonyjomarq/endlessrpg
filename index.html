@@ -2807,7 +2807,6 @@ canvas.addEventListener('touchend', handleTouch);
 }
 
 function drawTurnIndicator() {
-    //console.log("Drawing turn indicator:", gameState);
     ctx.save(); // Save the current context state
     
     const text = gameState === 'playerTurn' ? "Player's Turn" : "Enemy Turn";
@@ -2821,8 +2820,16 @@ function drawTurnIndicator() {
     const padding = 10;
     const rectWidth = textWidth + padding * 2;
     const rectHeight = fontSize + padding * 2;
-    const rectX = (canvas.width - rectWidth) / 2;
-    const rectY = canvas.height - rectHeight - 5; // 5px from bottom
+    
+    // Fixed position for mobile devices
+    let rectX, rectY;
+    if (isMobileDevice()) {
+        rectX = (canvas.width - rectWidth) / 2;
+        rectY = canvas.height - rectHeight - 60; // Adjust this value as needed
+    } else {
+        rectX = (canvas.width - rectWidth) / 2;
+        rectY = canvas.height - rectHeight - 5;
+    }
     
     // Draw the background rectangle
     ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; // Semi-transparent red
@@ -2832,7 +2839,7 @@ function drawTurnIndicator() {
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, canvas.width / 2, canvas.height - rectHeight / 2 - 5);
+    ctx.fillText(text, canvas.width / 2, rectY + rectHeight / 2);
     
     ctx.restore(); // Restore the context state
 }
