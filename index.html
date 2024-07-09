@@ -2644,29 +2644,28 @@ canvas.addEventListener('touchend', handleTouch);
             let newWidth, newHeight;
         
             if (windowWidth / windowHeight > gameAspectRatio) {
-                newHeight = Math.min(windowHeight - 100, 500); // Cap at original height
+                newHeight = windowHeight;
                 newWidth = newHeight * gameAspectRatio;
             } else {
-                newWidth = Math.min(windowWidth, 800); // Cap at original width
+                newWidth = windowWidth;
                 newHeight = newWidth / gameAspectRatio;
             }
         
             gameContainer.style.width = `${newWidth}px`;
+            gameContainer.style.height = `${newHeight}px`;
             game.style.width = `${newWidth}px`;
             game.style.height = `${newHeight}px`;
         
-            // Only change actual canvas dimensions on mobile
-            if (isMobileDevice()) {
-                game.width = newWidth;
-                game.height = newHeight;
-            } else {
-                game.width = 800;
-                game.height = 500;
-            }
+            // Set the actual canvas dimensions
+            game.width = 800;
+            game.height = 500;
         
+            // Scale the context to fit the new size
             const ctx = game.getContext('2d');
-            ctx.setTransform(game.width / 800, 0, 0, game.height / 500, 0, 0);
+            const scale = newWidth / 800;
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
         
+            // Redraw the game
             if (gameState !== 'mainMenu') {
                 drawGame();
             }
@@ -2821,15 +2820,9 @@ function drawTurnIndicator() {
     const rectWidth = textWidth + padding * 2;
     const rectHeight = fontSize + padding * 2;
     
-    // Fixed position for mobile devices
-    let rectX, rectY;
-    if (isMobileDevice()) {
-        rectX = (canvas.width - rectWidth) / 2;
-        rectY = canvas.height - rectHeight - 60; // Adjust this value as needed
-    } else {
-        rectX = (canvas.width - rectWidth) / 2;
-        rectY = canvas.height - rectHeight - 5;
-    }
+    // Position at the bottom center of the canvas
+    const rectX = (canvas.width - rectWidth) / 2;
+    const rectY = canvas.height - rectHeight - 10; // 10px from the bottom
     
     // Draw the background rectangle
     ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; // Semi-transparent red
