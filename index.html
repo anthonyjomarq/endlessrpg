@@ -2635,41 +2635,58 @@ function isPointInButton(x, y, buttonId) {
 canvas.addEventListener('touchend', handleTouch);
         
         function resizeGame() {
-            const gameContainer = document.getElementById('gameContainer');
-            const game = document.getElementById('gameCanvas');
-            const gameAspectRatio = 800 / 500;
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-        
-            let newWidth, newHeight;
-        
-            if (windowWidth / windowHeight > gameAspectRatio) {
-                newHeight = windowHeight;
-                newWidth = newHeight * gameAspectRatio;
-            } else {
-                newWidth = windowWidth;
-                newHeight = newWidth / gameAspectRatio;
-            }
-        
-            gameContainer.style.width = `${newWidth}px`;
-            gameContainer.style.height = `${newHeight}px`;
-            game.style.width = `${newWidth}px`;
-            game.style.height = `${newHeight}px`;
-        
-            // Set the actual canvas dimensions
-            game.width = 800;
-            game.height = 500;
-        
-            // Scale the context to fit the new size
-            const ctx = game.getContext('2d');
-            const scale = newWidth / 800;
-            ctx.setTransform(scale, 0, 0, scale, 0, 0);
-        
-            // Redraw the game
-            if (gameState !== 'mainMenu') {
-                drawGame();
-            }
+    const gameContainer = document.getElementById('gameContainer');
+    const game = document.getElementById('gameCanvas');
+    const gameAspectRatio = 800 / 500;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    let newWidth, newHeight;
+
+    if (isMobileDevice()) {
+        // For mobile, use the full screen width and adjust height
+        newWidth = windowWidth;
+        newHeight = windowWidth / gameAspectRatio;
+
+        // If the height is too tall, adjust based on window height instead
+        if (newHeight > windowHeight) {
+            newHeight = windowHeight;
+            newWidth = windowHeight * gameAspectRatio;
         }
+
+        // Set the canvas size to match the screen
+        game.width = newWidth;
+        game.height = newHeight;
+
+        // Scale the context
+        const ctx = game.getContext('2d');
+        const scaleX = newWidth / 800;
+        const scaleY = newHeight / 500;
+        ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+    } else {
+        // For desktop, use the previous logic
+        if (windowWidth / windowHeight > gameAspectRatio) {
+            newHeight = Math.min(windowHeight - 100, 500);
+            newWidth = newHeight * gameAspectRatio;
+        } else {
+            newWidth = Math.min(windowWidth, 800);
+            newHeight = newWidth / gameAspectRatio;
+        }
+
+        game.width = 800;
+        game.height = 500;
+    }
+
+    gameContainer.style.width = `${newWidth}px`;
+    gameContainer.style.height = `${newHeight}px`;
+    game.style.width = `${newWidth}px`;
+    game.style.height = `${newHeight}px`;
+
+    // Redraw the game
+    if (gameState !== 'mainMenu') {
+        drawGame();
+    }
+}
         
         function createMobileMenu() {
             const menu = document.createElement('div');
@@ -2806,35 +2823,29 @@ canvas.addEventListener('touchend', handleTouch);
 }
 
 function drawTurnIndicator() {
-    ctx.save(); // Save the current context state
+    ctx.save();
     
     const text = gameState === 'playerTurn' ? "Player's Turn" : "Enemy Turn";
     const fontSize = 24;
     ctx.font = `bold ${fontSize}px Arial`;
     
-    // Measure the text width
     const textWidth = ctx.measureText(text).width;
-    
-    // Calculate the background rectangle dimensions
     const padding = 10;
     const rectWidth = textWidth + padding * 2;
     const rectHeight = fontSize + padding * 2;
     
-    // Position at the bottom center of the canvas
-    const rectX = (canvas.width - rectWidth) / 2;
-    const rectY = canvas.height - rectHeight - 10; // 10px from the bottom
+    const rectX = (800 - rectWidth) / 2;
+    const rectY = 500 - rectHeight - 10; // 10px from the bottom of the 500px height canvas
     
-    // Draw the background rectangle
-    ctx.fillStyle = "rgba(255, 0, 0, 0.3)"; // Semi-transparent red
+    ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
     ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
     
-    // Draw the text
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, canvas.width / 2, rectY + rectHeight / 2);
+    ctx.fillText(text, 400, 500 - rectHeight / 2 - 10);
     
-    ctx.restore(); // Restore the context state
+    ctx.restore();
 }
 
 function updateSpecialAttackButton() {
