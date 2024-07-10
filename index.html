@@ -93,6 +93,37 @@
     margin-top: 100px;
 }
 
+#shop {
+        text-align: center;
+    }
+
+    .shop-items {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .shop-item {
+        display: inline-block;
+        vertical-align: top;
+        margin: 0 5px 10px;
+        width: 150px;  /* Adjust this width as needed */
+    }
+
+    #shop button {
+        display: block;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+
+    .item-description {
+        display: block;
+        font-size: 0.9em;
+        color: #333;
+        text-align: center;
+    }
+
 .tentButton {
     display: block;
     width: 200px;
@@ -163,6 +194,19 @@
         
         
         @media (max-width: 768px) {
+          
+          .shop-items {
+            flex-direction: column;
+        }
+
+        .shop-item {
+            width: 100%;
+        }
+
+        .item-description {
+            font-size: 0.9em;
+        }
+        
     #gameCanvas {
         width: 100%;
         height: auto;
@@ -248,13 +292,55 @@
         <p id="goldMessage"></p>
         <!-- <button id="developerGoldButton">Developer Gold</button> -->
                 <div id="shop">
-            <h2>Shop</h2>
-            <button id="healingPotionButton">Buy Healing Potion (100 Gold)</button>
-            <button id="expBoosterButton">Buy EXP Booster (200 Gold)</button>
-            <button id="antidoteButton">Buy Antidote (300 Gold)</button>
-            <button id="lotusButton">Buy Lotus of Experience (500 Gold)</button>
-            <button id="redPillButton">Buy Red Pill (1000 Gold)</button>
+    <h2>Shop</h2>
+    <div class="shop-items">
+        <div class="shop-item">
+            <button id="healingPotionButton">
+                <div class="button-content">
+                    <span class="item-name">Buy Healing Potion</span>
+                    <span class="gold-amount">100 Gold</span>
+                </div>
+            </button>
+            <span class="item-description">Heal 25 HP</span>
         </div>
+        <div class="shop-item">
+            <button id="expBoosterButton">
+                <div class="button-content">
+                    <span class="item-name">Buy EXP Booster</span>
+                    <span class="gold-amount">200 Gold</span>
+                </div>
+            </button>
+            <span class="item-description">Double the next XP gained</span>
+        </div>
+        <div class="shop-item">
+            <button id="antidoteButton">
+                <div class="button-content">
+                    <span class="item-name">Buy Antidote</span>
+                    <span class="gold-amount">300 Gold</span>
+                </div>
+            </button>
+            <span class="item-description">Heals poison</span>
+        </div>
+        <div class="shop-item">
+            <button id="lotusButton">
+                <div class="button-content">
+                    <span class="item-name">Buy Lotus of Experience</span>
+                    <span class="gold-amount">500 Gold</span>
+                </div>
+            </button>
+            <span class="item-description">Grants 10 XP</span>
+        </div>
+        <div class="shop-item">
+            <button id="redPillButton">
+                <div class="button-content">
+                    <span class="item-name">Buy Red Pill</span>
+                    <span class="gold-amount">1000 Gold</span>
+                </div>
+            </button>
+            <span class="item-description">+1 Min Damage</span>
+        </div>
+    </div>
+</div>
         <br><br>
         <div id="journeyButtons">
             <button id="continueJourneyButton" class="bigButton">Continue Journey</button>
