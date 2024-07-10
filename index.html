@@ -877,7 +877,7 @@ function drawGame() {
             animateDamage();
             setTimeout(() => {
                 handleEnemyTurn();
-            }, 1000);
+            }, 750);
         }
     }
 }
@@ -921,7 +921,7 @@ function drawGame() {
             animateDamage();
             setTimeout(() => {
                 handleEnemyTurn();
-            }, 1000);
+            }, 750);
         }
     } else {
         console.log("Cannot use special attack now");
@@ -979,7 +979,7 @@ function playerDefend() {
         drawGame();
         setTimeout(() => {
             handleEnemyTurn();
-        }, 1000);
+        }, 750);
     }
 }
 
@@ -1027,7 +1027,7 @@ function playerDefend() {
             // Return to camp
             showCampScreen();
         }
-    }, 1000); // Wait for 1 second to show the damage before proceeding
+    }, 750); // Wait for 1 second to show the damage before proceeding
   }
 }
 
@@ -1172,8 +1172,8 @@ function playerDefend() {
             setTimeout(() => {
                 // Move to the next enemy, or end the turn if all enemies have acted
                 attackEnemies(index + 1);
-            }, 1000);
-        }, 1000);
+            }, 750);
+        }, 750);
     };
 
     attackEnemies(0);
@@ -1704,7 +1704,9 @@ antidoteButton.addEventListener('click', buyAntidote);
             }
 
         function checkStoryLevelUp() {
+    let leveledUp = false;
     while (player.experience >= player.xpToNextLevel) {
+        leveledUp = true;
         player.level++;
         player.experience -= player.xpToNextLevel;
         player.xpToNextLevel += 20;
@@ -1746,6 +1748,10 @@ antidoteButton.addEventListener('click', buyAntidote);
 
         updateStoryScreenStats();
         showLevelUpMessage(levelUpMessage);
+    }
+    
+    if (leveledUp && player.level >= 3 && player.specialSkill) {
+        showFinalContinueButton(); // Only show continue button if a skill has been selected
     }
 }
 
@@ -2098,17 +2104,25 @@ function checkBattleLevelUp() {
         }
 
         function showFinalContinueButton() {
-    console.log("Executing showFinalContinueButton");
-    updateStoryScreenStats(); // Update stats on story screen
-    document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
-    document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block'; // Show final continue button
-    document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
-    document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
-    inStoryEvent = false; // Story event is now over
-    ensureButtonVisibility(); // Update button visibility
-    autoSave();
-    updateLoadGameButton();
-}
+            console.log("Executing showFinalContinueButton");
+            updateStoryScreenStats(); // Update stats on story screen
+            document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
+            document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block'; // Show final continue button
+            document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
+            document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
+            inStoryEvent = false; // Story event is now over
+            
+            // Force the button to be visible
+            const continueButton = document.getElementById('continueJourneyFromStoryButton');
+            continueButton.style.display = 'inline-block';
+            continueButton.disabled = false;
+            
+            console.log("Continue journey button should now be visible");
+            
+            ensureButtonVisibility(); // Update button visibility
+            autoSave();
+            updateLoadGameButton();
+        }
 
         function startTreantBattle() {
             console.log("Executing startTreantBattle");
@@ -2167,27 +2181,33 @@ function checkBattleLevelUp() {
         }
 
         function showStorySkillSelection() {
-            console.log("Showing story skill selection for " + player.class);
-            const skillSelection = 'storySkillSelection';
-            
-            document.getElementById(skillSelection).style.display = 'block';
-            document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
-        
-            document.getElementById(skillSelection + 'MageSkills').style.display = 'none';
-            document.getElementById(skillSelection + 'WarriorSkills').style.display = 'none';
-            document.getElementById(skillSelection + 'ClericSkills').style.display = 'none';
-            document.getElementById(skillSelection + 'RogueSkills').style.display = 'none';
-        
-            if (player.class === 'Mage') {
-                document.getElementById(skillSelection + 'MageSkills').style.display = 'block';
-            } else if (player.class === 'Warrior') {
-                document.getElementById(skillSelection + 'WarriorSkills').style.display = 'block';
-            } else if (player.class === 'Cleric') {
-                document.getElementById(skillSelection + 'ClericSkills').style.display = 'block';
-            } else if (player.class === 'Rogue') {
-                document.getElementById(skillSelection + 'RogueSkills').style.display = 'block';
-            }
-        }
+    console.log("Showing story skill selection for " + player.class);
+    const skillSelection = document.getElementById('storySkillSelection');
+    
+    skillSelection.style.display = 'block';
+    document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+    document.getElementById('storyChoices').style.display = 'none';
+
+    const mageSkills = document.getElementById('storySkillSelectionMageSkills');
+    const warriorSkills = document.getElementById('storySkillSelectionWarriorSkills');
+    const clericSkills = document.getElementById('storySkillSelectionClericSkills');
+    const rogueSkills = document.getElementById('storySkillSelectionRogueSkills');
+
+    mageSkills.style.display = 'none';
+    warriorSkills.style.display = 'none';
+    clericSkills.style.display = 'none';
+    rogueSkills.style.display = 'none';
+
+    if (player.class === 'Mage') {
+        mageSkills.style.display = 'block';
+    } else if (player.class === 'Warrior') {
+        warriorSkills.style.display = 'block';
+    } else if (player.class === 'Cleric') {
+        clericSkills.style.display = 'block';
+    } else if (player.class === 'Rogue') {
+        rogueSkills.style.display = 'block';
+    }
+}
 
         function showBattleSkillSelection() {
     console.log("Showing battle skill selection for " + player.class);
@@ -2369,9 +2389,8 @@ function checkBattleLevelUp() {
     // Update the special attack button
     updateSpecialAttackButton();
 
-    // Show the appropriate buttons
     if (inStoryEvent) {
-        document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block';
+        showFinalContinueButton();
     } else {
         document.getElementById('continueJourneyButton').style.display = 'inline-block';
         document.getElementById('returnToCampButton').style.display = 'inline-block';
@@ -2429,7 +2448,7 @@ function ensureButtonVisibility() {
         }
     } else {
         // Not in a story event
-        storyButton.style.display = 'none';
+        storyButton.style.display = 'inline-block'; // Changed from 'none' to 'inline-block'
         if (gameState === 'victory') {
             continueButton.style.display = 'inline-block';
             campButton.style.display = 'inline-block';
