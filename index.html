@@ -673,8 +673,9 @@ function drawGame() {
         if (enemy.defending) drawEnemyStatus('Defending');
         if (enemy.stunnedTurns > 0) drawEnemyStatus('Stunned', 'yellow');
         if (enemy.burnedTurns > 0) drawEnemyStatus('Burned', 'orange');
-        if (enemy.exposed) drawEnemyStatus('Exposed', 'purple');
+        if (enemy.exposed) drawEnemyStatus('Exposed', 'green');
         if (enemy.blind) drawEnemyStatus(`Blind (${enemy.blind}%)`, 'gray');
+        if (enemy.poison && enemy.poison > 0) drawEnemyStatus(`Poisoned (${enemy.poison})`, 'purple');
     });
 
     // Draw player stats
@@ -1300,6 +1301,7 @@ function playerDefend() {
             //}
             autoSave();
             updateLoadGameButton();
+            ensureButtonVisibility();
         }
         
         function hideVictoryScreen() {
@@ -1341,6 +1343,7 @@ function playerDefend() {
     hideVictoryScreen();
     hideStoryEventScreen();
     hideCampScreen();
+    
     
     const eventType = getEventType();
     console.log("Event type selected:", eventType);
@@ -1820,6 +1823,7 @@ function checkBattleLevelUp() {
         function showStoryEvent1() {
             console.log("Entering showStoryEvent1");
             inStoryEvent = true;
+            ensureButtonVisibility();
             currentStory = STORY_OLD_MAN;
             document.getElementById('storyLevelUpMessage').style.display = 'none';
             document.getElementById('storyLevelUpMessage').innerHTML = '';
@@ -1950,6 +1954,7 @@ function checkBattleLevelUp() {
         function showStoryEvent2() {
             console.log("Entering showStoryEvent2");
             inStoryEvent = true;
+            ensureButtonVisibility();
             currentStory = STORY_TREANT;
             document.getElementById('storyLevelUpMessage').style.display = 'none';
             document.getElementById('storyLevelUpMessage').innerHTML = '';
@@ -2093,15 +2098,17 @@ function checkBattleLevelUp() {
         }
 
         function showFinalContinueButton() {
-            console.log("Executing showFinalContinueButton");
-            updateStoryScreenStats(); // Update stats on story screen
-            document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
-            document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block'; // Show final continue button
-            document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
-            document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
-            autoSave();
-            updateLoadGameButton();
-        }
+    console.log("Executing showFinalContinueButton");
+    updateStoryScreenStats(); // Update stats on story screen
+    document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
+    document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block'; // Show final continue button
+    document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
+    document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
+    inStoryEvent = false; // Story event is now over
+    ensureButtonVisibility(); // Update button visibility
+    autoSave();
+    updateLoadGameButton();
+}
 
         function startTreantBattle() {
             console.log("Executing startTreantBattle");
@@ -2123,11 +2130,12 @@ function checkBattleLevelUp() {
 		}
         
         function continueJourneyFromStory() {
-            console.log("Executing continueJourneyFromStory");
-            hideStoryEventScreen();
-            
-            continueJourney();
-        }
+    console.log("Executing continueJourneyFromStory");
+    hideStoryEventScreen();
+    inStoryEvent = false; // Ensure this is set to false when leaving a story event
+    ensureButtonVisibility(); // Update button visibility
+    continueJourney();
+}
 		
 		function hideDuelEventScreen() {
 			document.getElementById('duelEventScreen').style.display = 'none';
@@ -2400,6 +2408,48 @@ function updateSpecialAttackButton() {
     }
 }
 
+function ensureButtonVisibility() {
+    const continueButton = document.getElementById('continueJourneyButton');
+    const campButton = document.getElementById('returnToCampButton');
+    const storyButton = document.getElementById('continueJourneyFromStoryButton');
+    const storyChoices = document.getElementById('storyChoices');
+
+    if (inStoryEvent) {
+        // In a story event
+        if (storyChoices.style.display !== 'none') {
+            // Choices are still visible, buttons should be hidden
+            storyButton.style.display = 'none';
+            continueButton.style.display = 'none';
+            campButton.style.display = 'none';
+        } else {
+            // Choices are hidden, story continue button should be visible
+            storyButton.style.display = 'inline-block';
+            continueButton.style.display = 'none';
+            campButton.style.display = 'none';
+        }
+    } else {
+        // Not in a story event
+        storyButton.style.display = 'none';
+        if (gameState === 'victory') {
+            continueButton.style.display = 'inline-block';
+            campButton.style.display = 'inline-block';
+        } else {
+            continueButton.style.display = 'none';
+            campButton.style.display = 'none';
+        }
+    }
+
+    console.log("Button visibility updated. inStoryEvent:", inStoryEvent, "gameState:", gameState);
+}
+
+setInterval(ensureButtonVisibility, 5000); // Check every 5 seconds
+
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error("An error occurred:", message, "at", source, ":", lineno);
+    ensureButtonVisibility(); // Try to recover
+    return false;
+};
+
 function buyTent(tentNumber, cost) {
     if (player.campBank >= cost) {
         player.campBank -= cost;
@@ -2599,8 +2649,8 @@ function useEnemySpecialSkill(enemy) {
     const scaleY = canvas.height / rect.height;
     
     const touch = event.changedTouches[0];
-    const x = (touch.pageX - rect.left) * scaleX;
-    const y = (touch.pageY - rect.top) * scaleY;
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
     
     // Check if touch is on an enemy
     for (let i = 0; i < enemies.length; i++) {
@@ -2881,6 +2931,28 @@ function updateButtonStates() {
         }
     });
 }
+
+function handleMouseClick(event) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+    
+    // Check if click is on an enemy
+    for (let i = 0; i < enemies.length; i++) {
+        const enemyX = 650;
+        const enemyY = 180 + (i * 130);
+        if (x >= enemyX && x <= enemyX + 50 && y >= enemyY && y <= enemyY + 50) {
+            selectedEnemyIndex = i;
+            drawGame(); // Redraw to show selection
+            return;
+        }
+    }
+}
+
+canvas.addEventListener('click', handleMouseClick);
 
 // Call this function in drawGame and after each turn
 
