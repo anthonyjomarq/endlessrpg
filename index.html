@@ -139,6 +139,54 @@
   color: #333; /* Gold color */
 }
 
+#campShop {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#campShop .shop-items {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+#campShop .shop-item {
+    display: inline-block;
+    vertical-align: top;
+    margin: 0 2px 10px;
+    width: 140px;
+}
+
+#campShop .shop-item button {
+    display: block;
+    width: 100%;
+    margin-bottom: 5px;
+    padding: 5px 2px;
+    white-space: normal;
+    height: auto;
+    line-height: 1.2;
+    text-align: center;
+}
+
+#campShop .button-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#campShop .item-description {
+    display: block;
+    font-size: 0.9em;
+    color: #000;
+    text-align: center;
+}
+
+#campShop .gold-amount {
+    font-size: 0.8em;
+    color: #333;
+}
+
 .tentButton {
     display: block;
     width: 200px;
@@ -1521,53 +1569,77 @@ function playerDefend() {
         continueButton.parentNode.insertBefore(campShop, continueButton);
     }
     
+    if (player.merchantTent) {
+        showShopInCamp();
+    }
+    
     updateCampMessage();
     updateTentButtons();
 }
 
-function updatePlayerTents() {
-    const playerTentsRow = document.getElementById('playerTentsRow');
-    playerTentsRow.innerHTML = ''; // Clear existing tents
-    
-    for (let i = 0; i < player.tents; i++) {
-        const tentSquare = createTentSquare(i === 0 ? 'Player Tent' : `Tent ${i + 1}`);
-        playerTentsRow.appendChild(tentSquare);
-    }
-}
+        function setupShopButtons() {
+    const buttons = [
+        { id: 'campHealingPotionButton', item: 'healingPotion', cost: 100 },
+        { id: 'campExpBoosterButton', item: 'expBooster', cost: 200 },
+        { id: 'campAntidoteButton', item: 'antidote', cost: 300 },
+        { id: 'campLotusButton', item: 'lotus', cost: 500 },
+        { id: 'campRedPillButton', item: 'redPill', cost: 1000 }
+    ];
 
-function updateCommercialTents() {
-    const commercialTentsRow = document.getElementById('commercialTentsRow');
-    commercialTentsRow.innerHTML = ''; // Clear existing tents
-    
-    if (player.merchantTent) {
-        const merchantTentSquare = createTentSquare('Merchant Tent');
-        commercialTentsRow.appendChild(merchantTentSquare);
-    }
-}
-
-function createTentSquare(text) {
-    const tentSquare = document.createElement('div');
-    tentSquare.className = 'tentSquare';
-    tentSquare.textContent = text;
-    return tentSquare;
-}
-
-function buyMerchantTent() {
-    if (player.campBank >= 1000) {
-        player.campBank -= 1000;
-        player.merchantTent = true;
-        const merchantTentButton = document.getElementById('merchantTentButton');
-        if (merchantTentButton) {
-            merchantTentButton.style.display = 'none';
+    buttons.forEach(button => {
+        const element = document.getElementById(button.id);
+        if (element) {
+            // Remove existing listeners
+            element.replaceWith(element.cloneNode(true));
+            // Add new listener
+            document.getElementById(button.id).onclick = () => buyItemInCamp(button.item, button.cost);
         }
-        showCampScreen(); // Refresh the entire camp screen
-        showShopInCamp(); // Show the shop
-    } else {
-        alert("Not enough gold in the Camp Bank!");
-    }
+    });
 }
-
-function showShopInCamp() {
+        
+        function updatePlayerTents() {
+            const playerTentsRow = document.getElementById('playerTentsRow');
+            playerTentsRow.innerHTML = ''; // Clear existing tents
+            
+            for (let i = 0; i < player.tents; i++) {
+                const tentSquare = createTentSquare(i === 0 ? 'Player Tent' : `Tent ${i + 1}`);
+                playerTentsRow.appendChild(tentSquare);
+            }
+        }
+        
+        function updateCommercialTents() {
+            const commercialTentsRow = document.getElementById('commercialTentsRow');
+            commercialTentsRow.innerHTML = ''; // Clear existing tents
+            
+            if (player.merchantTent) {
+                const merchantTentSquare = createTentSquare('Merchant Tent');
+                commercialTentsRow.appendChild(merchantTentSquare);
+            }
+        }
+        
+        function createTentSquare(text) {
+            const tentSquare = document.createElement('div');
+            tentSquare.className = 'tentSquare';
+            tentSquare.textContent = text;
+            return tentSquare;
+        }
+        
+        function buyMerchantTent() {
+            if (player.campBank >= 1000) {
+                player.campBank -= 1000;
+                player.merchantTent = true;
+                const merchantTentButton = document.getElementById('merchantTentButton');
+                if (merchantTentButton) {
+                    merchantTentButton.style.display = 'none';
+                }
+                showCampScreen(); // Refresh the entire camp screen
+                showShopInCamp(); // Show the shop
+            } else {
+                alert("Not enough gold in the Camp Bank!");
+            }
+        }
+        
+        function showShopInCamp() {
     if (player.merchantTent) {
         const existingShop = document.getElementById('campShop');
         if (existingShop) {
@@ -1578,71 +1650,102 @@ function showShopInCamp() {
         shopDiv.id = 'campShop';
         shopDiv.innerHTML = `
             <h2>Merchant Shop</h2>
-            <button id="campHealingPotionButton">Buy Healing Potion (100 Gold)</button>
-            <button id="campExpBoosterButton">Buy EXP Booster (200 Gold)</button>
-            <button id="campAntidoteButton">Buy Antidote (300 Gold)</button>
-            <button id="campLotusButton">Buy Lotus of Experience (500 Gold)</button>
-            <button id="campRedPillButton">Buy Red Pill (1000 Gold)</button>
+            <div id="campMessage">
+                Current Gold: ${player.gold}<br>
+                Camp Bank: ${player.campBank} Gold<br>
+                Tents: ${player.tents}<br>
+                HP: ${player.health}/${player.maxHealth}
+            </div>
+            <div class="shop-items">
+                ${createShopItem('campHealingPotionButton', 'Buy Healing Potion', 100, 'Heal 25 HP')}
+                ${createShopItem('campExpBoosterButton', 'Buy EXP Booster', 200, 'Double the next XP gained')}
+                ${createShopItem('campAntidoteButton', 'Buy Antidote', 300, 'Heals poison')}
+                ${createShopItem('campLotusButton', 'Buy Lotus of Experience', 500, 'Grants 10 XP')}
+                ${createShopItem('campRedPillButton', 'Buy Red Pill', 1000, '+1 Min Damage')}
+            </div>
         `;
 
         const continueButton = document.getElementById('continueJourneyFromCampButton');
         continueButton.parentNode.insertBefore(shopDiv, continueButton);
-
-        // Add event listeners for the buttons
-        document.getElementById('campHealingPotionButton').addEventListener('click', () => buyItemInCamp('healingPotion', 100));
-        document.getElementById('campExpBoosterButton').addEventListener('click', () => buyItemInCamp('expBooster', 200));
-        document.getElementById('campAntidoteButton').addEventListener('click', () => buyItemInCamp('antidote', 300));
-        document.getElementById('campLotusButton').addEventListener('click', () => buyItemInCamp('lotus', 500));
-        document.getElementById('campRedPillButton').addEventListener('click', () => buyItemInCamp('redPill', 1000));
+        
+        setupShopButtons();
     }
 }
-
-function buyItemInCamp(item, cost) {a
-    if (player.gold >= cost) {
-        player.gold -= cost;
-        switch(item) {
-            case 'healingPotion':
-                player.health = Math.min(player.health + 25, player.maxHealth);
-                break;
-            case 'expBooster':
-                player.expBooster = true;
-                break;
-            case 'antidote':
-                player.poisonCounter = 0;
-                break;
-            case 'lotus':
-                player.experience += 10;
-                checkBattleLevelUp();
-                break;
-            case 'redPill':
-                player.minDamage += 1;
-                break;
+        
+        function createShopItem(id, name, gold, description) {
+            return `
+                <div class="shop-item">
+                    <button id="${id}">
+                        <div class="button-content">
+                            <span class="item-name">${name}</span>
+                            <span class="gold-amount">${gold} Gold</span>
+                        </div>
+                    </button>
+                    <span class="item-description">${description}</span>
+                </div>
+            `;
         }
-        updateCampMessage();
-        alert(`You bought ${item} for ${cost} gold.`);
-    } else {
-        alert("Not enough gold!");
-    }
-}
+        
+        let isProcessingPurchase = false;
 
-function updateCampMessage() {
-    console.log("Updating camp message. Player tents:", player.tents);
-    document.getElementById('campMessage').innerHTML = `Current Gold: ${player.gold}<br>Camp Bank: ${player.campBank} Gold<br>Tents: ${player.tents}`;
-}
-
-function updateTentButtons() {
-    console.log("Updating tent buttons. Player tents:", player.tents);
-    const tentCosts = [1500, 2000, 2500, 3000];
-    for (let i = 2; i <= 5; i++) {
-        const button = document.getElementById(`${getTentNumberWord(i)}TentButton`);
-        if (i === player.tents + 1) {
-            button.style.display = 'block';
-            button.disabled = player.campBank < tentCosts[i - 2];
-        } else {
-            button.style.display = 'none';
+        function buyItemInCamp(item, cost) {
+            if (isProcessingPurchase) return;
+            isProcessingPurchase = true;
+        
+            if (player.gold >= cost) {
+                player.gold -= cost;
+                switch(item) {
+                    case 'healingPotion':
+                        player.health = Math.min(player.health + 25, player.maxHealth);
+                        break;
+                    case 'expBooster':
+                        player.expBooster = true;
+                        break;
+                    case 'antidote':
+                        player.poisonCounter = 0;
+                        break;
+                    case 'lotus':
+                        player.experience += 10;
+                        checkBattleLevelUp();
+                        break;
+                    case 'redPill':
+                        player.minDamage += 1;
+                        break;
+                }
+                updateCampMessage();
+                alert(`You bought ${item} for ${cost} gold.`);
+            } else {
+                alert("Not enough gold!");
+            }
+        
+            isProcessingPurchase = false;
         }
-    }
-}
+        
+        function updateCampMessage() {
+            const campMessageElement = document.getElementById('campMessage');
+            if (campMessageElement) {
+                campMessageElement.innerHTML = `
+                    Current Gold: ${player.gold}<br>
+                    Camp Bank: ${player.campBank} Gold<br>
+                    Tents: ${player.tents}<br>
+                    HP: ${player.health}/${player.maxHealth}
+                `;
+            }
+        }
+        
+        function updateTentButtons() {
+            console.log("Updating tent buttons. Player tents:", player.tents);
+            const tentCosts = [1500, 2000, 2500, 3000];
+            for (let i = 2; i <= 5; i++) {
+                const button = document.getElementById(`${getTentNumberWord(i)}TentButton`);
+                if (i === player.tents + 1) {
+                    button.style.display = 'block';
+                    button.disabled = player.campBank < tentCosts[i - 2];
+                } else {
+                    button.style.display = 'none';
+                }
+            }
+        }
 
         function getEventType() {
             const eventRoll = Math.random();
@@ -1658,7 +1761,7 @@ function updateTentButtons() {
                 }
             } else {
                 // Duel events locked
-                if (eventRoll < 0.85) {
+                if (eventRoll < 0.60) {
                     return 'battle';
                 } else {
                     return 'story';
@@ -1965,7 +2068,7 @@ antidoteButton.addEventListener('click', buyAntidote);
     }
 }
 
-function checkBattleLevelUp() {
+        function checkBattleLevelUp() {
     let leveledUp = false;
     while (player.experience >= player.xpToNextLevel) {
         leveledUp = true;
@@ -2317,15 +2420,15 @@ function checkBattleLevelUp() {
             console.log("Executing showFinalContinueButton");
             updateStoryScreenStats(); // Update stats on story screen
             document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
-            document.getElementById('continueJourneyFromStoryButton').style.display = 'inline-block'; // Show final continue button
             document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
             document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
-            inStoryEvent = false; // Story event is now over
             
-            // Force the button to be visible
+            inStoryEvent = false; // Story event is now over
+            gameState = 'storyComplete'; // Set game state to storyComplete
+            
+            // Ensure the button is clickable
             const continueButton = document.getElementById('continueJourneyFromStoryButton');
-            continueButton.style.display = 'inline-block';
-            continueButton.disabled = false;
+            continueButton.onclick = continueJourneyFromStory;
             
             console.log("Continue journey button should now be visible");
             
@@ -2354,14 +2457,15 @@ function checkBattleLevelUp() {
 		}
         
         function continueJourneyFromStory() {
-    console.log("Executing continueJourneyFromStory");
-    hideStoryEventScreen();
-    inStoryEvent = false; // Ensure this is set to false when leaving a story event
-    ensureButtonVisibility(); // Update button visibility
-    continueJourney();
-}
+            console.log("Executing continueJourneyFromStory");
+            hideStoryEventScreen();
+            inStoryEvent = false;
+            gameState = 'exploring'; // Set game state to exploring
+            ensureButtonVisibility(); // Update button visibility
+            continueJourney();
+        }
 		
-		function hideDuelEventScreen() {
+	    	function hideDuelEventScreen() {
 			document.getElementById('duelEventScreen').style.display = 'none';
 		}
 
@@ -2655,6 +2759,8 @@ function ensureButtonVisibility() {
     const isSkillSelectionActive = (skillSelection && skillSelection.style.display !== 'none') || 
                                    (storySkillSelection && storySkillSelection.style.display !== 'none');
 
+    console.log("Current state:", { inStoryEvent, gameState, isSkillSelectionActive });
+
     if (isSkillSelectionActive) {
         // If skill selection is active, hide all journey buttons
         storyButton.style.display = 'none';
@@ -2673,19 +2779,28 @@ function ensureButtonVisibility() {
             continueButton.style.display = 'none';
             campButton.style.display = 'none';
         }
-    } else {
-        // Not in a story event
+    } else if (gameState === 'storyComplete') {
+        // Story is complete, show the continue journey button
+        storyButton.style.display = 'inline-block';
+        continueButton.style.display = 'none';
+        campButton.style.display = 'none';
+    } else if (gameState === 'victory') {
+        // Victory screen, show continue journey and return to camp buttons
         storyButton.style.display = 'none';
-        if (gameState === 'victory') {
-            continueButton.style.display = 'inline-block';
-            campButton.style.display = 'inline-block';
-        } else {
-            continueButton.style.display = 'none';
-            campButton.style.display = 'none';
-        }
+        continueButton.style.display = 'inline-block';
+        campButton.style.display = 'inline-block';
+    } else {
+        // Default case, hide all buttons
+        storyButton.style.display = 'none';
+        continueButton.style.display = 'none';
+        campButton.style.display = 'none';
     }
 
-    console.log("Button visibility updated. inStoryEvent:", inStoryEvent, "gameState:", gameState, "isSkillSelectionActive:", isSkillSelectionActive);
+    console.log("Button visibility updated:", {
+        storyButton: storyButton.style.display,
+        continueButton: continueButton.style.display,
+        campButton: campButton.style.display
+    });
 }
 
 setInterval(ensureButtonVisibility, 5000); // Check every 5 seconds
@@ -3021,22 +3136,16 @@ canvas.addEventListener('touchend', handleTouch);
             player.specialSkill = player.specialSkills[player.specialSkill.name];
         }
 
-        // Ensure merchant tent state is correctly set
-        if (player.merchantTent) {
-            const merchantTentButton = document.getElementById('merchantTentButton');
-            if (merchantTentButton) {
-                merchantTentButton.style.display = 'none';
-            }
-            showShopInCamp();
-        }
-
         setupGameAfterLoad();
         startGame(false); // Call startGame with isNewGame set to false
+
+        // Show camp screen after loading (this will also show the shop if merchant tent is purchased)
+        showCampScreen();
     } else {
         alert('No saved game found!');
     }
 }
-        
+
         function autoSave() {
             saveGame();
             console.log('Game auto-saved');
