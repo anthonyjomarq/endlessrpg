@@ -158,22 +158,34 @@
 
 #tentSquares {
     display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
     margin-bottom: 20px;
 }
 
+.tentRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
 .tentSquare {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
     background-color: #f0f0f0;
     border: 2px solid #333;
-    margin: 5px;
+    margin: 0 5px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
+    font-size: 12px;
 }
+
+
 
 #continueJourneyFromCampButton {
     display: block;
@@ -305,7 +317,7 @@
         <h1>Victory!</h1>
         <p id="victoryMessage"></p>
         <p id="goldMessage"></p>
-        <!-- <button id="developerGoldButton">Developer Gold</button> -->
+        <button id="developerGoldButton">Developer Gold</button>
                 <div id="shop">
     <h2>Shop</h2>
     <div class="shop-items">
@@ -407,13 +419,15 @@
     <button id="storeGoldButton">Store All Gold</button>
     <p id="campMessage"></p>
     <div id="tentSquares">
-        <div class="tentSquare">Player Tent</div>
+        <div id="playerTentsRow" class="tentRow"></div>
+        <div id="commercialTentsRow" class="tentRow"></div>
     </div>
     <div id="tentUpgrades">
         <button id="secondTentButton" class="tentButton">Buy Second Tent (1500 Gold)</button>
         <button id="thirdTentButton" class="tentButton" style="display: none;">Buy Third Tent (2000 Gold)</button>
         <button id="fourthTentButton" class="tentButton" style="display: none;">Buy Fourth Tent (2500 Gold)</button>
         <button id="fifthTentButton" class="tentButton" style="display: none;">Buy Fifth Tent (3000 Gold)</button>
+        <button id="merchantTentButton" class="tentButton">Buy Merchant Tent (1000 Gold)</button>
     </div>
     <button id="continueJourneyFromCampButton">Continue Journey</button>
     <button id="saveGameButton">Save Game</button>
@@ -978,7 +992,7 @@ function drawGame() {
             animateDamage();
             setTimeout(() => {
                 handleEnemyTurn();
-            }, 750);
+            }, 500);
         }
     }
 }
@@ -1022,7 +1036,7 @@ function drawGame() {
             animateDamage();
             setTimeout(() => {
                 handleEnemyTurn();
-            }, 750);
+            }, 500);
         }
     } else {
         console.log("Cannot use special attack now");
@@ -1080,7 +1094,7 @@ function playerDefend() {
         drawGame();
         setTimeout(() => {
             handleEnemyTurn();
-        }, 750);
+        }, 500);
     }
 }
 
@@ -1128,7 +1142,7 @@ function playerDefend() {
             // Return to camp
             showCampScreen();
         }
-    }, 750); // Wait for 1 second to show the damage before proceeding
+    }, 500); // Wait for 1 second to show the damage before proceeding
   }
 }
 
@@ -1273,8 +1287,8 @@ function playerDefend() {
             setTimeout(() => {
                 // Move to the next enemy, or end the turn if all enemies have acted
                 attackEnemies(index + 1);
-            }, 750);
-        }, 750);
+            }, 500);
+        }, 500);
     };
 
     attackEnemies(0);
@@ -1333,12 +1347,12 @@ function playerDefend() {
             document.getElementById('redPillButton').onclick = buyRedPill;
             document.getElementById('continueJourneyButton').onclick = continueJourney;
             document.getElementById('returnToCampButton').onclick = returnToCamp;
-            //document.getElementById('developerGoldButton').onclick = () => {
-            //    player.gold += 1500;
-            //    updateGoldMessage();
-            //    updateVictoryScreenStats();
-            //    alert("Added 1500 gold to the player!");
-            //}; 
+            document.getElementById('developerGoldButton').onclick = () => {
+                player.gold += 1500;
+                updateGoldMessage();
+                updateVictoryScreenStats();
+                alert("Added 1500 gold to the player!");
+            }; 
             
             // In showVictoryScreen function
             healingPotionButton.disabled = false;
@@ -1359,7 +1373,7 @@ function playerDefend() {
             document.getElementById('redPillButton').style.display = 'inline-block';
             document.getElementById('continueJourneyButton').style.display = 'inline-block';
             document.getElementById('returnToCampButton').style.display = 'inline-block';
-            //document.getElementById('developerGoldButton').style.display = 'inline-block';
+            document.getElementById('developerGoldButton').style.display = 'inline-block';
 
             
             //document.getElementById('developerGoldButton').style.display = 'inline-block';
@@ -1488,33 +1502,127 @@ function playerDefend() {
     campScreen.style.display = 'block';
     document.getElementById('storeGoldButton').onclick = storeGoldInCamp;
     
-    // Update tent squares
-    const tentSquares = document.getElementById('tentSquares');
-    tentSquares.innerHTML = '<div class="tentSquare">Player Tent</div>'; // Always show Player Tent
+    updatePlayerTents();
+    updateCommercialTents();
     
-    // Add tents for recruited characters
-    const recruitedCharacters = player.recruitedCharacters || [];
-    for (let i = 0; i < recruitedCharacters.length; i++) {
-        const character = recruitedCharacters[i];
-        const tentSquare = document.createElement('div');
-        tentSquare.className = 'tentSquare';
-        tentSquare.textContent = `${character.class}\n${character.specialSkill}`;
-        tentSquares.appendChild(tentSquare);
-    }
-    
-    // Add empty tents up to the player's tent count
-    for (let i = recruitedCharacters.length + 1; i < player.tents; i++) {
-        const tentSquare = document.createElement('div');
-        tentSquare.className = 'tentSquare';
-        tentSquare.textContent = `Tent ${i + 1}`;
-        tentSquares.appendChild(tentSquare);
+    // Update merchant tent button visibility
+    const merchantTentButton = document.getElementById('merchantTentButton');
+    if (merchantTentButton) {
+        merchantTentButton.style.display = player.merchantTent ? 'none' : 'block';
     }
     
     // Ensure the continue journey button is visible
     document.getElementById('continueJourneyFromCampButton').style.display = 'block';
     
+    // Move camp shop above continue journey button
+    const campShop = document.getElementById('campShop');
+    const continueButton = document.getElementById('continueJourneyFromCampButton');
+    if (campShop && continueButton) {
+        continueButton.parentNode.insertBefore(campShop, continueButton);
+    }
+    
     updateCampMessage();
     updateTentButtons();
+}
+
+function updatePlayerTents() {
+    const playerTentsRow = document.getElementById('playerTentsRow');
+    playerTentsRow.innerHTML = ''; // Clear existing tents
+    
+    for (let i = 0; i < player.tents; i++) {
+        const tentSquare = createTentSquare(i === 0 ? 'Player Tent' : `Tent ${i + 1}`);
+        playerTentsRow.appendChild(tentSquare);
+    }
+}
+
+function updateCommercialTents() {
+    const commercialTentsRow = document.getElementById('commercialTentsRow');
+    commercialTentsRow.innerHTML = ''; // Clear existing tents
+    
+    if (player.merchantTent) {
+        const merchantTentSquare = createTentSquare('Merchant Tent');
+        commercialTentsRow.appendChild(merchantTentSquare);
+    }
+}
+
+function createTentSquare(text) {
+    const tentSquare = document.createElement('div');
+    tentSquare.className = 'tentSquare';
+    tentSquare.textContent = text;
+    return tentSquare;
+}
+
+function buyMerchantTent() {
+    if (player.campBank >= 1000) {
+        player.campBank -= 1000;
+        player.merchantTent = true;
+        const merchantTentButton = document.getElementById('merchantTentButton');
+        if (merchantTentButton) {
+            merchantTentButton.style.display = 'none';
+        }
+        showCampScreen(); // Refresh the entire camp screen
+        showShopInCamp(); // Show the shop
+    } else {
+        alert("Not enough gold in the Camp Bank!");
+    }
+}
+
+function showShopInCamp() {
+    if (player.merchantTent) {
+        const existingShop = document.getElementById('campShop');
+        if (existingShop) {
+            existingShop.remove();
+        }
+
+        const shopDiv = document.createElement('div');
+        shopDiv.id = 'campShop';
+        shopDiv.innerHTML = `
+            <h2>Merchant Shop</h2>
+            <button id="campHealingPotionButton">Buy Healing Potion (100 Gold)</button>
+            <button id="campExpBoosterButton">Buy EXP Booster (200 Gold)</button>
+            <button id="campAntidoteButton">Buy Antidote (300 Gold)</button>
+            <button id="campLotusButton">Buy Lotus of Experience (500 Gold)</button>
+            <button id="campRedPillButton">Buy Red Pill (1000 Gold)</button>
+        `;
+
+        const continueButton = document.getElementById('continueJourneyFromCampButton');
+        continueButton.parentNode.insertBefore(shopDiv, continueButton);
+
+        // Add event listeners for the buttons
+        document.getElementById('campHealingPotionButton').addEventListener('click', () => buyItemInCamp('healingPotion', 100));
+        document.getElementById('campExpBoosterButton').addEventListener('click', () => buyItemInCamp('expBooster', 200));
+        document.getElementById('campAntidoteButton').addEventListener('click', () => buyItemInCamp('antidote', 300));
+        document.getElementById('campLotusButton').addEventListener('click', () => buyItemInCamp('lotus', 500));
+        document.getElementById('campRedPillButton').addEventListener('click', () => buyItemInCamp('redPill', 1000));
+    }
+}
+
+function buyItemInCamp(item, cost) {a
+    if (player.gold >= cost) {
+        player.gold -= cost;
+        switch(item) {
+            case 'healingPotion':
+                player.health = Math.min(player.health + 25, player.maxHealth);
+                break;
+            case 'expBooster':
+                player.expBooster = true;
+                break;
+            case 'antidote':
+                player.poisonCounter = 0;
+                break;
+            case 'lotus':
+                player.experience += 10;
+                checkBattleLevelUp();
+                break;
+            case 'redPill':
+                player.minDamage += 1;
+                break;
+        }
+        updateCampMessage();
+        alert(`You bought ${item} for ${cost} gold.`);
+    } else {
+        alert("Not enough gold!");
+    }
 }
 
 function updateCampMessage() {
@@ -2598,21 +2706,13 @@ function buyTent(tentNumber, cost) {
             document.getElementById(`${getTentNumberWord(tentNumber + 1)}TentButton`).style.display = 'block';
         }
         
-        // Add new tent square
-        const tentSquares = document.getElementById('tentSquares');
-        const newTentSquare = document.createElement('div');
-        newTentSquare.className = 'tentSquare';
-        newTentSquare.textContent = `Tent ${tentNumber}`;
-        tentSquares.appendChild(newTentSquare);
-        
         if (!duelEventsUnlocked) {
             duelEventsUnlocked = true;
             console.log("Duel events unlocked!");
             alert("You've unlocked Duel Events!");
         }
         
-        updateCampMessage();
-        updateTentButtons();
+        showCampScreen(); // Refresh the entire camp screen
     } else {
         alert("Not enough gold in the Camp Bank!");
     }
@@ -2890,7 +2990,8 @@ canvas.addEventListener('touchend', handleTouch);
             const gameData = {
                 player: {
                     ...player,
-                    specialSkill: player.specialSkill ? { name: player.specialSkill.name } : null
+                    specialSkill: player.specialSkill ? { name: player.specialSkill.name } : null,
+                    merchantTent: player.merchantTent
                 },
                 enemies: enemies,
                 gameState: gameState,
@@ -2904,28 +3005,38 @@ canvas.addEventListener('touchend', handleTouch);
         }
         
         function loadGame() {
-            const savedGame = localStorage.getItem('rpgGameSave');
-            if (savedGame) {
-                const gameData = JSON.parse(savedGame);
-                player = gameData.player;
-                enemies = gameData.enemies;
-                gameState = gameData.gameState;
-                currentStory = gameData.currentStory;
-                treantEncountered = gameData.treantEncountered;
-                duelEventsUnlocked = gameData.duelEventsUnlocked;
-                
-                // Reconstruct the special skill
-                if (player.specialSkill) {
-                    setupClassSkills();
-                    player.specialSkill = player.specialSkills[player.specialSkill.name];
-                }
-                
-                setupGameAfterLoad();
-                startGame(false); // Call startGame with isNewGame set to false
-            } else {
-                alert('No saved game found!');
-            }
+    const savedGame = localStorage.getItem('rpgGameSave');
+    if (savedGame) {
+        const gameData = JSON.parse(savedGame);
+        player = gameData.player;
+        enemies = gameData.enemies;
+        gameState = gameData.gameState;
+        currentStory = gameData.currentStory;
+        treantEncountered = gameData.treantEncountered;
+        duelEventsUnlocked = gameData.duelEventsUnlocked;
+
+        // Reconstruct the special skill
+        if (player.specialSkill) {
+            setupClassSkills();
+            player.specialSkill = player.specialSkills[player.specialSkill.name];
         }
+
+        // Ensure merchant tent state is correctly set
+        if (player.merchantTent) {
+            const merchantTentButton = document.getElementById('merchantTentButton');
+            if (merchantTentButton) {
+                merchantTentButton.style.display = 'none';
+            }
+            showShopInCamp();
+        }
+
+        setupGameAfterLoad();
+        startGame(false); // Call startGame with isNewGame set to false
+    } else {
+        alert('No saved game found!');
+    }
+}
+        
         function autoSave() {
             saveGame();
             console.log('Game auto-saved');
@@ -3121,14 +3232,14 @@ canvas.addEventListener('click', handleMouseClick);
 // Call this function in drawGame and after each turn
 
 
-			//function addDeveloperGold() {
-			//	player.gold += 1500;
-			//	updateGoldMessage();
-			//	updateVictoryScreenStats();
-			//	alert("Added 1500 gold to the player!");
-			//}
+			function addDeveloperGold() {
+				player.gold += 1500;
+				updateGoldMessage();
+				updateVictoryScreenStats();
+				alert("Added 1500 gold to the player!");
+			}
 
-//document.getElementById('developerGoldButton').onclick = addDeveloperGold;
+document.getElementById('developerGoldButton').onclick = addDeveloperGold;
 
         document.getElementById('loadGameButton').addEventListener('click', () => {
     loadGame();
@@ -3193,6 +3304,7 @@ canvas.addEventListener('click', handleMouseClick);
         document.getElementById('thirdTentButton').addEventListener('click', () => buyTent(3, 2000));
         document.getElementById('fourthTentButton').addEventListener('click', () => buyTent(4, 2500));
         document.getElementById('fifthTentButton').addEventListener('click', () => buyTent(5, 3000));
+        document.getElementById('merchantTentButton').addEventListener('click', buyMerchantTent);
 
         // Add event listeners for victory screen buttons
         document.getElementById('continueJourneyButton').onclick = continueJourney;
