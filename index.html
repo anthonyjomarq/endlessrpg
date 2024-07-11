@@ -101,28 +101,43 @@
         display: flex;
         justify-content: center;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 5px;
     }
 
     .shop-item {
         display: inline-block;
         vertical-align: top;
-        margin: 0 5px 10px;
-        width: 150px;  /* Adjust this width as needed */
+        margin: 0 2px 10px;
+        width: 140px;  /* Adjust this width as needed */
     }
 
-    #shop button {
+    #shop .shop-item button {
         display: block;
         width: 100%;
         margin-bottom: 5px;
+        padding: 5px 2px; /* Adjusted padding */
+        white-space: normal; /* Allow text to wrap */
+        height: auto; /* Allow button to expand vertically */
+        line-height: 1.2; /* Adjust line spacing */
+        text-align: center;
     }
-
+    
+    .button-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
     .item-description {
         display: block;
         font-size: 0.9em;
-        color: #333;
+        color: #000;
         text-align: center;
     }
+    
+    .gold-amount {
+  font-size: 0.8em;
+  color: #333; /* Gold color */
+}
 
 .tentButton {
     display: block;
@@ -1388,6 +1403,7 @@ function playerDefend() {
             autoSave();
             updateLoadGameButton();
             ensureButtonVisibility();
+            updateShopButtons();
         }
         
         function hideVictoryScreen() {
@@ -2293,6 +2309,8 @@ function checkBattleLevelUp() {
     } else if (player.class === 'Rogue') {
         rogueSkills.style.display = 'block';
     }
+    
+    ensureButtonVisibility();
 }
 
         function showBattleSkillSelection() {
@@ -2322,6 +2340,8 @@ function checkBattleLevelUp() {
     } else if (player.class === 'Rogue') {
         rogueSkills.style.display = 'block';
     }
+    
+    ensureButtonVisibility();
 }
 
         function showLevelUpMessage() {
@@ -2491,6 +2511,8 @@ function checkBattleLevelUp() {
     if (gameState === 'playerTurn' || gameState === 'enemyTurn') {
         drawGame();
     }
+    
+    ensureButtonVisibility();
 }
 
 function updateSpecialAttackButton() {
@@ -2518,8 +2540,19 @@ function ensureButtonVisibility() {
     const campButton = document.getElementById('returnToCampButton');
     const storyButton = document.getElementById('continueJourneyFromStoryButton');
     const storyChoices = document.getElementById('storyChoices');
+    const skillSelection = document.getElementById('skillSelection');
+    const storySkillSelection = document.getElementById('storySkillSelection');
 
-    if (inStoryEvent) {
+    // Check if skill selection is active
+    const isSkillSelectionActive = (skillSelection && skillSelection.style.display !== 'none') || 
+                                   (storySkillSelection && storySkillSelection.style.display !== 'none');
+
+    if (isSkillSelectionActive) {
+        // If skill selection is active, hide all journey buttons
+        storyButton.style.display = 'none';
+        continueButton.style.display = 'none';
+        campButton.style.display = 'none';
+    } else if (inStoryEvent) {
         // In a story event
         if (storyChoices.style.display !== 'none') {
             // Choices are still visible, buttons should be hidden
@@ -2534,7 +2567,7 @@ function ensureButtonVisibility() {
         }
     } else {
         // Not in a story event
-        storyButton.style.display = 'inline-block'; // Changed from 'none' to 'inline-block'
+        storyButton.style.display = 'none';
         if (gameState === 'victory') {
             continueButton.style.display = 'inline-block';
             campButton.style.display = 'inline-block';
@@ -2544,7 +2577,7 @@ function ensureButtonVisibility() {
         }
     }
 
-    console.log("Button visibility updated. inStoryEvent:", inStoryEvent, "gameState:", gameState);
+    console.log("Button visibility updated. inStoryEvent:", inStoryEvent, "gameState:", gameState, "isSkillSelectionActive:", isSkillSelectionActive);
 }
 
 setInterval(ensureButtonVisibility, 5000); // Check every 5 seconds
@@ -3032,6 +3065,32 @@ function updateButtonStates() {
                     }
                     button.disabled = true;
                 }
+            }
+        }
+    });
+}
+
+function updateShopButtons() {
+    const buttons = [
+        { id: 'healingPotionButton', name: 'Buy Healing Potion', gold: 100, description: 'Heal 25 HP' },
+        { id: 'expBoosterButton', name: 'Buy EXP Booster', gold: 200, description: 'Double the next XP gained' },
+        { id: 'antidoteButton', name: 'Buy Antidote', gold: 300, description: 'Heals Poison' },
+        { id: 'lotusButton', name: 'Buy Lotus of Experience', gold: 500, description: 'Grants 10 XP' },
+        { id: 'redPillButton', name: 'Buy Red Pill', gold: 1000, description: '+1 Min Damage' }
+    ];
+
+    buttons.forEach(button => {
+        const buttonElement = document.getElementById(button.id);
+        if (buttonElement) {
+            buttonElement.innerHTML = `
+                <div class="button-content">
+                    <span class="item-name">${button.name}</span>
+                    <span class="gold-amount">${button.gold} Gold</span>
+                </div>
+            `;
+            const descriptionElement = buttonElement.nextElementSibling;
+            if (descriptionElement && descriptionElement.classList.contains('item-description')) {
+                descriptionElement.textContent = button.description;
             }
         }
     });
