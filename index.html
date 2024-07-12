@@ -566,6 +566,8 @@
         let enemies = []; // Initialize enemies array
         
         let duelEventsUnlocked = false;
+        
+        let isProcessingPurchase = false;
 		
         let selectedEnemyIndex = 0; // Track the selected enemy
 
@@ -1045,7 +1047,7 @@ function drawGame() {
     }
 }
   
-  function playerSpecialAttack() {
+        function playerSpecialAttack() {
     console.log("playerSpecialAttack function called");
     console.log("Current game state:", gameState);
     console.log("Special attack cooldown:", player.specialAttackCooldown);
@@ -1097,7 +1099,7 @@ function drawGame() {
     }
 }
 
-function checkEnemyDefeat() {
+        function checkEnemyDefeat() {
     if (enemies[selectedEnemyIndex].health <= 0) {
         let defeatedEnemyXP = 0;
         if (enemies[selectedEnemyIndex].class) {  // Check for .class property to identify duel enemies
@@ -1126,7 +1128,7 @@ function checkEnemyDefeat() {
     }
 }
 
-function playerDefend() {
+        function playerDefend() {
   
   if (player.specialAttackCooldown > 0) {
             player.specialAttackCooldown--;
@@ -1389,18 +1391,28 @@ function playerDefend() {
             document.getElementById('goldMessage').innerHTML = goldMessage;
             
             // Set up event listeners for all buttons
-            document.getElementById('healingPotionButton').onclick = buyHealingPotion;
-            document.getElementById('expBoosterButton').onclick = buyExpBooster;
-            document.getElementById('lotusButton').onclick = buyLotusOfExperience;
-            document.getElementById('redPillButton').onclick = buyRedPill;
-            document.getElementById('continueJourneyButton').onclick = continueJourney;
-            document.getElementById('returnToCampButton').onclick = returnToCamp;
-            document.getElementById('developerGoldButton').onclick = () => {
-                player.gold += 1500;
-                updateGoldMessage();
-                updateVictoryScreenStats();
-                alert("Added 1500 gold to the player!");
-            }; 
+            const buttons = [
+                { id: 'healingPotionButton', action: buyHealingPotion },
+                { id: 'expBoosterButton', action: buyExpBooster },
+                { id: 'antidoteButton', action: buyAntidote },
+                { id: 'lotusButton', action: buyLotusOfExperience },
+                { id: 'redPillButton', action: buyRedPill },
+                { id: 'continueJourneyButton', action: continueJourney },
+                { id: 'returnToCampButton', action: returnToCamp },
+                { id: 'developerGoldButton', action: () => {
+                    player.gold += 1500;
+                    updateGoldMessage();
+                    updateVictoryScreenStats();
+                    alert("Added 1500 gold to the player!");
+                }}
+            ];
+        
+            buttons.forEach(button => {
+        const element = document.getElementById(button.id);
+        if (element) {
+            element.onclick = button.action;
+        }
+            });
             
             // In showVictoryScreen function
             healingPotionButton.disabled = false;
@@ -1686,8 +1698,6 @@ function playerDefend() {
             `;
         }
         
-        let isProcessingPurchase = false;
-
         function buyItemInCamp(item, cost) {
             if (isProcessingPurchase) return;
             isProcessingPurchase = true;
@@ -1769,9 +1779,6 @@ function playerDefend() {
             }
         }
     
-        
-        
-        
         function hideCampScreen() {
 			document.getElementById('campScreen').style.display = 'none';
 			document.getElementById('gameVictoryScreen').style.display = 'none';
@@ -1793,228 +1800,59 @@ function playerDefend() {
       document.getElementById('gameCanvas').style.display = 'none';
 		}
 		
-		function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Wrap each purchase function with the debounce
-const debouncedBuyHealingPotion = debounce(buyHealingPotion, 300);
-const debouncedBuyExpBooster = debounce(buyExpBooster, 300);
-const debouncedBuyLotusOfExperience = debounce(buyLotusOfExperience, 300);
-const debouncedBuyRedPill = debounce(buyRedPill, 300);
-
-// Update event listeners
-document.getElementById('healingPotionButton').addEventListener('click', debouncedBuyHealingPotion);
-document.getElementById('expBoosterButton').addEventListener('click', debouncedBuyExpBooster);
-document.getElementById('lotusButton').addEventListener('click', debouncedBuyLotusOfExperience);
-document.getElementById('redPillButton').addEventListener('click', debouncedBuyRedPill);
-
-        function removeAllEventListeners(element) {
+		    function removeAllEventListeners(element) {
     const newElement = element.cloneNode(true);
     element.parentNode.replaceChild(newElement, element);
     return newElement;
 }
 
-// Remove and re-add event listeners
-const healingPotionButton = removeAllEventListeners(document.getElementById('healingPotionButton'));
-const expBoosterButton = removeAllEventListeners(document.getElementById('expBoosterButton'));
-const lotusButton = removeAllEventListeners(document.getElementById('lotusButton'));
-const redPillButton = removeAllEventListeners(document.getElementById('redPillButton'));
-
-// Add new event listeners
-healingPotionButton.addEventListener('click', buyHealingPotion);
-expBoosterButton.addEventListener('click', buyExpBooster);
-lotusButton.addEventListener('click', buyLotusOfExperience);
-redPillButton.addEventListener('click', buyRedPill);
-
-// Update the purchase functions to include a check for multiple purchases
-let lastPurchaseTime = 0;
-const PURCHASE_COOLDOWN = 1000; // 1 second cooldown
-
-        function buyHealingPotion() {
-            const now = Date.now();
-            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
-                console.log("Purchase attempted too soon");
-                return;
-            }
-            lastPurchaseTime = now;
+        function buyItem(item, cost, effect) {
+            if (isProcessingPurchase) return;
+            isProcessingPurchase = true;
         
-            console.log("Attempting to buy healing potion");
-            console.log("Current gold:", player.gold);
-            
-            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
-                console.log("Shop is not open");
-                return;
-            }
-            
-            if (player.gold < 100) {
-                console.log("Not enough gold");
-                alert("Not enough gold!");
-                return;
-            }
-            
-            console.log("Purchasing potion");
-            player.gold -= 100;
-            player.health += 25;
-            if (player.health > player.maxHealth) {
-                player.health = player.maxHealth;
-            }
-            healingPotionButton.disabled = true;
-            healingPotionButton.textContent = "Sold Out";
-            updateGoldMessage();
-            updateVictoryScreenStats();
-            drawGame();
-            console.log("Potion purchased successfully");
-            autoSave();
-            
-        }
-
-// Apply similar changes to buyExpBooster, buyLotusOfExperience, and buyRedPill functions
-
-        function buyExpBooster() {
-          
-          const now = Date.now();
-            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
-                console.log("Purchase attempted too soon");
-                return;
-            }
-            lastPurchaseTime = now;
-            
-            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
-                console.log("Shop is not open");
-                return;
-            }
-            
-            if (player.gold < 200) {
-                console.log("Not enough gold");
-                alert("Not enough gold!");
-                return;
-            }
-    
-            
-                player.gold -= 200;
-                player.expBooster = true;
-                expBoosterButton.disabled = true;
-                expBoosterButton.textContent = "Sold Out";
+            if (player.gold >= cost) {
+                player.gold -= cost;
+                effect();
                 updateGoldMessage();
-                autoSave();
-            
+                updateVictoryScreenStats();
+                alert(`You bought ${item} for ${cost} gold.`);
+            } else {
+                alert("Not enough gold!");
+            }
+        
+            isProcessingPurchase = false;
+        }
+        
+        function buyHealingPotion() {
+            buyItem('Healing Potion', 100, () => {
+                player.health = Math.min(player.health + 25, player.maxHealth);
+            });
+        }
+        
+        function buyExpBooster() {
+            buyItem('EXP Booster', 200, () => {
+                player.expBooster = true;
+            });
         }
         
         function buyAntidote() {
-            const now = Date.now();
-            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
-                console.log("Purchase attempted too soon");
-                return;
-            }
-            lastPurchaseTime = now;
-        
-            console.log("Attempting to buy antidote");
-            console.log("Current gold:", player.gold);
-            
-            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
-                console.log("Shop is not open");
-                return;
-            }
-            
-            if (player.gold < 300) {
-                console.log("Not enough gold");
-                alert("Not enough gold!");
-                return;
-            }
-        
-            if (player.poisonCounter === 0) {
-        if (!confirm("You do not seem poisoned. Are you sure you wish to purchase an Antidote?")) {
-            console.log("Antidote purchase cancelled");
-            return;
+            buyItem('Antidote', 300, () => {
+                player.poisonCounter = 0;
+            });
         }
-    }
         
-            
-            console.log("Purchasing antidote");
-            player.gold -= 300;
-            player.poisonCounter = 0;
-            antidoteButton.disabled = true;
-            antidoteButton.textContent = "Sold Out";
-            updateGoldMessage();
-            updateVictoryScreenStats();
-            drawGame();
-            console.log("Antidote purchased successfully");
-            alert("You've used the Antidote. Any poison effect has been removed.");
-            autoSave();
-        }
-
-const antidoteButton = removeAllEventListeners(document.getElementById('antidoteButton'));
-antidoteButton.addEventListener('click', buyAntidote);
-
         function buyLotusOfExperience() {
-          
-          const now = Date.now();
-            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
-                console.log("Purchase attempted too soon");
-                return;
-            }
-            lastPurchaseTime = now;
-            
-            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
-                console.log("Shop is not open");
-                return;
-            }
-            
-            if (player.gold < 500) {
-                console.log("Not enough gold");
-                alert("Not enough gold!");
-                return;
-            }
-                  player.gold -= 500;
-                  player.experience += 10;
-                  checkBattleLevelUp();  // Changed from checkLevelUp to checkBattleLevelUp
-                  lotusButton.disabled = true;
-                  lotusButton.textContent = "Sold Out";
-                  updateGoldMessage();
-                  updateVictoryScreenStats();
-                  drawGame();
-                  autoSave();
-                  
-              }
-
+            buyItem('Lotus of Experience', 500, () => {
+                player.experience += 10;
+                checkBattleLevelUp();
+            });
+        }
+        
         function buyRedPill() {
-          
-          const now = Date.now();
-            if (now - lastPurchaseTime < PURCHASE_COOLDOWN) {
-                console.log("Purchase attempted too soon");
-                return;
-            }
-            lastPurchaseTime = now;
-            
-            if (document.getElementById('gameVictoryScreen').style.display !== 'block') {
-                console.log("Shop is not open");
-                return;
-            }
-            
-            if (player.gold < 1000) {
-                console.log("Not enough gold");
-                alert("Not enough gold!");
-                return;
-            }
-                player.gold -= 1000;
+            buyItem('Red Pill', 1000, () => {
                 player.minDamage += 1;
-                redPillButton.disabled = true;
-                redPillButton.textContent = "Sold Out";
-                updateGoldMessage();
-                updateVictoryScreenStats();
-                drawGame();
-                autoSave();
-                
-            }
+            });
+        }
 
         function checkStoryLevelUp() {
     let leveledUp = false;
@@ -3403,11 +3241,7 @@ document.getElementById('developerGoldButton').onclick = addDeveloperGold;
         //document.getElementById('retreatButton').addEventListener('click', playerRetreat);
         //document.getElementById('resetButton').addEventListener('click', developerReset); // Add event listener for reset button
 
-        // Add event listeners for shop buttons
-        document.getElementById('healingPotionButton').addEventListener('click', buyHealingPotion);
-        document.getElementById('expBoosterButton').addEventListener('click', buyExpBooster);
-        document.getElementById('lotusButton').addEventListener('click', buyLotusOfExperience);
-        document.getElementById('redPillButton').addEventListener('click', buyRedPill);
+        
         
         document.getElementById('secondTentButton').addEventListener('click', () => buyTent(2, 1500));
         document.getElementById('thirdTentButton').addEventListener('click', () => buyTent(3, 2000));
