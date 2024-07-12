@@ -613,10 +613,17 @@ player.purchasedItems = {
             document.getElementById('campScreen').style.display = 'none';
             document.getElementById('storyEventScreen').style.display = 'none';
             document.getElementById('characterSelectScreen').style.display = 'none';
-        }
+            
+            if (isMobile()) {
+                createMobileEnemySelectionOverlay();
+                canvas.addEventListener('touchstart', handleMouseClick, false);
+                } else {
+                    canvas.addEventListener('click', handleMouseClick, false);
+                }
+            }
 
-// Call initGame immediately
-initGame();
+// Call initGame when the page loads
+window.onload = initGame;
 
         function createEnemyByType(type) {
             const enemyType = enemyTypes.find(enemy => enemy.type === type);
@@ -721,7 +728,7 @@ window.addEventListener('resize', function() {
     addButtonListeners();
     updateLoadGameButton();
     
-    if (isMobileDevice()) {
+    if (isMobile()) {
         resizeGame();
     }
 }
@@ -751,7 +758,7 @@ window.addEventListener('resize', function() {
     updateButtonStates();
     enemies = createEnemies(player.level);
     
-    if (isMobileDevice()) {
+    if (isMobile()) {
         resizeGame();
     }
     
@@ -820,11 +827,21 @@ function drawGame() {
         const hpTextYOffset = hpBarYOffset - 10;
         const typeTextYOffset = yOffset + 75;
 
-        if (enemies.length > 1 && index === selectedEnemyIndex) {
+        // In the drawGame function, replace the part you mentioned with this:
+if (enemies.length > 1) {
+    if (isMobile()) {
+        // For mobile, we'll use the overlay created earlier
+        const overlay = document.getElementById('mobileEnemySelectionOverlay');
+        overlay.style.display = 'block';
+    } else {
+        // For desktop, we'll keep the existing selection indicator
+        if (index === selectedEnemyIndex) {
             ctx.strokeStyle = 'yellow';
             ctx.lineWidth = 5;
             ctx.strokeRect(645, yOffset - 5, 60, 60);
         }
+    }
+}
 
         ctx.fillStyle = 'red';
         ctx.fillRect(650, yOffset, 50, 50);
@@ -1836,7 +1853,7 @@ function drawGame() {
                 }
             } else {
                 // Duel events locked
-                if (eventRoll < 0.60) {
+                if (eventRoll < 0.85) {
                     return 'battle';
                 } else {
                     return 'story';
@@ -3035,9 +3052,10 @@ canvas.addEventListener('touchend', handleTouch);
             });
         }
 
-        function isMobileDevice() {
-            return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
-        }
+        function isMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+         || window.innerWidth <= 768;
+}
         
         function saveGame() {
             const gameData = {
@@ -3271,10 +3289,16 @@ function handleMouseClick(event) {
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
-    const x = (event.clientX - rect.left) * scaleX;
-    const y = (event.clientY - rect.top) * scaleY;
+    let x, y;
+    if (event.type === 'touchstart') {
+      x = (event.touches[0].clientX - rect.left) * scaleX;
+      y = (event.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (event.clientX - rect.left) * scaleX;
+      y = (event.clientY - rect.top) * scaleY;
+    }
     
-    // Check if click is on an enemy
+    // Check if click/touch is on an enemy
     for (let i = 0; i < enemies.length; i++) {
         const enemyX = 650;
         const enemyY = 180 + (i * 130);
@@ -3285,6 +3309,42 @@ function handleMouseClick(event) {
         }
     }
 }
+
+// Create mobile-friendly enemy selection overlay
+function createMobileEnemySelectionOverlay() {
+  const overlay = document.createElement('div');
+  overlay.id = 'mobileEnemySelectionOverlay';
+  overlay.style.position = 'absolute';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.display = 'none'; // Initially hidden
+  
+  enemies.forEach((enemy, index) => {
+    const button = document.createElement('div');
+    button.style.position = 'absolute';
+    button.style.left = '650px';
+    button.style.top = `${180 + (index * 130)}px`;
+    button.style.width = '50px';
+    button.style.height = '50px';
+    button.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+    button.style.border = '2px solid black';
+    button.style.borderRadius = '50%';
+    button.style.touchAction = 'manipulation';
+    
+    button.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      selectedEnemyIndex = index;
+      drawGame();
+    });
+    
+    overlay.appendChild(button);
+  });
+  
+  document.body.appendChild(overlay);
+}
+
 
 canvas.addEventListener('click', handleMouseClick);
 
