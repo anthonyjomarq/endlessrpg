@@ -676,7 +676,7 @@ window.onload = initGame;
 }
 
 window.addEventListener('resize', function() {
-    if (isMobileDevice()) {
+    if (isMobile()) {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             resizeGame();
@@ -707,6 +707,7 @@ window.addEventListener('resize', function() {
             specialAttackCooldown: 0,
             specialSkill: null,
             specialSkillUnlocked: false,
+            poisonCounter: 0,
             tents: 1
             // Add any other initial player properties here
         };
@@ -1380,135 +1381,72 @@ if (enemies.length > 1) {
         }
 
         function showVictoryScreen() {
-          
-            
-            const goldEarned = Math.floor(Math.random() * 201) + 100;
-            player.gold += goldEarned;
+    const goldEarned = Math.floor(Math.random() * 201) + 100;
+    player.gold += goldEarned;
 
-            let totalExpGained = currentBattleExpGained;
+    let totalExpGained = currentBattleExpGained;
+    if (player.expBooster) {
+        totalExpGained *= 2;
+        player.expBooster = false;
+    }
+    player.experience += totalExpGained;
+    victoryExpGained = totalExpGained;
 
-            if (player.expBooster) {
-                totalExpGained *= 2; // Double the XP if the booster is active
-                player.expBooster = false; // Reset the XP booster after use
-            }
+    if (player.experience >= player.xpToNextLevel) {
+        checkBattleLevelUp();
+    }
 
-            player.experience += totalExpGained; // Add the total XP gained to the player's experience
+    let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
+    if (victoryLevelUpMessage) {
+        victoryMessage += `${victoryLevelUpMessage}<br>`;
+        victoryLevelUpMessage = '';
+    }
+    victoryMessage += `Current Stats:<br>
+    Health: ${player.health}/${player.maxHealth}<br>
+    Min Damage: ${player.minDamage}<br>
+    Max Damage: ${player.maxDamage}<br>
+    XP: ${player.experience}/${player.xpToNextLevel}`;
 
-            victoryExpGained = totalExpGained; // Set victoryExpGained to the XP earned in the current battle
+    const goldMessage = `You earned ${goldEarned} gold.<br>Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
+    document.getElementById('victoryMessage').innerHTML = victoryMessage;
+    document.getElementById('goldMessage').innerHTML = goldMessage;
 
-            if (player.experience >= player.xpToNextLevel) {
-                checkBattleLevelUp();
-            }
-            
-            updateShopButtons(true);
+    updateVictoryShopButtons();
 
-            let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
+    // Set up event listeners for navigation buttons
+    document.getElementById('continueJourneyButton').onclick = continueJourney;
+    document.getElementById('returnToCampButton').onclick = returnToCamp;
+    document.getElementById('developerGoldButton').onclick = () => {
+        player.gold += 1500;
+        updateGoldMessage();
+        updateVictoryScreenStats();
+        alert("Added 1500 gold to the player!");
+    };
 
-            if (victoryLevelUpMessage) {
-                victoryMessage += `${victoryLevelUpMessage}<br>`;
-                victoryLevelUpMessage = ''; // Clear the message immediately after using it
-            }
+    // Show/hide elements
+    canvas.style.display = 'none';
+    document.getElementById('gameButtons').style.display = 'none';
+    document.getElementById('gameVictoryScreen').style.display = 'block';
 
-            victoryMessage += `Current Stats:<br>
-            Health: ${player.health}/${player.maxHealth}<br>
-            Min Damage: ${player.minDamage}<br>
-            Max Damage: ${player.maxDamage}<br>
-            XP: ${player.experience}/${player.xpToNextLevel}`;
+    // Check for skill selection
+    if (player.level >= 3 && !player.specialSkill) {
+        document.getElementById('skillSelection').style.display = 'block';
+        document.getElementById('continueJourneyButton').style.display = 'none';
+        document.getElementById('returnToCampButton').style.display = 'none';
+        showBattleSkillSelection();
+    } else {
+        document.getElementById('skillSelection').style.display = 'none';
+        document.getElementById('continueJourneyButton').style.display = 'inline-block';
+        document.getElementById('returnToCampButton').style.display = 'inline-block';
+    }
 
-            const goldMessage = `You earned ${goldEarned} gold.<br>Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
-            document.getElementById('victoryMessage').innerHTML = victoryMessage;
-            document.getElementById('goldMessage').innerHTML = goldMessage;
-            
-            // Set up event listeners for all buttons
-            const buttons = [
-                { id: 'healingPotionButton', action: buyHealingPotion },
-                { id: 'expBoosterButton', action: buyExpBooster },
-                { id: 'antidoteButton', action: buyAntidote },
-                { id: 'lotusButton', action: buyLotusOfExperience },
-                { id: 'redPillButton', action: buyRedPill },
-                { id: 'continueJourneyButton', action: continueJourney },
-                { id: 'returnToCampButton', action: returnToCamp },
-                { id: 'developerGoldButton', action: () => {
-                    player.gold += 1500;
-                    updateGoldMessage();
-                    updateVictoryScreenStats();
-                    alert("Added 1500 gold to the player!");
-                }}
-            ];
-        
-            buttons.forEach(button => {
-        const element = document.getElementById(button.id);
-        if (element) {
-            element.onclick = button.action;
-        }
-            });
-            
-            // In showVictoryScreen function
-            healingPotionButton.disabled = false;
-            healingPotionButton.textContent = "Buy Healing Potion (100 Gold)";
-            expBoosterButton.disabled = false;
-            expBoosterButton.textContent = "Buy EXP Booster (200 Gold)";
-            lotusButton.disabled = false;
-            lotusButton.textContent = "Buy Lotus of Experience (500 Gold)";
-            redPillButton.disabled = false;
-            redPillButton.textContent = "Buy Red Pill (1000 Gold)";
-            antidoteButton.disabled = false;
-            antidoteButton.textContent = "Buy Antidote (300 Gold)";
-            
-            // Show/hide buttons as needed
-            document.getElementById('healingPotionButton').style.display = 'inline-block';
-            document.getElementById('expBoosterButton').style.display = 'inline-block';
-            document.getElementById('lotusButton').style.display = 'inline-block';
-            document.getElementById('redPillButton').style.display = 'inline-block';
-            document.getElementById('continueJourneyButton').style.display = 'inline-block';
-            document.getElementById('returnToCampButton').style.display = 'inline-block';
-            document.getElementById('developerGoldButton').style.display = 'inline-block';
-
-            
-            //document.getElementById('developerGoldButton').style.display = 'inline-block';
-
-            canvas.style.display = 'none';
-            document.getElementById('gameButtons').style.display = 'none';
-        
-            const victoryScreen = document.getElementById('gameVictoryScreen');
-            victoryScreen.style.display = 'block';
-        
-            // Show skill selection if player reaches level 3 and hasn't already chosen a skill
-            // Check if player needs to select a skill
-            if (player.level >= 3 && !player.specialSkill) {
-                console.log("Player needs to select a special skill");
-                document.getElementById('skillSelection').style.display = 'block';
-                document.getElementById('continueJourneyButton').style.display = 'none';
-                document.getElementById('returnToCampButton').style.display = 'none';
-                showBattleSkillSelection();
-            } else {
-                console.log("Player doesn't need to select a special skill");
-                document.getElementById('skillSelection').style.display = 'none';
-                document.getElementById('continueJourneyButton').style.display = 'inline-block';
-                document.getElementById('returnToCampButton').style.display = 'inline-block';
-            }
-        
-            //document.getElementById('continueJourneyButton').style.display = 'inline-block';
-           //document.getElementById('returnToCampButton').style.display = 'inline-block';
-            //document.getElementById('developerGoldButton').style.display = 'inline-block';
-
-            currentBattleExpGained = 0; // Reset currentBattleExpGained for the next battle
-            resetDamageDisplay(); // Reset damage display
-
-            // Remove developer buttons if player reaches level 3 or 5
-            //if (player.level >= 3) {
-            //    document.getElementById('developerButton').style.display = 'none';
-            //}
-            //if (player.level >= 5) {
-            //    document.getElementById('developerButton').style.display = 'none'; // Also hide level 3 button
-           //     document.getElementById('developerButton5').style.display = 'none';
-            //}
-            autoSave();
-             resetPurchasedItems();
-            updateLoadGameButton();
-            ensureButtonVisibility();
-            updateVictoryShopButtons();
-        }
+    currentBattleExpGained = 0;
+    resetDamageDisplay();
+    autoSave();
+    resetPurchasedItems();
+    updateLoadGameButton();
+    ensureButtonVisibility();
+}
         
         function hideVictoryScreen() {
             document.getElementById('gameVictoryScreen').style.display = 'none';
@@ -1617,6 +1555,7 @@ if (enemies.length > 1) {
     
     updateCampMessage();
     updateTentButtons();
+    updateCampShopButtons();
 }
 
         function updateVictoryShopButtons() {
@@ -1631,7 +1570,7 @@ if (enemies.length > 1) {
     buttons.forEach(button => {
         const element = document.getElementById(button.id);
         if (element) {
-            if (player.purchasedItems && player.purchasedItems[button.item]) {
+            if (player.purchasedItems[button.item]) {
                 element.disabled = true;
                 element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
             } else {
@@ -1647,7 +1586,7 @@ if (enemies.length > 1) {
         }
     });
 }
-
+        
         function updateCampShopButtons() {
     const buttons = [
         { id: 'campHealingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion', description: 'Heal 25 HP' },
@@ -1660,7 +1599,7 @@ if (enemies.length > 1) {
     buttons.forEach(button => {
         const element = document.getElementById(button.id);
         if (element) {
-            if (player.purchasedItems && player.purchasedItems[button.item]) {
+            if (player.purchasedItems[button.item]) {
                 element.disabled = true;
                 element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
             } else {
@@ -1747,6 +1686,7 @@ if (enemies.length > 1) {
 
         const continueButton = document.getElementById('continueJourneyFromCampButton');
         continueButton.parentNode.insertBefore(shopDiv, continueButton);
+        updateShopButtons(false);
         
         updateCampShopButtons();
     }
@@ -1768,39 +1708,39 @@ if (enemies.length > 1) {
     `;
 }
         
-        function buyItemInCamp(item, cost) {
-          if (!player.purchasedItems) {
-        player.purchasedItems = {};
-    }
-    if (player.gold >= cost && !player.purchasedItems[item]) {
-        player.gold -= cost;
-        player.purchasedItems[item] = true;
-        switch(item) {
-            case 'healingPotion':
-                player.health = Math.min(player.health + 25, player.maxHealth);
-                break;
-            case 'expBooster':
-                player.expBooster = true;
-                break;
-            case 'antidote':
-                player.poisonCounter = 0;
-                break;
-            case 'lotus':
-                player.experience += 10;
-                checkBattleLevelUp();
-                break;
-            case 'redPill':
-                player.minDamage += 1;
-                break;
-        }
-        updateCampMessage();
-        showShopInCamp(); // Refresh the entire shop display
-        alert(`You bought ${item} for ${cost} gold.`);
-    } else if (player.purchasedItems[item]) {
-        alert("You've already purchased this item!");
-    } else {
+        function buyVictoryItem(item, cost, itemName) {
+    if (player.gold < cost) {
         alert("Not enough gold!");
+        return;
     }
+
+    if (player.purchasedItems[item]) {
+        alert("You've already purchased this item!");
+        return;
+    }
+
+    switch(item) {
+        case 'healingPotion':
+            if (player.health >= player.maxHealth) {
+                alert("Your HP is full!");
+                return;
+            }
+            break;
+        case 'antidote':
+            if (player.poisonCounter === 0) {
+                alert("You are not poisoned!");
+                return;
+            }
+            break;
+    }
+
+    player.gold -= cost;
+    player.purchasedItems[item] = true;
+    applyItemEffect(item);
+    updateGoldMessage();
+    updateVictoryScreenStats();
+    updateShopButtons(true);  // Update the buttons after purchase
+    alert(`You bought ${itemName} for ${cost} gold.`);
 }
 
         function resetPurchasedItems() {
@@ -1888,36 +1828,97 @@ if (enemies.length > 1) {
     return newElement;
 }
 
-        function buyVictoryItem(item, cost, itemName) {
-    if (player.gold >= cost && !player.purchasedItems[item]) {
-        player.gold -= cost;
-        player.purchasedItems[item] = true;
-        applyItemEffect(item);
-        updateGoldMessage();
-        updateVictoryScreenStats();
-        updateVictoryShopButtons();
-        alert(`You bought ${itemName} for ${cost} gold.`);
-    } else if (player.purchasedItems[item]) {
-        alert("You've already purchased this item!");
-    } else {
-        alert("Not enough gold!");
-    }
+        function updateVictoryShopButtons() {
+    const buttons = [
+        { id: 'healingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion', description: 'Heal 25 HP' },
+        { id: 'expBoosterButton', item: 'expBooster', cost: 200, name: 'EXP Booster', description: 'Double the next XP gained' },
+        { id: 'antidoteButton', item: 'antidote', cost: 300, name: 'Antidote', description: 'Heals poison' },
+        { id: 'lotusButton', item: 'lotus', cost: 500, name: 'Lotus of Experience', description: 'Grants 10 XP' },
+        { id: 'redPillButton', item: 'redPill', cost: 1000, name: 'Red Pill', description: '+1 Min Damage' }
+    ];
+
+    buttons.forEach(button => {
+        const element = document.getElementById(button.id);
+        if (element) {
+            if (player.purchasedItems[button.item]) {
+                element.disabled = true;
+                element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
+            } else {
+                element.disabled = false;
+                element.innerHTML = `
+                    <div class="button-content">
+                        <span class="item-name">Buy ${button.name}</span>
+                        <span class="gold-amount">${button.cost} Gold</span>
+                    </div>
+                `;
+                element.onclick = () => buyVictoryItem(button.item, button.cost, button.name);
+            }
+        }
+    });
+}
+
+        function updateCampShopButtons() {
+    const buttons = [
+        { id: 'campHealingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion', description: 'Heal 25 HP' },
+        { id: 'campExpBoosterButton', item: 'expBooster', cost: 200, name: 'EXP Booster', description: 'Double the next XP gained' },
+        { id: 'campAntidoteButton', item: 'antidote', cost: 300, name: 'Antidote', description: 'Heals poison' },
+        { id: 'campLotusButton', item: 'lotus', cost: 500, name: 'Lotus of Experience', description: 'Grants 10 XP' },
+        { id: 'campRedPillButton', item: 'redPill', cost: 1000, name: 'Red Pill', description: '+1 Min Damage' }
+    ];
+
+    buttons.forEach(button => {
+        const element = document.getElementById(button.id);
+        if (element) {
+            if (player.purchasedItems[button.item]) {
+                element.disabled = true;
+                element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
+            } else {
+                element.disabled = false;
+                element.innerHTML = `
+                    <div class="button-content">
+                        <span class="item-name">Buy ${button.name}</span>
+                        <span class="gold-amount">${button.cost} Gold</span>
+                    </div>
+                `;
+                element.onclick = () => buyItemInCamp(button.item, button.cost, button.name);
+            }
+        }
+    });
 }
 
         function buyItemInCamp(item, cost, itemName) {
-            if (player.gold >= cost && !player.purchasedItems[item]) {
-                player.gold -= cost;
-                player.purchasedItems[item] = true;
-                applyItemEffect(item);
-                updateCampMessage();
-                showShopInCamp();
-                alert(`You bought ${itemName} for ${cost} gold.`);
-            } else if (player.purchasedItems[item]) {
-                alert("You've already purchased this item!");
-            } else {
-                alert("Not enough gold!");
+    if (player.gold < cost) {
+        alert("Not enough gold!");
+        return;
+    }
+
+    if (player.purchasedItems[item]) {
+        alert("You've already purchased this item!");
+        return;
+    }
+
+    switch(item) {
+        case 'healingPotion':
+            if (player.health >= player.maxHealth) {
+                alert("Your HP is full!");
+                return;
             }
-        }
+            break;
+        case 'antidote':
+            if (player.poisonCounter === 0) {
+                alert("You are not poisoned!");
+                return;
+            }
+            break;
+    }
+
+    player.gold -= cost;
+    player.purchasedItems[item] = true;
+    applyItemEffect(item);
+    updateCampMessage();
+    showShopInCamp();
+    alert(`You bought ${itemName} for ${cost} gold.`);
+}
         
         function applyItemEffect(item) {
             switch(item) {
@@ -3017,7 +3018,7 @@ canvas.addEventListener('touchend', handleTouch);
     game.style.height = `${newHeight}px`;
 
     // Only change actual canvas dimensions on mobile
-    if (isMobileDevice()) {
+    if (isMobile()) {
         game.width = newWidth;
         game.height = newHeight;
     } else {
@@ -3270,16 +3271,9 @@ function updateShopButtons(isVictoryScreen = false) {
                     </div>
                 `;
                 element.onclick = isVictoryScreen ? 
-                    () => buyItem(button.item, button.cost, button.name) : 
-                    () => buyItemInCamp(button.item, button.cost);
+                    () => buyVictoryItem(button.item, button.cost, button.name) : 
+                    () => buyItemInCamp(button.item, button.cost, button.name);
             }
-        }
-    });
-
-    const descriptionElements = document.querySelectorAll('.item-description');
-    buttons.forEach((button, index) => {
-        if (descriptionElements[index]) {
-            descriptionElements[index].textContent = button.description;
         }
     });
 }
