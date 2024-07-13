@@ -567,7 +567,7 @@ player.purchasedItems = {
             { type: 'Poisonous Plant', baseHP: 28, minDamage: 2, maxDamage: 8, xp: 13 },
             { type: 'Werewolf', baseHP: 35, minDamage: 2, maxDamage: 9, xp: 14 },
             { type: 'Troll', baseHP: 40, minDamage: 3, maxDamage: 8, xp: 15 },
-            { type: 'Dragon', baseHP: 50, minDamage: 5, maxDamage: 12, xp: 20 },
+            { type: 'Dragon', baseHP: 70, minDamage: 5, maxDamage: 12, xp: 20 },
             { type: 'Skeletal Warrior', baseHP: 45, minDamage: 4, maxDamage: 10, xp: 18 },
             { type: 'Treant', baseHP: 75, minDamage: 6, maxDamage: 14, xp: 25 }
         ];
@@ -598,6 +598,7 @@ player.purchasedItems = {
         let victoryLevelUpMessage = '';
         let inStoryEvent = false; // Flag to indicate if we are in a story event
         let treantEncountered = false; // Track if the player has encountered the Treant
+        let currentVictoryScreenPurchases = {};
 
         // Flags for story events
         let currentStory = null;
@@ -622,8 +623,8 @@ player.purchasedItems = {
                 }
             }
 
-// Call initGame when the page loads
-window.onload = initGame;
+        // Call initGame when the page loads
+        window.onload = initGame;
 
         function createEnemyByType(type) {
             const enemyType = enemyTypes.find(enemy => enemy.type === type);
@@ -662,11 +663,7 @@ window.onload = initGame;
 			}));
 		}
 		
-		// Call this when the page loads
-
-		
-		        // Call this function when the window is resized
-		let resizeTimeout;
+	  let resizeTimeout;
 		
     function addButtonListeners() {
     document.getElementById('attackButton').onclick = playerAttack;
@@ -675,7 +672,8 @@ window.onload = initGame;
     document.getElementById('specialAttackButton').onclick = playerSpecialAttack;
 }
 
-window.addEventListener('resize', function() {
+        // Call it initially to set up the correct size
+        window.addEventListener('resize', function() {
     if (isMobile()) {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
@@ -684,9 +682,6 @@ window.addEventListener('resize', function() {
         }, 100);
     }
 });
-
-		// Call it initially to set up the correct size
-		//resizeGame();
 
         function startGame(isNewGame = true) {
     console.log("startGame function called, isNewGame:", isNewGame);
@@ -734,7 +729,6 @@ window.addEventListener('resize', function() {
     }
 }
 
-
         function startBattle(characterClass) {
     console.log("Starting battle with class:", characterClass || player.class);
     console.log("Player special skill:", player.specialSkill);
@@ -775,7 +769,7 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
 
         let lastPoisonStatus = null;
 
-function drawGame() {
+    function drawGame() {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
@@ -1150,7 +1144,7 @@ if (enemies.length > 1) {
             } else {
                 gameState = 'victory';
                 clearNotification();
-                showVictoryScreen();
+                showVictoryScreen(currentBattleExpGained > defeatedEnemyXP); // Pass true if it was a double battle
             }
         }
     }
@@ -1380,8 +1374,16 @@ if (enemies.length > 1) {
             }
         }
 
-        function showVictoryScreen() {
-    const goldEarned = Math.floor(Math.random() * 201) + 100;
+        function showVictoryScreen(isDoubleBattle = false) {
+    let goldEarned = Math.floor(Math.random() * 201) + 100;
+    // Reset purchases for the new victory screen visit
+    currentVictoryScreenPurchases = {};
+    
+    // Add extra gold for double battle
+    if (isDoubleBattle) {
+        goldEarned += 100;
+    }
+
     player.gold += goldEarned;
 
     let totalExpGained = currentBattleExpGained;
@@ -1411,7 +1413,7 @@ if (enemies.length > 1) {
     document.getElementById('victoryMessage').innerHTML = victoryMessage;
     document.getElementById('goldMessage').innerHTML = goldMessage;
 
-    updateVictoryShopButtons();
+    updateShopButtons(true);
 
     // Set up event listeners for navigation buttons
     document.getElementById('continueJourneyButton').onclick = continueJourney;
@@ -1459,6 +1461,11 @@ if (enemies.length > 1) {
         function showDefeatScreen() {
     canvas.style.display = 'none';
     document.getElementById('gameButtons').style.display = 'none';
+    
+    // Reset EXP booster if it was active
+    if (player.expBooster) {
+        player.expBooster = false;
+    }
 
     // Reset all player status conditions
     player.poisonCounter = 0;
@@ -1559,34 +1566,10 @@ if (enemies.length > 1) {
 }
 
         function updateVictoryShopButtons() {
-    const buttons = [
-        { id: 'healingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion', description: 'Heal 25 HP' },
-        { id: 'expBoosterButton', item: 'expBooster', cost: 200, name: 'EXP Booster', description: 'Double the next XP gained' },
-        { id: 'antidoteButton', item: 'antidote', cost: 300, name: 'Antidote', description: 'Heals poison' },
-        { id: 'lotusButton', item: 'lotus', cost: 500, name: 'Lotus of Experience', description: 'Grants 10 XP' },
-        { id: 'redPillButton', item: 'redPill', cost: 1000, name: 'Red Pill', description: '+1 Min Damage' }
-    ];
-
-    buttons.forEach(button => {
-        const element = document.getElementById(button.id);
-        if (element) {
-            if (player.purchasedItems[button.item]) {
-                element.disabled = true;
-                element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
-            } else {
-                element.disabled = false;
-                element.innerHTML = `
-                    <div class="button-content">
-                        <span class="item-name">Buy ${button.name}</span>
-                        <span class="gold-amount">${button.cost} Gold</span>
-                    </div>
-                `;
-                element.onclick = () => buyVictoryItem(button.item, button.cost, button.name);
-            }
-        }
-    });
+    updateShopButtons(true);
 }
-        
+
+       
         function updateCampShopButtons() {
     const buttons = [
         { id: 'campHealingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion', description: 'Heal 25 HP' },
@@ -1709,39 +1692,42 @@ if (enemies.length > 1) {
 }
         
         function buyVictoryItem(item, cost, itemName) {
-    if (player.gold < cost) {
-        alert("Not enough gold!");
-        return;
-    }
-
-    if (player.purchasedItems[item]) {
-        alert("You've already purchased this item!");
-        return;
-    }
-
-    switch(item) {
-        case 'healingPotion':
-            if (player.health >= player.maxHealth) {
-                alert("Your HP is full!");
+            if (player.gold < cost) {
+                alert("Not enough gold!");
                 return;
             }
-            break;
-        case 'antidote':
-            if (player.poisonCounter === 0) {
-                alert("You are not poisoned!");
+        
+            if (currentVictoryScreenPurchases[item]) {
+                alert("You've already purchased this item in this visit!");
                 return;
             }
-            break;
-    }
-
-    player.gold -= cost;
-    player.purchasedItems[item] = true;
-    applyItemEffect(item);
-    updateGoldMessage();
-    updateVictoryScreenStats();
-    updateShopButtons(true);  // Update the buttons after purchase
-    alert(`You bought ${itemName} for ${cost} gold.`);
-}
+        
+            switch(item) {
+                case 'healingPotion':
+                    if (player.health >= player.maxHealth) {
+                        alert("Your HP is full!");
+                        return;
+                    }
+                    break;
+                case 'antidote':
+                    if (player.poisonCounter === 0) {
+                        alert("You are not poisoned!");
+                        return;
+                    }
+                    break;
+            }
+        
+            player.gold -= cost;
+            
+            // Mark the item as purchased for this victory screen visit
+            currentVictoryScreenPurchases[item] = true;
+        
+            applyItemEffect(item);
+            updateGoldMessage();
+            updateVictoryScreenStats();
+            updateShopButtons(true);  // Update the buttons after purchase
+            alert(`You bought ${itemName} for ${cost} gold.`);
+      }
 
         function resetPurchasedItems() {
             player.purchasedItems = {
@@ -2683,7 +2669,7 @@ if (enemies.length > 1) {
     ensureButtonVisibility();
 }
 
-function updateSpecialAttackButton() {
+        function updateSpecialAttackButton() {
     const specialAttackButton = document.getElementById('specialAttackButton');
     if (player.specialSkill && player.specialSkillUnlocked) {
         specialAttackButton.style.display = 'inline-block';
@@ -2703,140 +2689,140 @@ function updateSpecialAttackButton() {
     }
 }
 
-function ensureButtonVisibility() {
-    const continueButton = document.getElementById('continueJourneyButton');
-    const campButton = document.getElementById('returnToCampButton');
-    const storyButton = document.getElementById('continueJourneyFromStoryButton');
-    const storyChoices = document.getElementById('storyChoices');
-    const skillSelection = document.getElementById('skillSelection');
-    const storySkillSelection = document.getElementById('storySkillSelection');
-
-    // Check if skill selection is active
-    const isSkillSelectionActive = (skillSelection && skillSelection.style.display !== 'none') || 
-                                   (storySkillSelection && storySkillSelection.style.display !== 'none');
-
-    console.log("Current state:", { inStoryEvent, gameState, isSkillSelectionActive });
-
-    if (isSkillSelectionActive) {
-        // If skill selection is active, hide all journey buttons
-        storyButton.style.display = 'none';
-        continueButton.style.display = 'none';
-        campButton.style.display = 'none';
-    } else if (inStoryEvent) {
-        // In a story event
-        if (storyChoices.style.display !== 'none') {
-            // Choices are still visible, buttons should be hidden
-            storyButton.style.display = 'none';
-            continueButton.style.display = 'none';
-            campButton.style.display = 'none';
-        } else {
-            // Choices are hidden, story continue button should be visible
-            storyButton.style.display = 'inline-block';
-            continueButton.style.display = 'none';
-            campButton.style.display = 'none';
+        function ensureButtonVisibility() {
+            const continueButton = document.getElementById('continueJourneyButton');
+            const campButton = document.getElementById('returnToCampButton');
+            const storyButton = document.getElementById('continueJourneyFromStoryButton');
+            const storyChoices = document.getElementById('storyChoices');
+            const skillSelection = document.getElementById('skillSelection');
+            const storySkillSelection = document.getElementById('storySkillSelection');
+        
+            // Check if skill selection is active
+            const isSkillSelectionActive = (skillSelection && skillSelection.style.display !== 'none') || 
+                                           (storySkillSelection && storySkillSelection.style.display !== 'none');
+        
+            console.log("Current state:", { inStoryEvent, gameState, isSkillSelectionActive });
+        
+            if (isSkillSelectionActive) {
+                // If skill selection is active, hide all journey buttons
+                storyButton.style.display = 'none';
+                continueButton.style.display = 'none';
+                campButton.style.display = 'none';
+            } else if (inStoryEvent) {
+                // In a story event
+                if (storyChoices.style.display !== 'none') {
+                    // Choices are still visible, buttons should be hidden
+                    storyButton.style.display = 'none';
+                    continueButton.style.display = 'none';
+                    campButton.style.display = 'none';
+                } else {
+                    // Choices are hidden, story continue button should be visible
+                    storyButton.style.display = 'inline-block';
+                    continueButton.style.display = 'none';
+                    campButton.style.display = 'none';
+                }
+            } else if (gameState === 'storyComplete') {
+                // Story is complete, show the continue journey button
+                storyButton.style.display = 'inline-block';
+                continueButton.style.display = 'none';
+                campButton.style.display = 'none';
+            } else if (gameState === 'victory') {
+                // Victory screen, show continue journey and return to camp buttons
+                storyButton.style.display = 'none';
+                continueButton.style.display = 'inline-block';
+                campButton.style.display = 'inline-block';
+            } else {
+                // Default case, hide all buttons
+                storyButton.style.display = 'none';
+                continueButton.style.display = 'none';
+                campButton.style.display = 'none';
+            }
+        
+            console.log("Button visibility updated:", {
+                storyButton: storyButton.style.display,
+                continueButton: continueButton.style.display,
+                campButton: campButton.style.display
+            });
         }
-    } else if (gameState === 'storyComplete') {
-        // Story is complete, show the continue journey button
-        storyButton.style.display = 'inline-block';
-        continueButton.style.display = 'none';
-        campButton.style.display = 'none';
-    } else if (gameState === 'victory') {
-        // Victory screen, show continue journey and return to camp buttons
-        storyButton.style.display = 'none';
-        continueButton.style.display = 'inline-block';
-        campButton.style.display = 'inline-block';
-    } else {
-        // Default case, hide all buttons
-        storyButton.style.display = 'none';
-        continueButton.style.display = 'none';
-        campButton.style.display = 'none';
-    }
 
-    console.log("Button visibility updated:", {
-        storyButton: storyButton.style.display,
-        continueButton: continueButton.style.display,
-        campButton: campButton.style.display
-    });
-}
+        setInterval(ensureButtonVisibility, 5000); // Check every 5 seconds
 
-setInterval(ensureButtonVisibility, 5000); // Check every 5 seconds
-
-window.onerror = function(message, source, lineno, colno, error) {
+        window.onerror = function(message, source, lineno, colno, error) {
     console.error("An error occurred:", message, "at", source, ":", lineno);
     ensureButtonVisibility(); // Try to recover
     return false;
 };
 
-function buyTent(tentNumber, cost) {
-    if (player.campBank >= cost) {
-        player.campBank -= cost;
-        player.tents++;
-        console.log(`Bought tent ${tentNumber}. New tent count:`, player.tents);
-        document.getElementById(`${getTentNumberWord(tentNumber)}TentButton`).style.display = 'none';
-        if (tentNumber < 5) {
-            document.getElementById(`${getTentNumberWord(tentNumber + 1)}TentButton`).style.display = 'block';
+        function buyTent(tentNumber, cost) {
+            if (player.campBank >= cost) {
+                player.campBank -= cost;
+                player.tents++;
+                console.log(`Bought tent ${tentNumber}. New tent count:`, player.tents);
+                document.getElementById(`${getTentNumberWord(tentNumber)}TentButton`).style.display = 'none';
+                if (tentNumber < 5) {
+                    document.getElementById(`${getTentNumberWord(tentNumber + 1)}TentButton`).style.display = 'block';
+                }
+                
+                if (!duelEventsUnlocked) {
+                    duelEventsUnlocked = true;
+                    console.log("Duel events unlocked!");
+                    alert("You've unlocked Duel Events!");
+                }
+                
+                showCampScreen(); // Refresh the entire camp screen
+            } else {
+                alert("Not enough gold in the Camp Bank!");
+            }
         }
-        
-        if (!duelEventsUnlocked) {
-            duelEventsUnlocked = true;
-            console.log("Duel events unlocked!");
-            alert("You've unlocked Duel Events!");
+
+        function getTentNumberWord(number) {
+            const words = ['', 'second', 'third', 'fourth', 'fifth'];
+            return words[number - 1];
         }
-        
-        showCampScreen(); // Refresh the entire camp screen
-    } else {
-        alert("Not enough gold in the Camp Bank!");
-    }
-}
 
-function getTentNumberWord(number) {
-    const words = ['', 'second', 'third', 'fourth', 'fifth'];
-    return words[number - 1];
-}
+        function updateCampMessage() {
+            document.getElementById('campMessage').innerHTML = `Current Gold: ${player.gold}<br>Camp Bank: ${player.campBank} Gold<br>Tents: ${player.tents}`;
+        }
 
-function updateCampMessage() {
-    document.getElementById('campMessage').innerHTML = `Current Gold: ${player.gold}<br>Camp Bank: ${player.campBank} Gold<br>Tents: ${player.tents}`;
-}
+        function startDuelEvent() {
+            console.log("Starting duel event");
+            const classes = ['Warrior', 'Mage', 'Cleric', 'Rogue'];
+            const enemyClass = classes[Math.floor(Math.random() * classes.length)];
+            const enemy = createEnemyCharacter(enemyClass);
+            
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('gameButtons').style.display = 'none';
+            document.getElementById('duelEventScreen').style.display = 'block';
+            document.getElementById('duelText').innerHTML = `You've encountered a ${enemyClass} who challenges you to a duel!`;
+            document.getElementById('startDuelButton').onclick = () => startDuelBattle(enemy);
+        }
 
-function startDuelEvent() {
-    console.log("Starting duel event");
-    const classes = ['Warrior', 'Mage', 'Cleric', 'Rogue'];
-    const enemyClass = classes[Math.floor(Math.random() * classes.length)];
-    const enemy = createEnemyCharacter(enemyClass);
-    
-    document.getElementById('gameCanvas').style.display = 'none';
-    document.getElementById('gameButtons').style.display = 'none';
-    document.getElementById('duelEventScreen').style.display = 'block';
-    document.getElementById('duelText').innerHTML = `You've encountered a ${enemyClass} who challenges you to a duel!`;
-    document.getElementById('startDuelButton').onclick = () => startDuelBattle(enemy);
-}
+        function createEnemyCharacter(characterClass) {
+            const enemy = {
+                type: characterClass,  // Add this line
+                class: characterClass,
+                health: 50,
+                maxHealth: 50,
+                minDamage: 1,
+                maxDamage: 6,
+                specialSkill: getRandomSkill(characterClass),
+                specialAttackCooldown: 0  // Add this line
+            };
+            return enemy;
+        }
 
-function createEnemyCharacter(characterClass) {
-    const enemy = {
-        type: characterClass,  // Add this line
-        class: characterClass,
-        health: 50,
-        maxHealth: 50,
-        minDamage: 1,
-        maxDamage: 6,
-        specialSkill: getRandomSkill(characterClass),
-        specialAttackCooldown: 0  // Add this line
-    };
-    return enemy;
-}
+        function getRandomSkill(characterClass) {
+            // Return a random skill based on the character class
+            const skills = {
+                Warrior: ['DoubleAttack', 'StoneSkin', 'LifeAttack'],
+                Mage: ['Thunder', 'Fireball', 'HailStorm'],
+                Cleric: ['HolyLight', 'LifeTransfer', 'ShieldOfLight'],
+                Rogue: ['BlindShot', 'ToxicStab', 'PerfectParry']
+            };
+            return skills[characterClass][Math.floor(Math.random() * skills[characterClass].length)];
+        }
 
-function getRandomSkill(characterClass) {
-    // Return a random skill based on the character class
-    const skills = {
-        Warrior: ['DoubleAttack', 'StoneSkin', 'LifeAttack'],
-        Mage: ['Thunder', 'Fireball', 'HailStorm'],
-        Cleric: ['HolyLight', 'LifeTransfer', 'ShieldOfLight'],
-        Rogue: ['BlindShot', 'ToxicStab', 'PerfectParry']
-    };
-    return skills[characterClass][Math.floor(Math.random() * skills[characterClass].length)];
-}
-
-function startDuelBattle(enemy) {
+        function startDuelBattle(enemy) {
     console.log("Starting duel battle");
     currentBattleExpGained = 0;
     enemies = [enemy];
@@ -2856,7 +2842,7 @@ function startDuelBattle(enemy) {
     showPlayerTurnNotification();
 }
 
-function showDuelVictoryScreen() {
+        function showDuelVictoryScreen() {
     const victoryScreen = document.getElementById('duelVictoryScreen');
     victoryScreen.style.display = 'block';
     canvas.style.display = 'none';
@@ -2869,26 +2855,26 @@ function showDuelVictoryScreen() {
     updateLoadGameButton();
 }
 
-function recruitCharacter() {
-    if (player.recruitedCharacters === undefined) {
-        player.recruitedCharacters = [];
-    }
-    if (player.recruitedCharacters.length < player.tents - 1) {
-        player.recruitedCharacters.push(enemies[0]);
-        alert(`You've recruited the ${enemies[0].class}!`);
-        document.getElementById('recruitButton').style.display = 'none';
-    } else {
-        alert("You don't have enough tents to recruit this character!");
-    }
-}
+        function recruitCharacter() {
+            if (player.recruitedCharacters === undefined) {
+                player.recruitedCharacters = [];
+            }
+            if (player.recruitedCharacters.length < player.tents - 1) {
+                player.recruitedCharacters.push(enemies[0]);
+                alert(`You've recruited the ${enemies[0].class}!`);
+                document.getElementById('recruitButton').style.display = 'none';
+            } else {
+                alert("You don't have enough tents to recruit this character!");
+            }
+        }
 
-function continueDuelJourney() {
-    document.getElementById('duelVictoryScreen').style.display = 'none';
-    
-    continueJourney();
-}
+        function continueDuelJourney() {
+            document.getElementById('duelVictoryScreen').style.display = 'none';
+            
+            continueJourney();
+        }
 
-function useEnemySpecialSkill(enemy) {
+        function useEnemySpecialSkill(enemy) {
     console.log(`Enemy ${enemy.class} using special skill: ${enemy.specialSkill}`);
     switch(enemy.specialSkill) {
         // Warrior Skills
@@ -2984,17 +2970,17 @@ function useEnemySpecialSkill(enemy) {
     }
 }
 
-// Add this event listener
-canvas.addEventListener('touchend', handleTouch);
-
-function isPointInButton(x, y, buttonId) {
-    const button = document.getElementById(buttonId);
-    const rect = button.getBoundingClientRect();
-    return (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
-}
-
-// Only add touch listeners once
-canvas.addEventListener('touchend', handleTouch);
+        // Add this event listener
+        canvas.addEventListener('touchend', handleTouch);
+        
+        function isPointInButton(x, y, buttonId) {
+            const button = document.getElementById(buttonId);
+            const rect = button.getBoundingClientRect();
+            return (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
+        }
+        
+        // Only add touch listeners once
+        canvas.addEventListener('touchend', handleTouch);
         
         function resizeGame() {
     const gameContainer = document.getElementById('gameContainer');
@@ -3054,9 +3040,9 @@ canvas.addEventListener('touchend', handleTouch);
         }
 
         function isMobile() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-         || window.innerWidth <= 768;
-}
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                   || window.innerWidth <= 768;
+        }
         
         function saveGame() {
             const gameData = {
@@ -3153,101 +3139,101 @@ canvas.addEventListener('touchend', handleTouch);
         }
         
         function applyPoisonDamage() {
-    if (player.poisonCounter && player.poisonCounter > 0) {
-        const poisonDamage = player.poisonCounter;
-        player.health -= poisonDamage;
-        console.log(`Player takes ${poisonDamage} poison damage. Health reduced to ${player.health}`);
-        damageDisplay.player.damage += poisonDamage;
-        damageDisplay.player.x = 75;
-        damageDisplay.player.y = 150;
-        damageDisplay.player.alpha = 1;
-        player.poisonCounter++;
-        console.log(`Poison counter increased to ${player.poisonCounter}`);
-
-        if (player.health <= 0) {
-            console.log("Player died from poison");
-            gameState = 'defeat';
-            setTimeout(() => {
-                showDefeatScreen();
-            }, 1000);
-        }
-    }
-}
-
-function drawTurnIndicator() {
-    ctx.save();
+        if (player.poisonCounter && player.poisonCounter > 0) {
+            const poisonDamage = player.poisonCounter;
+            player.health -= poisonDamage;
+            console.log(`Player takes ${poisonDamage} poison damage. Health reduced to ${player.health}`);
+            damageDisplay.player.damage += poisonDamage;
+            damageDisplay.player.x = 75;
+            damageDisplay.player.y = 150;
+            damageDisplay.player.alpha = 1;
+            player.poisonCounter++;
+            console.log(`Poison counter increased to ${player.poisonCounter}`);
     
-    const text = gameState === 'playerTurn' ? "Player's Turn" : "Enemy Turn";
-    const fontSize = 24;
-    ctx.font = `bold ${fontSize}px Arial`;
-    
-    const textWidth = ctx.measureText(text).width;
-    const padding = 10;
-    const rectWidth = textWidth + padding * 2;
-    const rectHeight = fontSize + padding * 2;
-    
-    // Always position at the bottom center of the 800x500 game area
-    const rectX = (800 - rectWidth) / 2;
-    const rectY = 500 - rectHeight - 10; // 10px from the bottom
-    
-    ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
-    ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
-    
-    ctx.fillStyle = "white";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, 400, 500 - rectHeight / 2 - 10);
-    
-    ctx.restore();
-}
-
-function updateSpecialAttackButton() {
-    const specialAttackButton = document.getElementById('specialAttackButton');
-    if (player.specialSkill && player.specialSkillUnlocked) {
-        specialAttackButton.style.display = 'inline-block';
-        if (player.specialAttackCooldown > 0) {
-            specialAttackButton.textContent = `${player.specialSkill.name} (${player.specialAttackCooldown})`;
-            specialAttackButton.classList.remove('available');
-            specialAttackButton.classList.add('cooldown');
-            specialAttackButton.disabled = true;
-        } else {
-            specialAttackButton.textContent = player.specialSkill.name;
-            specialAttackButton.classList.add('available');
-            specialAttackButton.classList.remove('cooldown');
-            specialAttackButton.disabled = false;
-        }
-    } else {
-        specialAttackButton.style.display = 'none';
-    }
-}
-
-function updateButtonStates() {
-    const buttons = ['attackButton', 'defendButton', 'retreatButton', 'specialAttackButton'];
-    const isPlayerTurn = gameState === 'playerTurn';
-
-    buttons.forEach(buttonId => {
-        const button = document.getElementById(buttonId);
-        if (button) {
-            button.disabled = !isPlayerTurn;
-            
-            if (buttonId === 'specialAttackButton') {
-                if (isPlayerTurn && player.specialAttackCooldown === 0 && player.specialSkill) {
-                    button.classList.add('available');
-                    button.classList.remove('cooldown');
-                    button.disabled = false;
-                } else {
-                    button.classList.remove('available');
-                    if (player.specialAttackCooldown > 0) {
-                        button.classList.add('cooldown');
-                    }
-                    button.disabled = true;
-                }
+            if (player.health <= 0) {
+                console.log("Player died from poison");
+                gameState = 'defeat';
+                setTimeout(() => {
+                    showDefeatScreen();
+                }, 1000);
             }
         }
-    });
 }
 
-function updateShopButtons(isVictoryScreen = false) {
+        function drawTurnIndicator() {
+      ctx.save();
+      
+      const text = gameState === 'playerTurn' ? "Player's Turn" : "Enemy Turn";
+      const fontSize = 24;
+      ctx.font = `bold ${fontSize}px Arial`;
+      
+      const textWidth = ctx.measureText(text).width;
+      const padding = 10;
+      const rectWidth = textWidth + padding * 2;
+      const rectHeight = fontSize + padding * 2;
+      
+      // Always position at the bottom center of the 800x500 game area
+      const rectX = (800 - rectWidth) / 2;
+      const rectY = 500 - rectHeight - 10; // 10px from the bottom
+      
+      ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+      ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
+      
+      ctx.fillStyle = "white";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 400, 500 - rectHeight / 2 - 10);
+      
+      ctx.restore();
+  }
+  
+        function updateSpecialAttackButton() {
+      const specialAttackButton = document.getElementById('specialAttackButton');
+      if (player.specialSkill && player.specialSkillUnlocked) {
+          specialAttackButton.style.display = 'inline-block';
+          if (player.specialAttackCooldown > 0) {
+              specialAttackButton.textContent = `${player.specialSkill.name} (${player.specialAttackCooldown})`;
+              specialAttackButton.classList.remove('available');
+              specialAttackButton.classList.add('cooldown');
+              specialAttackButton.disabled = true;
+          } else {
+              specialAttackButton.textContent = player.specialSkill.name;
+              specialAttackButton.classList.add('available');
+              specialAttackButton.classList.remove('cooldown');
+              specialAttackButton.disabled = false;
+          }
+      } else {
+          specialAttackButton.style.display = 'none';
+      }
+  }
+  
+        function updateButtonStates() {
+      const buttons = ['attackButton', 'defendButton', 'retreatButton', 'specialAttackButton'];
+      const isPlayerTurn = gameState === 'playerTurn';
+  
+      buttons.forEach(buttonId => {
+          const button = document.getElementById(buttonId);
+          if (button) {
+              button.disabled = !isPlayerTurn;
+              
+              if (buttonId === 'specialAttackButton') {
+                  if (isPlayerTurn && player.specialAttackCooldown === 0 && player.specialSkill) {
+                      button.classList.add('available');
+                      button.classList.remove('cooldown');
+                      button.disabled = false;
+                  } else {
+                      button.classList.remove('available');
+                      if (player.specialAttackCooldown > 0) {
+                          button.classList.add('cooldown');
+                      }
+                      button.disabled = true;
+                  }
+              }
+          }
+      });
+  }
+  
+        function updateShopButtons(isVictoryScreen = false) {
     const buttons = [
         { id: isVictoryScreen ? 'healingPotionButton' : 'campHealingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion', description: 'Heal 25 HP' },
         { id: isVictoryScreen ? 'expBoosterButton' : 'campExpBoosterButton', item: 'expBooster', cost: 200, name: 'EXP Booster', description: 'Double the next XP gained' },
@@ -3259,100 +3245,115 @@ function updateShopButtons(isVictoryScreen = false) {
     buttons.forEach(button => {
         const element = document.getElementById(button.id);
         if (element) {
-            if (player.purchasedItems && player.purchasedItems[button.item]) {
-                element.disabled = true;
-                element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
+            if (isVictoryScreen) {
+                if (currentVictoryScreenPurchases[button.item]) {
+                    element.disabled = true;
+                    element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
+                } else {
+                    element.disabled = false;
+                    element.innerHTML = `
+                        <div class="button-content">
+                            <span class="item-name">Buy ${button.name}</span>
+                            <span class="gold-amount">${button.cost} Gold</span>
+                        </div>
+                    `;
+                    element.onclick = () => buyVictoryItem(button.item, button.cost, button.name);
+                }
             } else {
-                element.disabled = false;
-                element.innerHTML = `
-                    <div class="button-content">
-                        <span class="item-name">Buy ${button.name}</span>
-                        <span class="gold-amount">${button.cost} Gold</span>
-                    </div>
-                `;
-                element.onclick = isVictoryScreen ? 
-                    () => buyVictoryItem(button.item, button.cost, button.name) : 
-                    () => buyItemInCamp(button.item, button.cost, button.name);
+                // Camp shop logic remains unchanged
+                if (player.purchasedItems && player.purchasedItems[button.item]) {
+                    element.disabled = true;
+                    element.innerHTML = '<div class="button-content"><span class="item-name">Sold Out</span></div>';
+                } else {
+                    element.disabled = false;
+                    element.innerHTML = `
+                        <div class="button-content">
+                            <span class="item-name">Buy ${button.name}</span>
+                            <span class="gold-amount">${button.cost} Gold</span>
+                        </div>
+                    `;
+                    element.onclick = () => buyItemInCamp(button.item, button.cost, button.name);
+                }
             }
         }
     });
 }
-
-function handleMouseClick(event) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    let x, y;
-    if (event.type === 'touchstart') {
-      x = (event.touches[0].clientX - rect.left) * scaleX;
-      y = (event.touches[0].clientY - rect.top) * scaleY;
-    } else {
-      x = (event.clientX - rect.left) * scaleX;
-      y = (event.clientY - rect.top) * scaleY;
-    }
-    
-    // Check if click/touch is on an enemy
-    for (let i = 0; i < enemies.length; i++) {
-        const enemyX = 650;
-        const enemyY = 180 + (i * 130);
-        if (x >= enemyX && x <= enemyX + 50 && y >= enemyY && y <= enemyY + 50) {
-            selectedEnemyIndex = i;
-            drawGame(); // Redraw to show selection
-            return;
-        }
-    }
-}
-
-// Create mobile-friendly enemy selection overlay
-function createMobileEnemySelectionOverlay() {
-  const overlay = document.createElement('div');
-  overlay.id = 'mobileEnemySelectionOverlay';
-  overlay.style.position = 'absolute';
-  overlay.style.top = '0';
-  overlay.style.left = '0';
-  overlay.style.width = '100%';
-  overlay.style.height = '100%';
-  overlay.style.display = 'none'; // Initially hidden
   
-  enemies.forEach((enemy, index) => {
-    const button = document.createElement('div');
-    button.style.position = 'absolute';
-    button.style.left = '650px';
-    button.style.top = `${180 + (index * 130)}px`;
-    button.style.width = '50px';
-    button.style.height = '50px';
-    button.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-    button.style.border = '2px solid black';
-    button.style.borderRadius = '50%';
-    button.style.touchAction = 'manipulation';
+        function handleMouseClick(event) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      let x, y;
+      if (event.type === 'touchstart') {
+        x = (event.touches[0].clientX - rect.left) * scaleX;
+        y = (event.touches[0].clientY - rect.top) * scaleY;
+      } else {
+        x = (event.clientX - rect.left) * scaleX;
+        y = (event.clientY - rect.top) * scaleY;
+      }
+      
+      // Check if click/touch is on an enemy
+      for (let i = 0; i < enemies.length; i++) {
+          const enemyX = 650;
+          const enemyY = 180 + (i * 130);
+          if (x >= enemyX && x <= enemyX + 50 && y >= enemyY && y <= enemyY + 50) {
+              selectedEnemyIndex = i;
+              drawGame(); // Redraw to show selection
+              return;
+          }
+      }
+  }
+  
+  // Create mobile-friendly enemy selection overlay
+        function createMobileEnemySelectionOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'mobileEnemySelectionOverlay';
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.display = 'none'; // Initially hidden
     
-    button.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      selectedEnemyIndex = index;
-      drawGame();
+    enemies.forEach((enemy, index) => {
+      const button = document.createElement('div');
+      button.style.position = 'absolute';
+      button.style.left = '650px';
+      button.style.top = `${180 + (index * 130)}px`;
+      button.style.width = '50px';
+      button.style.height = '50px';
+      button.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+      button.style.border = '2px solid black';
+      button.style.borderRadius = '50%';
+      button.style.touchAction = 'manipulation';
+      
+      button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        selectedEnemyIndex = index;
+        drawGame();
+      });
+      
+      overlay.appendChild(button);
     });
     
-    overlay.appendChild(button);
-  });
+    document.body.appendChild(overlay);
+  }
   
-  document.body.appendChild(overlay);
-}
+  
+  canvas.addEventListener('click', handleMouseClick);
+  
+  // Call this function in drawGame and after each turn
+  
+  
+  			function addDeveloperGold() {
+  				player.gold += 1500;
+  				updateGoldMessage();
+  				updateVictoryScreenStats();
+  				alert("Added 1500 gold to the player!");
+  			}
 
-
-canvas.addEventListener('click', handleMouseClick);
-
-// Call this function in drawGame and after each turn
-
-
-			function addDeveloperGold() {
-				player.gold += 1500;
-				updateGoldMessage();
-				updateVictoryScreenStats();
-				alert("Added 1500 gold to the player!");
-			}
-
-document.getElementById('developerGoldButton').onclick = addDeveloperGold;
+        document.getElementById('developerGoldButton').onclick = addDeveloperGold;
 
         document.getElementById('loadGameButton').addEventListener('click', () => {
     loadGame();
@@ -3400,11 +3401,6 @@ document.getElementById('developerGoldButton').onclick = addDeveloperGold;
 
         // Add event listeners for main menu and gameplay buttons
         document.getElementById('startGameButton').addEventListener('click', () => startGame(true));
-        //document.getElementById('warriorButton').addEventListener('click', startBattle); // Start the game with Warrior
-        //document.getElementById('attackButton').addEventListener('click', playerAttack);
-        //document.getElementById('defendButton').addEventListener('click', playerDefend);
-        //document.getElementById('specialAttackButton').addEventListener('click', playerSpecialAttack);
-        //document.getElementById('retreatButton').addEventListener('click', playerRetreat);
         //document.getElementById('resetButton').addEventListener('click', developerReset); // Add event listener for reset button
 
         
