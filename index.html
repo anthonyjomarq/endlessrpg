@@ -93,11 +93,17 @@
     margin-top: 100px;
 }
 
-.character-sprite {
-  width: 50px;  /* Adjust as needed */
+.character-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.character-sprite-select {
+  width: 150px;  /* Adjust size as needed */
   height: auto;
-  vertical-align: middle;
-  margin-right: 10px;  /* Space between image and text */
+  margin-bottom: 10px;
 }
 
 
@@ -354,9 +360,10 @@
     <div id="characterSelectScreen">
         <h2>Select Your Character</h2>
         <button id="warriorButton">Warrior</button>
-        <button id="mageButton">Mage</button>
-        <img src="images/mage-sprite.png" alt="Mage" class="character-sprite">
-        </button>
+        <div class="character-option">
+          <img src="images/mage-sprite.png" alt="Mage" class="character-sprite-select">
+          <button id="mageButton">Mage</button>
+        </div>
         <button id="clericButton">Cleric</button>
         <button id="rogueButton">Rogue</button>
     </div>
@@ -827,7 +834,8 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     // Draw player
     if (player.class && characterSprites[player.class]) {
         const sprite = characterSprites[player.class];
-        ctx.drawImage(sprite, 50, 180, 50, 50);
+        const spriteSize = 100;  // Adjust this value to make the sprite larger
+        ctx.drawImage(sprite, 25, 155, spriteSize, spriteSize);
     } else {
         ctx.fillStyle = 'blue';
         ctx.fillRect(50, 180, 50, 50);
@@ -836,7 +844,7 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     if (player.class) {
         ctx.fillStyle = 'black';
         ctx.font = '16px Arial';
-        ctx.fillText(player.class, 50, 245);
+        ctx.fillText(player.class, 50, 260);
     }
     
     // Draw player status effects
