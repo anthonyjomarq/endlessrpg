@@ -834,8 +834,8 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
         const sprite = characterSprites[player.class];
         const spriteWidth = 153;  // Half of 306
         const spriteHeight = 196.5;  // Half of 393
-        const spriteX = 25;  // Adjust this value to move sprite horizontally
-        const spriteY = 180;  // Adjust this value to move sprite lower
+        const spriteX = 45;  // Adjust this value to move sprite horizontally
+        const spriteY = 130;  // Adjust this value to move sprite lower
         ctx.drawImage(sprite, spriteX, spriteY, spriteWidth, spriteHeight);
     } else {
         ctx.fillStyle = 'blue';
@@ -845,7 +845,7 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     if (player.class) {
         ctx.fillStyle = 'black';
         ctx.font = '16px Arial';
-        ctx.fillText(player.class, 80, 385);
+        ctx.fillText(player.class, 100, 335);
     }
     
     // Draw player status effects
@@ -926,16 +926,75 @@ if (enemies.length > 1) {
     });
 
     // Draw player stats
-    ctx.fillStyle = 'green';
-    ctx.fillRect(10, 10, (player.health / player.maxHealth) * 200, 20);
+    // Health bar
+const healthBarWidth = 200;
+const healthBarHeight = 20;
+const healthBarX = 10;
+const healthBarY = 10;
+const healthPercentage = player.health / player.maxHealth;
+
+// Background (red)
+ctx.fillStyle = 'red';
+ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+
+// Foreground (green)
+ctx.fillStyle = 'green';
+ctx.fillRect(healthBarX, healthBarY, healthBarWidth * healthPercentage, healthBarHeight);
+
+// Health text
+const healthText = `${player.health}/${player.maxHealth} HP`;
+ctx.font = '14px Arial';
+ctx.textAlign = 'left';
+const healthTextY = healthBarY + healthBarHeight / 4;
+
+// Measure text width
+const textWidth = ctx.measureText(healthText).width;
+const startX = healthBarX + (healthBarWidth - textWidth) / 2;
+
+// Draw each character with appropriate color
+for (let i = 0; i < healthText.length; i++) {
+    const char = healthText[i];
+    const charWidth = ctx.measureText(char).width;
+    const charX = startX + ctx.measureText(healthText.substring(0, i)).width;
+    const charCenterX = charX + charWidth / 2;
+
+    if (charCenterX <= healthBarX + healthBarWidth * healthPercentage) {
+        ctx.fillStyle = 'black';
+    } else {
+        ctx.fillStyle = 'white';
+    }
+
+    ctx.fillText(char, charX, healthTextY);
+}
+
+
+    ctx.textAlign = 'left';
+    ctx.font = '16px Arial';
+	ctx.fillStyle = 'black';
+	ctx.fillText(`Level: ${player.level}`, 10, 35);
+
+    // XP Progress Bar
+    const xpBarWidth = 200;
+    const xpBarHeight = 20;
+    const xpBarX = 10;
+    const xpBarY = 55;
+
+    ctx.fillStyle = 'grey';
+    ctx.fillRect(xpBarX, xpBarY, xpBarWidth, xpBarHeight);
+
+    const xpProgress = (player.experience / player.xpToNextLevel) * xpBarWidth;
+    ctx.fillStyle = 'lightgrey';
+    ctx.fillRect(xpBarX, xpBarY, xpProgress, xpBarHeight);
 
     ctx.fillStyle = 'black';
-    ctx.font = '20px Arial';
-    ctx.fillText(`Player Health: ${player.health}`, 10, 50);
-    ctx.fillText(`Player Level: ${player.level}`, 10, 80);
-    ctx.fillText(`Player XP: ${player.experience}/${player.xpToNextLevel}`, 10, 110);
-    ctx.fillText(`Gold: ${player.gold}`, 10, 140);
-    ctx.fillText(`Camp Bank: ${player.campBank} Gold`, 10, 470);
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${player.experience}/${player.xpToNextLevel} XP`, xpBarX + xpBarWidth / 2, xpBarY + xpBarHeight / 4);
+
+    ctx.textAlign = 'left';
+	ctx.font = '16px Arial';
+    ctx.fillText(`Gold: ${player.gold}`, 10, 80);
+	    ctx.fillText(`Camp Bank: ${player.campBank} Gold`, 10, 470);
 
     displayDamage();
     updateSpecialAttackButton();
