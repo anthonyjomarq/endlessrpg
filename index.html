@@ -93,11 +93,17 @@
     margin-top: 100px;
 }
 
+.character-options {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+}
+
 .character-option {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 20px;
+  margin: 10px;
 }
 
 .character-sprite-select {
@@ -105,7 +111,6 @@
   height: auto;
   margin-bottom: 10px;
 }
-
 
 
 #shop {
@@ -358,15 +363,26 @@
         <button id="loadGameButton">Load Game</button>
     </div>
     <div id="characterSelectScreen">
-        <h2>Select Your Character</h2>
-        <button id="warriorButton">Warrior</button>
-        <div class="character-option">
-          <img src="images/mage-sprite.png" alt="Mage" class="character-sprite-select">
-          <button id="mageButton">Mage</button>
-        </div>
-        <button id="clericButton">Cleric</button>
-        <button id="rogueButton">Rogue</button>
+  <h2>Select Your Character</h2>
+  <div class="character-options">
+    <div class="character-option">
+      <img src="images/warrior-sprite.png" alt="Warrior" class="character-sprite-select">
+      <button id="warriorButton">Warrior</button>
     </div>
+    <div class="character-option">
+      <img src="images/mage-sprite.png" alt="Mage" class="character-sprite-select">
+      <button id="mageButton">Mage</button>
+    </div>
+    <div class="character-option">
+      <img src="images/cleric-sprite.png" alt="Cleric" class="character-sprite-select">
+      <button id="clericButton">Cleric</button>
+    </div>
+    <div class="character-option">
+      <img src="images/rogue-sprite.png" alt="Rogue" class="character-sprite-select">
+      <button id="rogueButton">Rogue</button>
+    </div>
+  </div>
+</div>
     <div id="gameContainer">
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     <div id="characterSprite"></div>
@@ -777,17 +793,7 @@ player.purchasedItems = {
     document.getElementById('gameCanvas').style.display = 'block';
     document.getElementById('gameButtons').style.display = 'flex';
     
-    // Add sprite display logic
-    const characterSprite = document.getElementById('characterSprite');
-    if (player.class === 'Mage') {
-        characterSprite.innerHTML = '<img src="images/mage-sprite.png" alt="Mage" class="character-sprite">';
-        characterSprite.style.display = 'block';
-    } else {
-        characterSprite.innerHTML = '';
-        characterSprite.style.display = 'none';
-    }
-    
-    // Update the special attack button
+       // Update the special attack button
     //updateSpecialAttackButton();
     
     currentBattleExpGained = 0;
@@ -806,7 +812,6 @@ player.purchasedItems = {
 // Modify the event listeners for character selection buttons
 document.getElementById('warriorButton').addEventListener('click', () => startBattle('Warrior'));
 document.getElementById('mageButton').addEventListener('click', () => {
-    selectCharacter('Mage');
     startBattle('Mage');
 });
 document.getElementById('clericButton').addEventListener('click', () => startBattle('Cleric'));
@@ -814,13 +819,6 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
 
         let lastPoisonStatus = null;
         
-        function selectCharacter(character) {
-    if (character === 'Mage') {
-        document.getElementById('characterSprite').innerHTML = '<img src="images/mage-sprite.png" alt="Mage" class="character-sprite">';
-    } else {
-        document.getElementById('characterSprite').innerHTML = '';
-    }
-}
 
     function drawGame() {
     const canvas = document.getElementById('gameCanvas');
@@ -834,8 +832,11 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     // Draw player
     if (player.class && characterSprites[player.class]) {
         const sprite = characterSprites[player.class];
-        const spriteSize = 100;  // Adjust this value to make the sprite larger
-        ctx.drawImage(sprite, 25, 155, spriteSize, spriteSize);
+        const spriteWidth = 153;  // Half of 306
+        const spriteHeight = 196.5;  // Half of 393
+        const spriteX = 25;  // Adjust this value to move sprite horizontally
+        const spriteY = 180;  // Adjust this value to move sprite lower
+        ctx.drawImage(sprite, spriteX, spriteY, spriteWidth, spriteHeight);
     } else {
         ctx.fillStyle = 'blue';
         ctx.fillRect(50, 180, 50, 50);
@@ -844,7 +845,7 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     if (player.class) {
         ctx.fillStyle = 'black';
         ctx.font = '16px Arial';
-        ctx.fillText(player.class, 50, 260);
+        ctx.fillText(player.class, 80, 385);
     }
     
     // Draw player status effects
@@ -3424,6 +3425,9 @@ if (enemies.length > 1) {
         };
 
         window.addEventListener('resize', resizeGame);
+        document.querySelectorAll('img').forEach(img => {
+    console.log('Image found:', img.src, img.parentElement);
+});
 
         // In-game skill buttons
         document.getElementById('thunderButton').addEventListener('click', () => selectSpecialSkill('Thunder'));
