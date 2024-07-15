@@ -538,9 +538,30 @@
     <button id="storeGoldButton">Store All Gold</button>
     <p id="campMessage"></p>
     <div id="tentSquares">
-        <div id="playerTentsRow" class="tentRow"></div>
-        <div id="commercialTentsRow" class="tentRow"></div>
+    <div id="playerTentsRow" class="tentRow">
+        <div id="tent1" class="tent">
+            <strong>Tent 1</strong><br>
+            <span class="tent-occupant">Player</span>
+        </div>
+        <div id="tent2" class="tent" style="display: none;">
+            <strong>Tent 2</strong><br>
+            <span class="tent-occupant">Empty</span>
+        </div>
+        <div id="tent3" class="tent" style="display: none;">
+            <strong>Tent 3</strong><br>
+            <span class="tent-occupant">Empty</span>
+        </div>
+        <div id="tent4" class="tent" style="display: none;">
+            <strong>Tent 4</strong><br>
+            <span class="tent-occupant">Empty</span>
+        </div>
+        <div id="tent5" class="tent" style="display: none;">
+            <strong>Tent 5</strong><br>
+            <span class="tent-occupant">Empty</span>
+        </div>
     </div>
+    <div id="commercialTentsRow" class="tentRow"></div>
+</div>
     <div id="tentUpgrades">
         <button id="secondTentButton" class="tentButton">Buy Second Tent (1500 Gold)</button>
         <button id="thirdTentButton" class="tentButton" style="display: none;">Buy Third Tent (2000 Gold)</button>
@@ -618,6 +639,7 @@
     healthGain: 0,
     minDamageGain: 0,
     maxDamageGain: 0,
+	recruitedCharacters: [],
     tents: 1,
     poisonCounter: 0
     
@@ -1362,7 +1384,9 @@ function drawPlayer(ctx) {
         function checkEnemyDefeat() {
     if (enemies[selectedEnemyIndex].health <= 0) {
         let defeatedEnemyXP = 0;
-        if (enemies[selectedEnemyIndex].class) {  // Check for .class property to identify duel enemies
+        const isDuelEnemy = enemies[selectedEnemyIndex].class != null;
+
+        if (isDuelEnemy) {
             // This is a duel enemy
             defeatedEnemyXP = 20; // Set a fixed XP for duel enemies, or calculate based on level
         } else {
@@ -1370,15 +1394,17 @@ function drawPlayer(ctx) {
             const enemyType = enemyTypes.find(type => type.type === enemies[selectedEnemyIndex].type);
             defeatedEnemyXP = enemyType ? enemyType.xp : 0;
         }
+
         currentBattleExpGained += defeatedEnemyXP;
-        enemies.splice(selectedEnemyIndex, 1);
+        const defeatedEnemy = enemies.splice(selectedEnemyIndex, 1)[0];
         resetDamageDisplay();
         selectedEnemyIndex = 0;
+
         if (enemies.length === 0) {
-            if (enemies[0] && enemies[0].class) {  // Check if it was a duel
+            if (isDuelEnemy) {
                 gameState = 'duelVictory';
                 clearNotification();
-                showDuelVictoryScreen();
+                showDuelVictoryScreen(defeatedEnemy);
             } else {
                 gameState = 'victory';
                 clearNotification();
@@ -1761,9 +1787,19 @@ function drawPlayer(ctx) {
         }
 
         function showCampScreen() {
+    if (!player.tents) {
+        player.tents = 1;
+    }
+    if (!player.recruitedCharacters) {
+        player.recruitedCharacters = [];
+    }
+
     hideDuelEventScreen();
     hideVictoryScreen();
     hideStoryEventScreen();
+    updateCampScreen();
+    updateCampBankDisplay();
+	logButtonStates();
     canvas.style.display = 'none';
     document.getElementById('gameButtons').style.display = 'none';
     
@@ -1773,6 +1809,8 @@ function drawPlayer(ctx) {
     
     updatePlayerTents();
     updateCommercialTents();
+	updateTentButtons();
+	updateTentButtonStates();
     
     // Update merchant tent button visibility
     const merchantTentButton = document.getElementById('merchantTentButton');
@@ -1797,6 +1835,8 @@ function drawPlayer(ctx) {
     updateCampMessage();
     updateTentButtons();
     updateCampShopButtons();
+
+    console.log("Camp screen updated. Player tents:", player.tents, "Recruited characters:", player.recruitedCharacters);
 }
 
         function updateVictoryShopButtons() {
@@ -1834,46 +1874,64 @@ function drawPlayer(ctx) {
 }
         
         function updatePlayerTents() {
-            const playerTentsRow = document.getElementById('playerTentsRow');
-            playerTentsRow.innerHTML = ''; // Clear existing tents
-            
-            for (let i = 0; i < player.tents; i++) {
-                const tentSquare = createTentSquare(i === 0 ? 'Player Tent' : `Tent ${i + 1}`);
-                playerTentsRow.appendChild(tentSquare);
-            }
+    const playerTentsRow = document.getElementById('playerTentsRow');
+    if (!playerTentsRow) {
+        console.error("playerTentsRow not found");
+        return;
+    }
+
+    // Clear existing tents
+    playerTentsRow.innerHTML = '';
+
+    // Create and update all tents
+    for (let i = 1; i <= player.tents; i++) {
+        const tentElement = createTentElement(i);
+        playerTentsRow.appendChild(tentElement);
+
+        if (i === 1) {
+            updateTentContent(tentElement, player.class);
+        } else if (i <= player.recruitedCharacters.length + 1) {
+            updateTentContent(tentElement, player.recruitedCharacters[i-2].class);
+        } else {
+            updateTentContent(tentElement, 'Empty');
         }
+    }
+}
         
         function updateCommercialTents() {
-            const commercialTentsRow = document.getElementById('commercialTentsRow');
-            commercialTentsRow.innerHTML = ''; // Clear existing tents
-            
-            if (player.merchantTent) {
-                const merchantTentSquare = createTentSquare('Merchant Tent');
-                commercialTentsRow.appendChild(merchantTentSquare);
-            }
-        }
+    const commercialTentsRow = document.getElementById('commercialTentsRow');
+    if (!commercialTentsRow) {
+        console.error("commercialTentsRow not found");
+        return;
+    }
+
+    // Clear existing tents
+    commercialTentsRow.innerHTML = '';
+    
+    if (player.merchantTent) {
+        const merchantTentElement = createTentElement('Merchant');
+        updateTentContent(merchantTentElement, 'Merchant');
+        commercialTentsRow.appendChild(merchantTentElement);
+    }
+}
         
-        function createTentSquare(text) {
-            const tentSquare = document.createElement('div');
-            tentSquare.className = 'tentSquare';
-            tentSquare.textContent = text;
-            return tentSquare;
-        }
-        
-        function buyMerchantTent() {
-            if (player.campBank >= 1000) {
-                player.campBank -= 1000;
-                player.merchantTent = true;
-                const merchantTentButton = document.getElementById('merchantTentButton');
-                if (merchantTentButton) {
-                    merchantTentButton.style.display = 'none';
-                }
-                showCampScreen(); // Refresh the entire camp screen
-                showShopInCamp(); // Show the shop
-            } else {
-                alert("Not enough gold in the Camp Bank!");
-            }
-        }
+       function createTentElement(number) {
+    const tent = document.createElement('div');
+    tent.id = number === 'Merchant' ? 'merchantTent' : `tent${number}`;
+    tent.className = 'tent';
+    tent.innerHTML = `
+        <strong>${number === 'Merchant' ? 'Merchant Tent' : `Tent ${number}`}</strong><br>
+        <span class="tent-occupant">Empty</span>
+    `;
+    // Add any CSS styles here to make it look like a square
+    tent.style.width = '100px';
+    tent.style.height = '100px';
+    tent.style.border = '2px solid black';
+    tent.style.display = 'inline-block';
+    tent.style.margin = '5px';
+    tent.style.padding = '5px';
+    return tent;
+}
         
         function showShopInCamp() {
     if (player.merchantTent) {
@@ -1986,18 +2044,26 @@ function drawPlayer(ctx) {
         }
         
         function updateTentButtons() {
-            console.log("Updating tent buttons. Player tents:", player.tents);
-            const tentCosts = [1500, 2000, 2500, 3000];
-            for (let i = 2; i <= 5; i++) {
-                const button = document.getElementById(`${getTentNumberWord(i)}TentButton`);
-                if (i === player.tents + 1) {
-                    button.style.display = 'block';
-                    button.disabled = player.campBank < tentCosts[i - 2];
-                } else {
-                    button.style.display = 'none';
-                }
+    const tentWords = ['second', 'third', 'fourth', 'fifth'];
+    tentWords.forEach((tentWord, index) => {
+        const button = document.getElementById(`${tentWord}TentButton`);
+        if (button) {
+            if (index + 2 === player.tents + 1 && player.tents < 5) {
+                button.style.display = 'block';
+            } else if (button.style.display === 'block') {
+                button.style.display = 'none';
             }
+            // If the button is already hidden, we don't change its display property
         }
+    });
+}
+
+function logButtonStates() {
+    ['second', 'third', 'fourth', 'fifth'].forEach(tentWord => {
+        const button = document.getElementById(`${tentWord}TentButton`);
+        console.log(`${tentWord} tent button display: ${button ? button.style.display : 'element not found'}`);
+    });
+}
 
         function getEventType() {
             const eventRoll = Math.random();
@@ -2029,11 +2095,16 @@ function drawPlayer(ctx) {
 		}
 
         function storeGoldInCamp() {
-            player.campBank += player.gold;
-            player.gold = 0;
-            updateCampMessage();
-            updateTentButtons();
-        }
+    if (player.gold > 0) {
+        player.campBank += player.gold;
+        player.gold = 0;
+        updateCampBankDisplay();
+        updateTentButtonStates(); // Add this line
+        updateCampMessage("All gold stored in Camp Bank!");
+    } else {
+        updateCampMessage("You have no gold to store.");
+    }
+}
 
         function hideVictoryScreen() {
 			document.getElementById('gameVictoryScreen').style.display = 'none';
@@ -2988,31 +3059,114 @@ function drawPlayer(ctx) {
 };
 
         function buyTent(tentNumber, cost) {
-            if (player.campBank >= cost) {
-                player.campBank -= cost;
-                player.tents++;
-                console.log(`Bought tent ${tentNumber}. New tent count:`, player.tents);
-                document.getElementById(`${getTentNumberWord(tentNumber)}TentButton`).style.display = 'none';
-                if (tentNumber < 5) {
-                    document.getElementById(`${getTentNumberWord(tentNumber + 1)}TentButton`).style.display = 'block';
-                }
-                
-                if (!duelEventsUnlocked) {
-                    duelEventsUnlocked = true;
-                    console.log("Duel events unlocked!");
-                    alert("You've unlocked Duel Events!");
-                }
-                
-                showCampScreen(); // Refresh the entire camp screen
-            } else {
-                alert("Not enough gold in the Camp Bank!");
-            }
+    if (player.campBank >= cost) {
+        player.campBank -= cost;
+        player.tents++;
+        console.log(`Bought tent ${tentNumber}. New tent count:`, player.tents);
+		updateCampMessage();
+        
+        // Hide all tent buttons first
+        ['second', 'third', 'fourth', 'fifth'].forEach(tentWord => {
+            const button = document.getElementById(`${tentWord}TentButton`);
+            if (button) button.style.display = 'none';
+        });
+        
+        // Show only the next buy button if applicable
+        if (player.tents < 5) {
+            const nextButtonWord = getTentNumberWord(player.tents + 1);
+            const nextButton = document.getElementById(`${nextButtonWord}TentButton`);
+            if (nextButton) nextButton.style.display = 'block';
         }
+        
+        if (!duelEventsUnlocked) {
+            duelEventsUnlocked = true;
+            console.log("Duel events unlocked!");
+            alert("You've unlocked Duel Events!");
+        }
+        
+        // Update the camp screen without affecting button visibility
+        updatePlayerTents();
+        updateCommercialTents();
+        updateCampBankDisplay();
+		updateTentButtonStates();
+		logButtonStates();
+    } else {
+        alert("Not enough gold in the Camp Bank!");
+    }
+}
+
+function updateCampBankDisplay() {
+    const campBankDisplay = document.getElementById('campBankDisplay');
+    if (campBankDisplay) {
+        campBankDisplay.textContent = `Camp Bank: ${player.campBank} Gold`;
+    } else {
+        console.warn('Camp bank display element not found');
+    }
+}
 
         function getTentNumberWord(number) {
-            const words = ['', 'second', 'third', 'fourth', 'fifth'];
-            return words[number - 1];
+    const words = ['', 'second', 'third', 'fourth', 'fifth'];
+    return words[number - 1] || '';
+}
+
+function buyMerchantTent() {
+    const merchantTentCost = 1000;
+    if (player.campBank >= merchantTentCost) {
+        player.campBank -= merchantTentCost;
+        player.merchantTent = true;
+        
+        // Hide merchant tent button
+        const merchantTentButton = document.getElementById('merchantTentButton');
+        if (merchantTentButton) {
+            merchantTentButton.style.display = 'none';
         }
+        
+        // Update camp bank display
+        updateCampBankDisplay();
+		
+		updateCampMessage();
+        
+        // Update commercial tents (to show the new merchant tent)
+        updateCommercialTents();
+        
+        // Show the shop
+        showShopInCamp();
+        
+        // Update tent button states without changing their visibility
+        updateTentButtonStates();
+        
+        alert("You've purchased the Merchant Tent!");
+    } else {
+        alert("Not enough gold in the Camp Bank!");
+    }
+}
+
+function updateTentButtonStates() {
+    const tentCosts = [1500, 2000, 2500, 3000]; // Costs for 2nd, 3rd, 4th, and 5th tents
+    const tentWords = ['second', 'third', 'fourth', 'fifth'];
+    
+    for (let i = 0; i < tentWords.length; i++) {
+        const button = document.getElementById(`${tentWords[i]}TentButton`);
+        if (button) {
+            const isVisible = button.style.display !== 'none';
+            const canAfford = player.campBank >= tentCosts[i];
+            button.disabled = !canAfford;
+            if (isVisible) {
+                button.textContent = `Buy ${tentWords[i].charAt(0).toUpperCase() + tentWords[i].slice(1)} Tent (${tentCosts[i]} Gold)`;
+                button.style.opacity = canAfford ? '1' : '0.5';
+            }
+        }
+    }
+    
+    // Update merchant tent button
+    const merchantButton = document.getElementById('merchantTentButton');
+    if (merchantButton && !player.merchantTent) {
+        const canAffordMerchant = player.campBank >= 1000;
+        merchantButton.disabled = !canAffordMerchant;
+        merchantButton.textContent = `Buy Merchant Tent (1000 Gold)`;
+        merchantButton.style.opacity = canAffordMerchant ? '1' : '0.5';
+    }
+}
 
         function updateCampMessage() {
             document.getElementById('campMessage').innerHTML = `Current Gold: ${player.gold}<br>Camp Bank: ${player.campBank} Gold<br>Tents: ${player.tents}`;
@@ -3076,31 +3230,172 @@ function drawPlayer(ctx) {
     showPlayerTurnNotification();
 }
 
-        function showDuelVictoryScreen() {
+        function showDuelVictoryScreen(defeatedEnemy) {
+    console.log("Showing duel victory screen");
     const victoryScreen = document.getElementById('duelVictoryScreen');
     victoryScreen.style.display = 'block';
-    canvas.style.display = 'none';
+    
+    // Hide other elements
+    document.getElementById('gameContainer').style.display = 'none';
     document.getElementById('gameButtons').style.display = 'none';
+    
+    // Set victory message
+    document.getElementById('duelVictoryMessage').textContent = `You've defeated the ${defeatedEnemy.class}!`;
+    
+    // Initialize recruitedCharacters if it doesn't exist
+    if (!player.recruitedCharacters) {
+        player.recruitedCharacters = [];
+    }
 
-    document.getElementById('duelVictoryMessage').innerHTML = `You've defeated the ${enemies[0].class}!`;
-    document.getElementById('recruitButton').onclick = recruitCharacter;
+    // Show recruit button only if there's an empty tent available
+    const recruitButton = document.getElementById('recruitButton');
+    if (player.recruitedCharacters.length < (player.tents - 1)) {
+        recruitButton.style.display = 'inline-block';
+        recruitButton.disabled = false;
+        recruitButton.onclick = () => recruitCharacter(defeatedEnemy);
+    } else {
+        recruitButton.style.display = 'none';
+    }
+    
     document.getElementById('continueDuelJourneyButton').onclick = continueDuelJourney;
+    
+    console.log("Recruit button display:", recruitButton.style.display);
+    
     autoSave();
     updateLoadGameButton();
 }
 
-        function recruitCharacter() {
-            if (player.recruitedCharacters === undefined) {
-                player.recruitedCharacters = [];
-            }
-            if (player.recruitedCharacters.length < player.tents - 1) {
-                player.recruitedCharacters.push(enemies[0]);
-                alert(`You've recruited the ${enemies[0].class}!`);
-                document.getElementById('recruitButton').style.display = 'none';
-            } else {
-                alert("You don't have enough tents to recruit this character!");
-            }
+        function recruitCharacter(defeatedEnemy) {
+    console.log("Recruit character function called");
+    if (!player.recruitedCharacters) {
+        player.recruitedCharacters = [];
+    }
+    
+    // Check if there's an empty tent available
+    if (player.recruitedCharacters.length < (player.tents - 1)) {
+        player.recruitedCharacters.push({class: defeatedEnemy.class});
+        alert(`You've recruited the ${defeatedEnemy.class}!`);
+        document.getElementById('recruitButton').style.display = 'none';
+        updatePlayerTents(); // Update the player tents
+        console.log("Recruited character:", defeatedEnemy.class);
+        console.log("Current recruited characters:", player.recruitedCharacters);
+    } else {
+        alert("You don't have enough empty tents to recruit this character! Buy more tents to recruit more characters.");
+        document.getElementById('recruitButton').style.display = 'none';
+    }
+}
+
+function updateCampScreen() {
+    console.log("Updating camp screen");
+    console.log("Player class:", player.class);
+    console.log("Recruited characters:", player.recruitedCharacters);
+    console.log("Total tents:", player.tents);
+
+    const playerTentsRow = document.getElementById('playerTentsRow');
+    if (!playerTentsRow) {
+        console.error("playerTentsRow not found");
+        return;
+    }
+
+    // Clear existing tents
+    playerTentsRow.innerHTML = '';
+
+    // Ensure recruitedCharacters is initialized
+    if (!player.recruitedCharacters) {
+        player.recruitedCharacters = [];
+    }
+
+    // Create and update all tents
+    for (let i = 1; i <= player.tents; i++) {
+        const tentElement = createTentElement(i);
+        playerTentsRow.appendChild(tentElement);
+
+        if (i === 1) {
+            updateTentContent(i, player.class);
+        } else if (i <= player.recruitedCharacters.length + 1) {
+            updateTentContent(i, player.recruitedCharacters[i-2].class);
+        } else {
+            updateTentContent(i, 'Empty');
         }
+    }
+
+    // Update merchant tent separately
+    updateMerchantTent();
+
+    // Update tent purchase buttons
+    updateTentPurchaseButtons();
+
+    // Update camp bank display
+    updateCampBankDisplay();
+}
+
+function updateTentPurchaseButtons() {
+    for (let i = 2; i <= 5; i++) {
+        const tentButton = document.getElementById(`${getTentNumberWord(i)}TentButton`);
+        if (tentButton) {
+            tentButton.style.display = i <= player.tents ? 'none' : 'block';
+        }
+    }
+}
+
+function updateCampBankDisplay() {
+    const campBankDisplay = document.getElementById('campBankDisplay');
+    if (campBankDisplay) {
+        campBankDisplay.textContent = `Camp Bank: ${player.campBank} Gold`;
+    } else {
+        console.warn('Camp bank display element not found');
+    }
+}
+
+function createTentElement(number) {
+    const tent = document.createElement('div');
+    tent.id = `tent${number}`;
+    tent.className = 'tent';
+    tent.innerHTML = `
+        <strong>Tent ${number}</strong><br>
+        <span class="tent-occupant">Empty</span>
+    `;
+    // Add any CSS styles here to make it look like a square
+    tent.style.width = '100px';
+    tent.style.height = '100px';
+    tent.style.border = '2px solid black';
+    tent.style.display = 'inline-block';
+    tent.style.margin = '5px';
+    tent.style.padding = '5px';
+    return tent;
+}
+
+function updateTentContent(tentElementOrNumber, occupant) {
+    let tentElement;
+    if (typeof tentElementOrNumber === 'number') {
+        tentElement = document.getElementById(`tent${tentElementOrNumber}`);
+    } else if (tentElementOrNumber === 'Merchant') {
+        tentElement = document.getElementById('merchantTent');
+    } else {
+        tentElement = tentElementOrNumber;
+    }
+
+    if (tentElement) {
+        const occupantElement = tentElement.querySelector('.tent-occupant');
+        if (occupantElement) {
+            occupantElement.textContent = occupant;
+        }
+    } else {
+        console.warn(`Tent element not found for ${tentElementOrNumber}`);
+    }
+}
+
+function updateMerchantTent() {
+    const commercialTentsRow = document.getElementById('commercialTentsRow');
+    if (commercialTentsRow) {
+        commercialTentsRow.innerHTML = '';
+        if (player.merchantTent) {
+            const merchantTent = createTentElement('Merchant');
+            merchantTent.querySelector('.tent-occupant').textContent = 'Merchant';
+            commercialTentsRow.appendChild(merchantTent);
+        }
+    }
+}
 
         function continueDuelJourney() {
             document.getElementById('duelVictoryScreen').style.display = 'none';
@@ -3279,22 +3574,24 @@ function drawPlayer(ctx) {
         }
         
         function saveGame() {
-            const gameData = {
-                player: {
-                    ...player,
-                    specialSkill: player.specialSkill ? { name: player.specialSkill.name } : null,
-                    merchantTent: player.merchantTent
-                },
-                enemies: enemies,
-                gameState: gameState,
-                currentStory: currentStory,
-                treantEncountered: treantEncountered,
-                duelEventsUnlocked: duelEventsUnlocked
-            };
-            localStorage.setItem('rpgGameSave', JSON.stringify(gameData));
-            console.log('Game saved successfully!');
-            updateLoadGameButton();
-        }
+    const gameData = {
+        player: {
+            ...player,
+            specialSkill: player.specialSkill ? { name: player.specialSkill.name } : null,
+            merchantTent: player.merchantTent,
+            recruitedCharacters: player.recruitedCharacters || [],
+            tents: player.tents || 1
+        },
+        enemies: enemies,
+        gameState: gameState,
+        currentStory: currentStory,
+        treantEncountered: treantEncountered,
+        duelEventsUnlocked: duelEventsUnlocked
+    };
+    localStorage.setItem('rpgGameSave', JSON.stringify(gameData));
+    console.log('Game saved successfully!');
+    updateLoadGameButton();
+}
         
         function loadGame() {
     const savedGame = localStorage.getItem('rpgGameSave');
@@ -3307,6 +3604,11 @@ function drawPlayer(ctx) {
         treantEncountered = gameData.treantEncountered;
         duelEventsUnlocked = gameData.duelEventsUnlocked;
 
+        // Ensure recruitedCharacters is initialized
+        if (!player.recruitedCharacters) {
+            player.recruitedCharacters = [];
+        }
+
         // Reconstruct the special skill
         if (player.specialSkill) {
             setupClassSkills();
@@ -3315,9 +3617,7 @@ function drawPlayer(ctx) {
 
         setupGameAfterLoad();
         startGame(false); // Call startGame with isNewGame set to false
-
-        // Show camp screen after loading (this will also show the shop if merchant tent is purchased)
-        showCampScreen();
+        updateCampScreen(); // Update the camp screen
     } else {
         alert('No saved game found!');
     }
