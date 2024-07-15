@@ -2079,7 +2079,7 @@ function logButtonStates() {
                 }
             } else {
                 // Duel events locked
-                if (eventRoll < 0.85) {
+                if (eventRoll < 0.50) {
                     return 'battle';
                 } else {
                     return 'story';
@@ -2664,25 +2664,52 @@ function logButtonStates() {
         }
 
         function showFinalContinueButton() {
-            console.log("Executing showFinalContinueButton");
-            updateStoryScreenStats(); // Update stats on story screen
-            document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
-            document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
-            document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
-            
-            inStoryEvent = false; // Story event is now over
-            gameState = 'storyComplete'; // Set game state to storyComplete
-            
-            // Ensure the button is clickable
-            const continueButton = document.getElementById('continueJourneyFromStoryButton');
-            continueButton.onclick = continueJourneyFromStory;
-            
-            console.log("Continue journey button should now be visible");
-            
-            ensureButtonVisibility(); // Update button visibility
-            autoSave();
-            updateLoadGameButton();
-        }
+    console.log("Executing showFinalContinueButton");
+    updateStoryScreenStats(); // Update stats on story screen
+    document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
+    document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
+    document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
+
+    inStoryEvent = false; // Story event is now over
+    gameState = 'storyComplete'; // Set game state to storyComplete
+
+    // Create a container for the buttons if it doesn't exist
+    let buttonContainer = document.getElementById('storyFinalButtons');
+    if (!buttonContainer) {
+        buttonContainer = document.createElement('div');
+        buttonContainer.id = 'storyFinalButtons';
+        document.getElementById('storyEventScreen').appendChild(buttonContainer);
+    }
+    buttonContainer.style.display = 'block';
+
+    // Ensure the continue journey button is present and clickable
+    let continueButton = document.getElementById('continueJourneyFromStoryButton');
+    if (!continueButton) {
+        continueButton = document.createElement('button');
+        continueButton.id = 'continueJourneyFromStoryButton';
+        continueButton.textContent = 'Continue Journey';
+        buttonContainer.appendChild(continueButton);
+    }
+    continueButton.onclick = continueJourneyFromStory;
+    continueButton.style.display = 'inline-block';
+
+    // Add or show the Return to Camp button
+    let campButton = document.getElementById('returnToCampFromStoryButton');
+    if (!campButton) {
+        campButton = document.createElement('button');
+        campButton.id = 'returnToCampFromStoryButton';
+        campButton.textContent = 'Return to Camp';
+        buttonContainer.appendChild(campButton);
+    }
+    campButton.onclick = returnToCampFromStory;
+    campButton.style.display = 'inline-block';
+
+    console.log("Continue journey and Return to Camp buttons should now be visible");
+
+    ensureButtonVisibility(); // Update button visibility
+    autoSave();
+    updateLoadGameButton();
+}
 
         function startTreantBattle() {
             console.log("Executing startTreantBattle");
@@ -2704,21 +2731,34 @@ function logButtonStates() {
 		}
         
         function continueJourneyFromStory() {
-            console.log("Executing continueJourneyFromStory");
-            hideStoryEventScreen();
-            inStoryEvent = false;
-            gameState = 'exploring'; // Set game state to exploring
-            ensureButtonVisibility(); // Update button visibility
-            continueJourney();
-        }
+    console.log("Executing continueJourneyFromStory");
+    hideStoryEventScreen();
+    inStoryEvent = false;
+    gameState = 'exploring'; // Set game state to exploring
+    ensureButtonVisibility(); // Update button visibility
+    continueJourney();
+}
+
+function returnToCampFromStory() {
+    console.log("Executing returnToCampFromStory");
+    hideStoryEventScreen();
+    inStoryEvent = false;
+    gameState = 'camp'; // Set game state to camp
+    ensureButtonVisibility(); // Update button visibility
+    showCampScreen();
+}
 		
 	    	function hideDuelEventScreen() {
 			document.getElementById('duelEventScreen').style.display = 'none';
 		}
 
         function hideStoryEventScreen() {
-			document.getElementById('storyEventScreen').style.display = 'none';
-		}
+    document.getElementById('storyEventScreen').style.display = 'none';
+    const buttonContainer = document.getElementById('storyFinalButtons');
+    if (buttonContainer) {
+        buttonContainer.style.display = 'none';
+    }
+}
 
         function updateStoryScreenStats() {
             console.log("Executing updateStoryScreenStats");
