@@ -123,23 +123,25 @@
     margin-top: 100px;
 }
 
-.character-options {
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
+.character-sprite-select {
+    width: 150px;  /* Set a fixed width */
+    height: 200px; /* Set a fixed height */
+    object-fit: contain; /* This will maintain the aspect ratio */
+    object-position: center bottom; /* This will align the bottom of the sprites */
 }
 
 .character-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 200px; /* Set a fixed width for each character option */
+    margin: 10px;
 }
 
-.character-sprite-select {
-  width: 150px;  /* Adjust size as needed */
-  height: auto;
-  margin-bottom: 10px;
+.character-options {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 
@@ -866,7 +868,15 @@ function initGame() {
     console.log("Player special skill:", player.specialSkill);
     showLoadingScreen();
 
-    loadCharacterAssets(characterClass).then(() => {
+   // Ensure we have a valid character class
+    const selectedClass = characterClass || player.class;
+    if (!selectedClass) {
+        console.error('No character class selected');
+        hideLoadingScreen();
+        return; // Exit the function if no class is selected
+    }
+
+    loadCharacterAssets(selectedClass).then(() => {
         if (characterClass) {
             player.class = characterClass;
             setupClassSkills();
@@ -923,23 +933,9 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     ctx.textBaseline = "top";
 
     // Draw player
-    if (player.class && characterSprites[player.class]) {
-    const sprite = characterSprites[player.class];
-    const spriteWidth = sprite.width / 2;
-    const spriteHeight = sprite.height / 2;
-    const spriteX = 45;  // Adjust this value to move sprite horizontally
-    const spriteY = 130;  // Adjust this value to move sprite lower
-    ctx.drawImage(sprite, spriteX, spriteY, spriteWidth, spriteHeight);
-    } else {
-        ctx.fillStyle = 'blue';
-        ctx.fillRect(50, 180, 50, 50);
-    }
     
-    if (player.class) {
-        ctx.fillStyle = 'black';
-        ctx.font = '16px Arial';
-        ctx.fillText(player.class, 100, 355);
-    }
+    // Draw player
+    drawPlayer(ctx);
     
     // Draw player status effects
     let playerStatusY = 260;
@@ -1093,7 +1089,37 @@ for (let i = 0; i < healthText.length; i++) {
     updateSpecialAttackButton();
     drawTurnIndicator();
 }
+		
+		const classPositions = {
+    Warrior: { x: 45, y: 130 },
+    Mage: { x: 45, y: 130 },
+    Cleric: { x: 45, y: 130 },
+    Rogue: { x: 45, y: 130 }
+};
 
+function drawPlayer(ctx) {
+    if (player.class && characterSprites[player.class]) {
+        const sprite = characterSprites[player.class];
+        const spriteWidth = sprite.width / 2;
+        const spriteHeight = sprite.height / 2;
+        
+        const position = classPositions[player.class] || { x: 45, y: 130 };
+        const spriteX = position.x;
+        const spriteY = position.y;
+
+        ctx.drawImage(sprite, spriteX, spriteY, spriteWidth, spriteHeight);
+
+        ctx.fillStyle = 'black';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        const textX = spriteX + spriteWidth / 2;
+        const textY = spriteY + spriteHeight + 25;
+        ctx.fillText(player.class, textX, textY);
+        
+        ctx.textAlign = 'left';
+    }
+}
+		
         function displayDamage() {
             ctx.font = '20px Arial';
             ctx.fillStyle = `rgba(255, 0, 0, ${damageDisplay.enemy.alpha})`;
