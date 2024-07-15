@@ -396,7 +396,7 @@
         <br><br>
         <button id="loadGameButton">Load Game</button>
     </div>
-    <div id="characterSelectScreen">
+    <div id="characterSelectScreen" style="display: none;">
   <h2>Select Your Character</h2>
   <div class="character-options">
     <div class="character-option">
@@ -718,8 +718,8 @@ function initGame() {
         // Hide loading screen
         hideLoadingScreen();
 
-        // Show character select screen
-        document.getElementById('characterSelectScreen').style.display = 'block';
+         // Show main menu instead of character select screen
+        document.getElementById('mainMenu').style.display = 'block';
 
         // Set up event listeners
         if (isMobile()) {
