@@ -1100,11 +1100,11 @@ for (let i = 0; i < healthText.length; i++) {
     const xpBarX = 10;
     const xpBarY = 55;
 
-    ctx.fillStyle = 'grey';
+    ctx.fillStyle = 'lightgrey';
     ctx.fillRect(xpBarX, xpBarY, xpBarWidth, xpBarHeight);
 
     const xpProgress = (player.experience / player.xpToNextLevel) * xpBarWidth;
-    ctx.fillStyle = 'lightgrey';
+    ctx.fillStyle = 'grey';
     ctx.fillRect(xpBarX, xpBarY, xpProgress, xpBarHeight);
 
     ctx.fillStyle = 'black';
@@ -2427,11 +2427,12 @@ function logButtonStates() {
 
         // Show special skill selection when reaching level 3
         if (player.level === 3 && !player.specialSkillUnlocked) {
-            console.log("Triggering skill selection for " + player.class);
-            player.specialSkillUnlocked = true;
-            showBattleSkillSelection();
-            break; // Exit the loop after showing skill selection
-        }
+			console.log("Player reached level 3, setting up class skills");
+			setupClassSkills();
+			player.specialSkillUnlocked = true;
+			showBattleSkillSelection();
+			break; // Exit the loop after showing skill selection
+		}
     }
     return leveledUp;
 }
@@ -2895,25 +2896,22 @@ function returnToCampFromStory() {
     skillSelection.style.display = 'block';
     document.getElementById('continueJourneyButton').style.display = 'none';
     document.getElementById('returnToCampButton').style.display = 'none';
-
-    const mageSkills = document.getElementById('skillSelectionMageSkills');
-    const warriorSkills = document.getElementById('skillSelectionWarriorSkills');
-    const clericSkills = document.getElementById('skillSelectionClericSkills');
-    const rogueSkills = document.getElementById('skillSelectionRogueSkills');
-
-    mageSkills.style.display = 'none';
-    warriorSkills.style.display = 'none';
-    clericSkills.style.display = 'none';
-    rogueSkills.style.display = 'none';
-
-    if (player.class === 'Mage') {
-        mageSkills.style.display = 'block';
-    } else if (player.class === 'Warrior') {
-        warriorSkills.style.display = 'block';
-    } else if (player.class === 'Cleric') {
-        clericSkills.style.display = 'block';
-    } else if (player.class === 'Rogue') {
-        rogueSkills.style.display = 'block';
+    
+    const classSkillsDiv = document.getElementById(`skillSelection${player.class}Skills`);
+    if (classSkillsDiv) {
+        console.log(`Displaying ${player.class} skills`);
+        classSkillsDiv.style.display = 'block';
+        
+        // Clear existing buttons and add new ones
+        classSkillsDiv.innerHTML = '';
+        Object.keys(player.specialSkills).forEach(skillName => {
+            const button = document.createElement('button');
+            button.textContent = skillName;
+            button.onclick = () => selectSpecialSkill(skillName);
+            classSkillsDiv.appendChild(button);
+        });
+    } else {
+        console.error(`Skill selection div not found for ${player.class}`);
     }
     
     ensureButtonVisibility();
@@ -2932,7 +2930,12 @@ function returnToCampFromStory() {
         }
         
         function setupClassSkills() {
+    console.log("Setting up class skills for:", player.class);
     player.specialSkills = getClassSkills(player.class);
+    console.log("Special skills set:", player.specialSkills);
+    
+    // Don't assign a special skill here, it will be done when the player selects one
+    updateSpecialAttackButton();
 }
 
 function getClassSkills(characterClass) {
@@ -3078,37 +3081,46 @@ function displayMessage(message) {
 
         function selectSpecialSkill(skillName) {
     console.log("Selecting special skill: " + skillName);
-    player.specialSkill = player.specialSkills[skillName];
-    console.log("Selected skill:", player.specialSkill);
-    
-    // Hide the skill selection after choosing a skill
-    document.getElementById('skillSelection').style.display = 'none';
-    document.getElementById('storySkillSelection').style.display = 'none';
-
-    // Update the special attack button
-    updateSpecialAttackButton();
-
-    if (inStoryEvent) {
-        showFinalContinueButton();
+    if (player.specialSkills[skillName]) {
+        player.specialSkill = player.specialSkills[skillName];
+        console.log("Selected skill:", player.specialSkill);
+        
+        // Hide the skill selection after choosing a skill
+        document.getElementById('skillSelection').style.display = 'none';
+        document.getElementById('storySkillSelection').style.display = 'none';
+        
+        // Update the special attack button
+        updateSpecialAttackButton();
+        
+        if (inStoryEvent) {
+            showFinalContinueButton();
+        } else {
+            document.getElementById('continueJourneyButton').style.display = 'inline-block';
+            document.getElementById('returnToCampButton').style.display = 'inline-block';
+        }
+        
+        console.log("Journey and Camp buttons should now be visible");
+        
+        // Save the game after selecting a skill
+        saveGame();
+        
+        // If we're in a battle, redraw the game
+        if (gameState === 'playerTurn' || gameState === 'enemyTurn') {
+            drawGame();
+        }
+        
+        ensureButtonVisibility();
     } else {
-        document.getElementById('continueJourneyButton').style.display = 'inline-block';
-        document.getElementById('returnToCampButton').style.display = 'inline-block';
+        console.error("Skill not found:", skillName);
     }
-
-    console.log("Journey and Camp buttons should now be visible");
-
-    // Save the game after selecting a skill
-    saveGame();
-
-    // If we're in a battle, redraw the game
-    if (gameState === 'playerTurn' || gameState === 'enemyTurn') {
-        drawGame();
-    }
-    
-    ensureButtonVisibility();
 }
 
         function updateSpecialAttackButton() {
+    console.log("Updating special attack button");
+    console.log("Player special skill:", player.specialSkill);
+    console.log("Special skill unlocked:", player.specialSkillUnlocked);
+    console.log("Special attack cooldown:", player.specialAttackCooldown);
+
     const specialAttackButton = document.getElementById('specialAttackButton');
     if (player.specialSkill && player.specialSkillUnlocked) {
         specialAttackButton.style.display = 'inline-block';
@@ -4029,24 +4041,28 @@ function loadGame() {
   }
   
         function updateSpecialAttackButton() {
-      const specialAttackButton = document.getElementById('specialAttackButton');
-      if (player.specialSkill && player.specialSkillUnlocked) {
-          specialAttackButton.style.display = 'inline-block';
-          if (player.specialAttackCooldown > 0) {
-              specialAttackButton.textContent = `${player.specialSkill.name} (${player.specialAttackCooldown})`;
-              specialAttackButton.classList.remove('available');
-              specialAttackButton.classList.add('cooldown');
-              specialAttackButton.disabled = true;
-          } else {
-              specialAttackButton.textContent = player.specialSkill.name;
-              specialAttackButton.classList.add('available');
-              specialAttackButton.classList.remove('cooldown');
-              specialAttackButton.disabled = false;
-          }
-      } else {
-          specialAttackButton.style.display = 'none';
-      }
-  }
+    //console.log("Updating special attack button");
+    //console.log("Player class:", player.class);
+    //console.log("Player level:", player.level);
+    //console.log("Special skill unlocked:", player.specialSkillUnlocked);
+    //console.log("Player special skill:", player.specialSkill);
+
+    const specialAttackButton = document.getElementById('specialAttackButton');
+    if (player.specialSkill && player.specialSkillUnlocked && player.level >= 3) {
+        console.log("Displaying special attack button");
+        specialAttackButton.style.display = 'inline-block';
+        if (player.specialAttackCooldown > 0) {
+            specialAttackButton.textContent = `${player.specialSkill.name} (${player.specialAttackCooldown})`;
+            specialAttackButton.disabled = true;
+        } else {
+            specialAttackButton.textContent = player.specialSkill.name;
+            specialAttackButton.disabled = false;
+        }
+    } else {
+        //console.log("Hiding special attack button");
+        specialAttackButton.style.display = 'none';
+    }
+}
   
         function updateButtonStates() {
       const buttons = ['attackButton', 'defendButton', 'retreatButton', 'specialAttackButton'];
