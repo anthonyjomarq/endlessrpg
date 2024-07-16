@@ -640,6 +640,7 @@
     minDamageGain: 0,
     maxDamageGain: 0,
 	recruitedCharacters: [],
+	party: [],  // New party array
     tents: 1,
     poisonCounter: 0
     
@@ -736,6 +737,7 @@ function initGame() {
 
     // Show loading screen
     showLoadingScreen();
+	player.party = [];  // Initialize empty party array
 
     // Load initial game assets
     loadInitialGameAssets().then(() => {
@@ -846,20 +848,28 @@ function initGame() {
         // Reset player and game state to initial values
         player = {
             class: '',
-            health: 50,
-            maxHealth: 50,
-            minDamage: 1,
-            maxDamage: 6,
-            experience: 0,
-            level: 1,
-            xpToNextLevel: 20,
-            gold: 0,
-            campBank: 0,
-            specialAttackCooldown: 0,
-            specialSkill: null,
-            specialSkillUnlocked: false,
-            poisonCounter: 0,
-            tents: 1
+            specialSkills: {},
+			specialAttackCooldown: 0,
+			health: 50,
+			maxHealth: 50,
+			minDamage: 1,
+			maxDamage: 6,
+			experience: 0,
+			level: 1,
+			xpToNextLevel: 20,
+			gold: 0,
+			campBank: 0,
+			expBooster: false,
+			defending: false,
+			specialSkillUnlocked: false,
+			specialSkill: null,
+			healthGain: 0,
+			minDamageGain: 0,
+			maxDamageGain: 0,
+			recruitedCharacters: [],
+			party: [],  // New party array
+			tents: 1,
+			poisonCounter: 0
             // Add any other initial player properties here
         };
         
@@ -957,7 +967,7 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     // Draw player
     
     // Draw player
-    drawPlayer(ctx);
+    drawParty(ctx);
     
     // Draw player status effects
     let playerStatusY = 260;
@@ -1119,13 +1129,20 @@ for (let i = 0; i < healthText.length; i++) {
     Rogue: { x: 45, y: 130 }
 };
 
-function drawPlayer(ctx) {
-    if (player.class && characterSprites[player.class]) {
-        const sprite = characterSprites[player.class];
+const partyPositions = [
+    { x: 45, y: 130 },    // Leader (current player position)
+    { x: 145, y: 130 },   // Party member 1
+    { x: 245, y: 130 },   // Party member 2
+    { x: 345, y: 130 },   // Party member 3
+    { x: 445, y: 130 }    // Party member 4
+];
+
+function drawPartyMember(ctx, character, position) {
+    if (character.class && characterSprites[character.class]) {
+        const sprite = characterSprites[character.class];
         const spriteWidth = sprite.width / 2;
         const spriteHeight = sprite.height / 2;
         
-        const position = classPositions[player.class] || { x: 45, y: 130 };
         const spriteX = position.x;
         const spriteY = position.y;
 
@@ -1136,10 +1153,22 @@ function drawPlayer(ctx) {
         ctx.textAlign = 'center';
         const textX = spriteX + spriteWidth / 2;
         const textY = spriteY + spriteHeight + 25;
-        ctx.fillText(player.class, textX, textY);
+        ctx.fillText(character.class, textX, textY);
         
         ctx.textAlign = 'left';
     }
+}
+
+function drawParty(ctx) {
+    // Draw the leader (current player)
+    drawPartyMember(ctx, player, partyPositions[0]);
+
+    // Draw other party members
+    player.party.forEach((member, index) => {
+        if (index < 4) {  // Limit to 4 additional party members
+            drawPartyMember(ctx, member, partyPositions[index + 1]);
+        }
+    });
 }
 		
         function displayDamage() {
@@ -1335,29 +1364,51 @@ function drawPlayer(ctx) {
     console.log("Special attack cooldown:", player.specialAttackCooldown);
     console.log("Player special skill:", player.specialSkill);
 
-    if (gameState === 'playerTurn' && player.specialSkill && player.specialAttackCooldown === 0) {
-        showPlayerTurnNotification();
+    if (gameState !== 'playerTurn' || !player.specialSkill || player.specialAttackCooldown > 0) {
+        console.log("Cannot use special attack now");
+        return;
+    }
 
-        if (typeof player.specialSkill.use !== 'function') {
-            console.error("Special skill 'use' is not a function!", player.specialSkill);
-            return;
+    showPlayerTurnNotification();
+
+    if (typeof player.specialSkill.use !== 'function') {
+        console.error("Special skill 'use' is not a function!", player.specialSkill);
+        return;
+    }
+
+    console.log("Using special skill:", player.specialSkill.name);
+
+    try {
+        let result;
+        if (player.specialSkill.name === 'Hail Storm') {
+            result = player.specialSkill.use(player, enemies);
+            // For Hail Storm, we'll show the total damage on the first enemy
+            damageDisplay.enemy.damage = parseInt(result.match(/(\d+)/)[0]);
+        } else {
+            const targetEnemy = enemies[selectedEnemyIndex];
+            if (!targetEnemy) {
+                console.error("No valid target enemy");
+                return;
+            }
+            result = player.specialSkill.use(player, targetEnemy);
+            // Extract damage from the result string
+            const damageMatch = result.match(/(\d+) damage/);
+            if (damageMatch) {
+                damageDisplay.enemy.damage = parseInt(damageMatch[1]);
+            }
         }
 
-        console.log("Using special skill:", player.specialSkill.name);
-        const totalDamage = player.specialSkill.use();
-        console.log("Damage dealt:", totalDamage);
+        console.log("Skill use result:", result);
+        displayMessage(result);
 
-        // Apply the damage to the enemy
-        enemies[selectedEnemyIndex].health -= totalDamage;
-        
-        // Update damage display
-        damageDisplay.enemy.damage = totalDamage;
+        // Set up damage display for animation
         damageDisplay.enemy.x = 725;
         damageDisplay.enemy.y = 150;
         damageDisplay.enemy.alpha = 1;
 
         player.specialAttackCooldown = 3; // Set cooldown after using the skill
         console.log("Set special attack cooldown to:", player.specialAttackCooldown);
+
         applyPoisonDamage(); // Apply poison damage at the end of the turn
         checkEnemyDefeat();
 
@@ -1365,19 +1416,13 @@ function drawPlayer(ctx) {
             gameState = 'enemyTurn';
             updateButtonStates();
             drawGame();
-            animateDamage();
+            animateDamage(); // Start the damage animation
             setTimeout(() => {
                 handleEnemyTurn();
-            }, 500);
+            }, 1000); // Increased delay to allow for animation
         }
-    } else {
-        console.log("Cannot use special attack now");
-        if (player.specialAttackCooldown > 0) {
-            console.log("Special attack on cooldown:", player.specialAttackCooldown);
-        }
-        if (!player.specialSkill) {
-            console.log("Player does not have a special skill");
-        }
+    } catch (error) {
+        console.error("Error using special skill:", error);
     }
 }
 
@@ -1799,6 +1844,7 @@ function drawPlayer(ctx) {
     hideStoryEventScreen();
     updateCampScreen();
     updateCampBankDisplay();
+	updatePartyDisplay();
 	logButtonStates();
     canvas.style.display = 'none';
     document.getElementById('gameButtons').style.display = 'none';
@@ -1837,6 +1883,30 @@ function drawPlayer(ctx) {
     updateCampShopButtons();
 
     console.log("Camp screen updated. Player tents:", player.tents, "Recruited characters:", player.recruitedCharacters);
+}
+
+function createPartyMember(characterClass) {
+    return {
+        class: characterClass,
+        specialSkills: {}, // This can be populated based on the class
+        specialAttackCooldown: 0,
+        health: 50,
+        maxHealth: 50,
+        minDamage: 1,
+        maxDamage: 6,
+        experience: 0,
+        level: 1,
+        xpToNextLevel: 20,
+        defending: false,
+		expBooster: false,
+        specialSkillUnlocked: false,
+        specialSkill: null,
+        healthGain: 0,
+        minDamageGain: 0,
+        maxDamageGain: 0,
+        poisonCounter: 0
+        // You can add more properties as needed
+    };
 }
 
         function updateVictoryShopButtons() {
@@ -1889,11 +1959,11 @@ function drawPlayer(ctx) {
         playerTentsRow.appendChild(tentElement);
 
         if (i === 1) {
-            updateTentContent(tentElement, player.class);
+            updateTentContent(i, player.class);
         } else if (i <= player.recruitedCharacters.length + 1) {
-            updateTentContent(tentElement, player.recruitedCharacters[i-2].class);
+            updateTentContent(i, player.recruitedCharacters[i-2].class);
         } else {
-            updateTentContent(tentElement, 'Empty');
+            updateTentContent(i, 'Empty');
         }
     }
 }
@@ -1931,6 +2001,12 @@ function drawPlayer(ctx) {
     tent.style.margin = '5px';
     tent.style.padding = '5px';
     return tent;
+}
+
+function updatePartyDisplay() {
+    console.log("Current party:", player.party);
+    // Here you can add code to update any UI elements that show the current party
+    // For example, updating a party member list in the camp screen
 }
         
         function showShopInCamp() {
@@ -2856,130 +2932,148 @@ function returnToCampFromStory() {
         }
         
         function setupClassSkills() {
-    console.log("Setting up class skills for:", player.class);
-    if (player.class === 'Mage') {
-        player.specialSkills = {
-            Thunder: {
-                name: "Thunder",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
-                    enemies[selectedEnemyIndex].stunnedTurns = 1;
-                    return damage;
-                }
-            },
-            Fireball: {
-                name: "Fireball",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 2;
-                    enemies[selectedEnemyIndex].burnedTurns = 2;
-                    return damage;
-                }
-            },
-            HailStorm: {
-                name: "Hail Storm",
-                use: function() {
-                    let totalDamage = 0;
-                    enemies.forEach(enemy => {
-                        const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
-                        totalDamage += damage;
-                    });
-                    return totalDamage;
-                }
-            }
-        };
-        
-    } else if (player.class === 'Warrior') {
-        player.specialSkills = {
-            DoubleAttack: {
-                name: "Double Attack",
-                use: function() {
-                    let totalDamage = 0;
-                    for (let i = 0; i < 2; i++) {
-                        const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
-                        totalDamage += damage;
+    player.specialSkills = getClassSkills(player.class);
+}
+
+function getClassSkills(characterClass) {
+    switch (characterClass) {
+        case 'Warrior':
+            return {
+                'Double Attack': {
+                    name: 'Double Attack',
+                    use: function(user, target) {
+                        let totalDamage = 0;
+                        for (let i = 0; i < 2; i++) {
+                            const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
+                            totalDamage += damage;
+                        }
+                        target.health -= totalDamage;
+                        return `${user.class} used Double Attack for ${totalDamage} damage!`;
                     }
-                    return totalDamage;
+                },
+                'Stone Skin': {
+                    name: 'Stone Skin',
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
+                        target.health -= damage;
+                        user.defending = true;
+                        return `${user.class} used Stone Skin, dealt ${damage} damage, and is now defending!`;
+                    }
+                },
+                'Life Attack': {
+                    name: 'Life Attack',
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
+                        target.health -= damage;
+                        const healAmount = Math.floor(damage / 2);
+                        user.health = Math.min(user.health + healAmount, user.maxHealth);
+                        return `${user.class} used Life Attack for ${damage} damage and healed for ${healAmount}!`;
+                    }
                 }
-            },
-            StoneSkin: {
-                name: "Stone Skin",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
-                    player.defending = true;
-                    return damage;
+            };
+        case 'Mage':
+            return {
+                'Thunder': {
+                    name: 'Thunder',
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        target.health -= damage;
+                        target.stunnedTurns = 1;
+                        return `${user.class} used Thunder for ${damage} damage and stunned the target!`;
+                    }
+                },
+                'Fireball': {
+                    name: 'Fireball',
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 2;
+                        target.health -= damage;
+                        target.burnedTurns = 2;
+                        return `${user.class} used Fireball for ${damage} damage and burned the target!`;
+                    }
+                },
+                'Hail Storm': {
+                    name: 'Hail Storm',
+                    use: function(user, targets) {
+                        let totalDamage = 0;
+                        targets.forEach(target => {
+                            const damage = Math.floor(Math.random() * (user.maxDamage / 2 - user.minDamage / 2 + 1)) + user.minDamage / 2 + 1;
+                            target.health -= damage;
+                            totalDamage += damage;
+                        });
+                        return `${user.class} used Hail Storm for ${totalDamage} total damage across all enemies!`;
+                    }
                 }
-            },
-            LifeAttack: {
-                name: "Life Attack",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
-                    const healAmount = Math.floor(damage / 2);
-                    player.health = Math.min(player.health + healAmount, player.maxHealth);
-                    return damage;
+            };
+        case 'Cleric':
+            return {
+                'Holy Light': {
+                    name: 'Holy Light',
+                    use: function(user, target) {
+                        const healing = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        target.health = Math.min(target.health + healing, target.maxHealth);
+                        target.exposed = true;
+                        return `${user.class} used Holy Light, healed ${target.class} for ${healing} HP, and exposed the target!`;
+                    }
+                },
+                'Life Transfer': {
+                    name: 'Life Transfer',
+                    use: function(user, target) {
+                        const transfer = Math.floor(user.health * 0.3);
+                        user.health -= transfer;
+                        target.health = Math.min(target.health + transfer, target.maxHealth);
+                        return `${user.class} used Life Transfer and transferred ${transfer} HP to ${target.class}!`;
+                    }
+                },
+                'Shield of Light': {
+                    name: 'Shield of Light',
+                    use: function(user) {
+                        user.shieldOfLight = 2;
+                        user.maxDamage += 2;
+                        return `${user.class} used Shield of Light and is now protected for 2 turns with increased damage!`;
+                    }
                 }
-            }
-        };
-       
-    } else if (player.class === 'Cleric') {
-        player.specialSkills = {
-            HolyLight: {
-                name: "Holy Light",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
-                    enemies[selectedEnemyIndex].exposed = true;
-                    return damage;
+            };
+        case 'Rogue':
+            return {
+                'Blind Shot': {
+                    name: 'Blind Shot',
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        target.health -= damage;
+                        target.blind = 100;
+                        return `${user.class} used Blind Shot for ${damage} damage and blinded the target!`;
+                    }
+                },
+                'Toxic Stab': {
+                    name: 'Toxic Stab',
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 2;
+                        target.health -= damage;
+                        target.poison = (target.poison || 0) + 1;
+                        return `${user.class} used Toxic Stab for ${damage} damage and poisoned the target!`;
+                    }
+                },
+                'Perfect Parry': {
+                    name: 'Perfect Parry',
+                    use: function(user) {
+                        user.parry = true;
+                        return `${user.class} used Perfect Parry and is ready to counter the next attack!`;
+                    }
                 }
-            },
-            LifeTransfer: {
-                name: "Life Transfer",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
-                    player.health = Math.min(player.health + damage, player.maxHealth);
-                    return damage;
-                }
-            },
-            ShieldOfLight: {
-                name: "Shield of Light",
-                use: function() {
-                    player.shieldOfLight = 2;
-                    player.maxDamage += 2;
-                    return 0;
-                }
-            }
-        };
-       
-    } else if (player.class === 'Rogue') {
-        player.specialSkills = {
-            BlindShot: {
-                name: "Blind Shot",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
-                    enemies[selectedEnemyIndex].blind = 100;
-                    return damage;
-                }
-            },
-            ToxicStab: {
-                name: "Toxic Stab",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 2;
-                    enemies[selectedEnemyIndex].poison = (enemies[selectedEnemyIndex].poison || 0) + 1;
-                    return damage;
-                }
-            },
-            PerfectParry: {
-                name: "Perfect Parry",
-                use: function() {
-                    const damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
-                    player.parry = true;
-                    return damage;
-                }
-            }
-        };
-        
+            };
+        default:
+            console.error(`Unknown class: ${characterClass}`);
+            return {};
     }
-    
-    console.log("Special skills set up:", player.specialSkills);
-    
+}
+
+function displayMessage(message) {
+    console.log("Game Message:", message);
+    // You can implement this function to display the message in your game UI
+    // For example:
+    // const messageElement = document.getElementById('gameMessages');
+    // messageElement.textContent = message;
+    // messageElement.style.display = 'block';
 }
 
         function selectSpecialSkill(skillName) {
@@ -3282,36 +3376,59 @@ function updateTentButtonStates() {
     // Set victory message
     document.getElementById('duelVictoryMessage').textContent = `You've defeated the ${defeatedEnemy.class}!`;
     
-    // Initialize recruitedCharacters if it doesn't exist
-    if (!player.recruitedCharacters) {
-        player.recruitedCharacters = [];
-    }
-
     // Show recruit button only if there's an empty tent available
     const recruitButton = document.getElementById('recruitButton');
     if (player.recruitedCharacters.length < (player.tents - 1)) {
         recruitButton.style.display = 'inline-block';
         recruitButton.disabled = false;
-        recruitButton.onclick = () => recruitCharacter(defeatedEnemy);
+        recruitButton.onclick = function() { recruitCharacter(defeatedEnemy); };
     } else {
         recruitButton.style.display = 'none';
     }
     
-    document.getElementById('continueDuelJourneyButton').onclick = continueDuelJourney;
-    
-    console.log("Recruit button display:", recruitButton.style.display);
+    // Create a container for the buttons if it doesn't exist
+    let buttonContainer = document.getElementById('duelVictoryButtons');
+    if (!buttonContainer) {
+        buttonContainer = document.createElement('div');
+        buttonContainer.id = 'duelVictoryButtons';
+        victoryScreen.appendChild(buttonContainer);
+    }
+    buttonContainer.style.display = 'block';
+
+    // Ensure the continue journey button is present and clickable
+    let continueButton = document.getElementById('continueDuelJourneyButton');
+    if (!continueButton) {
+        continueButton = document.createElement('button');
+        continueButton.id = 'continueDuelJourneyButton';
+        continueButton.textContent = 'Continue Journey';
+        buttonContainer.appendChild(continueButton);
+    }
+    continueButton.onclick = continueDuelJourney;
+    continueButton.style.display = 'inline-block';
+
+    // Add or show the Return to Camp button
+    let campButton = document.getElementById('returnToCampFromDuelButton');
+    if (!campButton) {
+        campButton = document.createElement('button');
+        campButton.id = 'returnToCampFromDuelButton';
+        campButton.textContent = 'Return to Camp';
+        buttonContainer.appendChild(campButton);
+    }
+    campButton.onclick = returnToCampFromDuel;
+    campButton.style.display = 'inline-block';
+
+    console.log("Continue journey and Return to Camp buttons should now be visible");
     
     autoSave();
     updateLoadGameButton();
 }
 
-        function recruitCharacter(defeatedEnemy) {
+function recruitCharacter(defeatedEnemy) {
     console.log("Recruit character function called");
     if (!player.recruitedCharacters) {
         player.recruitedCharacters = [];
     }
     
-    // Check if there's an empty tent available
     if (player.recruitedCharacters.length < (player.tents - 1)) {
         player.recruitedCharacters.push({class: defeatedEnemy.class});
         alert(`You've recruited the ${defeatedEnemy.class}!`);
@@ -3320,8 +3437,23 @@ function updateTentButtonStates() {
         console.log("Recruited character:", defeatedEnemy.class);
         console.log("Current recruited characters:", player.recruitedCharacters);
     } else {
-        alert("You don't have enough empty tents to recruit this character! Buy more tents to recruit more characters.");
-        document.getElementById('recruitButton').style.display = 'none';
+        alert("You don't have enough empty tents to recruit this character!");
+    }
+}
+
+function returnToCampFromDuel() {
+    console.log("Executing returnToCampFromDuel");
+    hideDuelVictoryScreen();
+    gameState = 'camp';
+    showCampScreen();
+    updatePartyDisplay(); // Add this line
+}
+
+function hideDuelVictoryScreen() {
+    document.getElementById('duelVictoryScreen').style.display = 'none';
+    const buttonContainer = document.getElementById('duelVictoryButtons');
+    if (buttonContainer) {
+        buttonContainer.style.display = 'none';
     }
 }
 
@@ -3330,6 +3462,7 @@ function updateCampScreen() {
     console.log("Player class:", player.class);
     console.log("Recruited characters:", player.recruitedCharacters);
     console.log("Total tents:", player.tents);
+    console.log("Current party:", player.party);
 
     const playerTentsRow = document.getElementById('playerTentsRow');
     if (!playerTentsRow) {
@@ -3345,17 +3478,24 @@ function updateCampScreen() {
         player.recruitedCharacters = [];
     }
 
+    // Ensure party is initialized
+    if (!player.party) {
+        player.party = [];
+    }
+
     // Create and update all tents
     for (let i = 1; i <= player.tents; i++) {
         const tentElement = createTentElement(i);
         playerTentsRow.appendChild(tentElement);
 
         if (i === 1) {
-            updateTentContent(i, player.class);
+            updateTentContent(tentElement, i, player.class, false); // Player's tent, not recruitable
         } else if (i <= player.recruitedCharacters.length + 1) {
-            updateTentContent(i, player.recruitedCharacters[i-2].class);
+            const character = player.recruitedCharacters[i-2];
+            const isInParty = player.party.includes(character);
+            updateTentContent(tentElement, i, character.class, isInParty);
         } else {
-            updateTentContent(i, 'Empty');
+            updateTentContent(tentElement, i, 'Empty', false);
         }
     }
 
@@ -3367,6 +3507,41 @@ function updateCampScreen() {
 
     // Update camp bank display
     updateCampBankDisplay();
+
+    // Update party display
+    updatePartyDisplay();
+}
+
+function createTentElement(number) {
+    const tent = document.createElement('div');
+    tent.id = `tent${number}`;
+    tent.className = 'tent';
+    tent.innerHTML = `
+        <strong>Tent ${number}</strong><br>
+        <span class="tent-occupant">Empty</span><br>
+        <span class="party-status" style="display: none;">In Party</span><br>
+        <button class="party-button" style="display: none;">Add to Party</button>
+    `;
+    return tent;
+}
+
+function updateTentContent(tentElement, tentNumber, occupant, isInParty) {
+    const occupantElement = tentElement.querySelector('.tent-occupant');
+    const partyButton = tentElement.querySelector('.party-button');
+    const partyStatus = tentElement.querySelector('.party-status');
+
+    occupantElement.textContent = occupant;
+
+    if (tentNumber > 1 && occupant !== 'Empty') {
+        partyButton.style.display = 'inline-block';
+        partyButton.textContent = isInParty ? 'Remove from Party' : 'Add to Party';
+        partyButton.onclick = () => togglePartyMembership(tentNumber);
+
+        partyStatus.style.display = isInParty ? 'inline' : 'none';
+    } else {
+        partyButton.style.display = 'none';
+        partyStatus.style.display = 'none';
+    }
 }
 
 function updateTentPurchaseButtons() {
@@ -3393,9 +3568,10 @@ function createTentElement(number) {
     tent.className = 'tent';
     tent.innerHTML = `
         <strong>Tent ${number}</strong><br>
-        <span class="tent-occupant">Empty</span>
+        <span class="tent-occupant">Empty</span><br>
+        <span class="party-status" style="display: none;">In Party</span><br>
+        <button class="party-button" style="display: none;">Add to Party</button>
     `;
-    // Add any CSS styles here to make it look like a square
     tent.style.width = '100px';
     tent.style.height = '100px';
     tent.style.border = '2px solid black';
@@ -3405,24 +3581,85 @@ function createTentElement(number) {
     return tent;
 }
 
-function updateTentContent(tentElementOrNumber, occupant) {
-    let tentElement;
-    if (typeof tentElementOrNumber === 'number') {
-        tentElement = document.getElementById(`tent${tentElementOrNumber}`);
-    } else if (tentElementOrNumber === 'Merchant') {
-        tentElement = document.getElementById('merchantTent');
-    } else {
-        tentElement = tentElementOrNumber;
-    }
-
+function updateTentContent(tentNumber, occupant) {
+    const tentElement = document.getElementById(`tent${tentNumber}`);
     if (tentElement) {
         const occupantElement = tentElement.querySelector('.tent-occupant');
+        const partyButton = tentElement.querySelector('.party-button');
+        const partyStatus = tentElement.querySelector('.party-status');
+        
         if (occupantElement) {
             occupantElement.textContent = occupant;
         }
-    } else {
-        console.warn(`Tent element not found for ${tentElementOrNumber}`);
+        
+        if (tentNumber > 1 && occupant !== 'Empty') {
+            const character = player.recruitedCharacters[tentNumber - 2];
+            const isInParty = player.party.includes(character);
+
+            partyButton.style.display = 'inline-block';
+            partyButton.textContent = isInParty ? 'Remove from Party' : 'Add to Party';
+            partyButton.onclick = () => togglePartyMembership(tentNumber);
+
+            partyStatus.style.display = isInParty ? 'inline' : 'none';
+            partyStatus.textContent = isInParty ? 'In Party' : '';
+        } else {
+            partyButton.style.display = 'none';
+            partyStatus.style.display = 'none';
+        }
     }
+}
+
+function addToParty(character) {
+    if (player.party.length < 4) {  // Limit to 4 additional party members
+        const partyMember = createPartyMember(character.class);
+        player.party.push(partyMember);
+        updatePartyDisplay();
+        return true;
+    } else {
+        alert("Party is full! Remove a member before adding a new one.");
+        return false;
+    }
+}
+
+function removeFromParty(character) {
+    const index = player.party.findIndex(char => char === character);
+    if (index > -1) {
+        player.party.splice(index, 1);
+        updatePartyDisplay();
+        return true;
+    }
+    return false;
+}
+
+function togglePartyMembership(tentNumber) {
+    const characterIndex = tentNumber - 2; // Adjust for 0-based index and player's tent
+    const character = player.recruitedCharacters[characterIndex];
+    
+    if (!character) {
+        console.error(`No character found for tent ${tentNumber}`);
+        return;
+    }
+
+    const partyIndex = player.party.findIndex(member => member === character);
+    const isInParty = partyIndex !== -1;
+
+    if (isInParty) {
+        // Remove from party
+        player.party.splice(partyIndex, 1);
+        console.log(`Removed ${character.class} from party`);
+    } else {
+        // Add to party
+        if (player.party.length < 4) { // Assuming max party size of 4 additional members
+            player.party.push(character);
+            console.log(`Added ${character.class} to party`);
+        } else {
+            alert("Party is full! Remove a member before adding a new one.");
+            return;
+        }
+    }
+    
+    updateTentContent(tentNumber, character.class);
+    updatePartyDisplay();
 }
 
 function updateMerchantTent() {
@@ -3438,10 +3675,10 @@ function updateMerchantTent() {
 }
 
         function continueDuelJourney() {
-            document.getElementById('duelVictoryScreen').style.display = 'none';
-            
-            continueJourney();
-        }
+    hideDuelVictoryScreen();
+    gameState = 'exploring';
+    startJourney();
+}
 
         function useEnemySpecialSkill(enemy) {
     console.log(`Enemy ${enemy.class} using special skill: ${enemy.specialSkill}`);
@@ -3620,6 +3857,10 @@ function updateMerchantTent() {
             specialSkill: player.specialSkill ? { name: player.specialSkill.name } : null,
             merchantTent: player.merchantTent,
             recruitedCharacters: player.recruitedCharacters || [],
+            party: (player.party || []).map(member => ({
+                ...member,
+                specialSkill: member.specialSkill ? { name: member.specialSkill.name } : null
+            })),
             tents: player.tents || 1
         },
         enemies: enemies,
@@ -3632,34 +3873,60 @@ function updateMerchantTent() {
     console.log('Game saved successfully!');
     updateLoadGameButton();
 }
-        
-        function loadGame() {
+
+function loadGame() {
     const savedGame = localStorage.getItem('rpgGameSave');
     if (savedGame) {
-        const gameData = JSON.parse(savedGame);
-        player = gameData.player;
-        enemies = gameData.enemies;
-        gameState = gameData.gameState;
-        currentStory = gameData.currentStory;
-        treantEncountered = gameData.treantEncountered;
-        duelEventsUnlocked = gameData.duelEventsUnlocked;
+        try {
+            const gameData = JSON.parse(savedGame);
+            player = {
+                ...gameData.player,
+                recruitedCharacters: gameData.player.recruitedCharacters || [],
+                party: (gameData.player.party || []).map(member => ({
+                    ...member,
+                    specialSkills: {}, // This will be populated in the next step
+                    specialSkill: null // This will be reconstructed in the next step
+                })),
+                tents: gameData.player.tents || 1
+            };
+            enemies = gameData.enemies || [];
+            gameState = gameData.gameState || 'mainMenu';
+            currentStory = gameData.currentStory || null;
+            treantEncountered = gameData.treantEncountered || false;
+            duelEventsUnlocked = gameData.duelEventsUnlocked || false;
 
-        // Ensure recruitedCharacters is initialized
-        if (!player.recruitedCharacters) {
-            player.recruitedCharacters = [];
-        }
-
-        // Reconstruct the special skill
-        if (player.specialSkill) {
+            // Reconstruct the special skills for the main player
             setupClassSkills();
-            player.specialSkill = player.specialSkills[player.specialSkill.name];
-        }
+            if (player.specialSkill && player.specialSkill.name) {
+                player.specialSkill = player.specialSkills[player.specialSkill.name];
+            } else {
+                player.specialSkill = null;
+            }
 
-        setupGameAfterLoad();
-        startGame(false); // Call startGame with isNewGame set to false
-        updateCampScreen(); // Update the camp screen
+            // Reconstruct special skills for party members
+            player.party.forEach(member => {
+                member.specialSkills = getClassSkills(member.class);
+                if (member.specialSkill && member.specialSkill.name) {
+                    member.specialSkill = member.specialSkills[member.specialSkill.name];
+                } else {
+                    member.specialSkill = null;
+                }
+            });
+
+            setupGameAfterLoad();
+            startGame(false); // Call startGame with isNewGame set to false
+            updateCampScreen(); // Update the camp screen
+            updatePartyDisplay(); // New function to update party display
+
+            console.log('Game loaded successfully!');
+        } catch (error) {
+            console.error('Error loading game:', error);
+            alert('Error loading game. Starting a new game.');
+            startNewGame();
+        }
     } else {
         alert('No saved game found!');
+        startNewGame();
     }
 }
 
