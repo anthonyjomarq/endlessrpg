@@ -1042,7 +1042,7 @@ if (enemies.length > 1) {
         if (enemy.stunnedTurns > 0) drawEnemyStatus('Stunned', 'yellow');
         if (enemy.burnedTurns > 0) drawEnemyStatus('Burned', 'orange');
         if (enemy.exposed) drawEnemyStatus('Exposed', 'green');
-        if (enemy.blind) drawEnemyStatus(`Blind (${enemy.blind}%)`, 'gray');
+        if (enemy.blind) drawEnemyStatus(`Blind (${enemy.blind}% chance to miss)`, 'gray');
         if (enemy.poison && enemy.poison > 0) drawEnemyStatus(`Poisoned (${enemy.poison})`, 'purple');
     });
 
@@ -1298,54 +1298,51 @@ function drawParty(ctx) {
         function playerAttack() {
     if (gameState === 'playerTurn') {
         showPlayerTurnNotification();
-        //updateButtonStates();
         
         if (player.specialAttackCooldown > 0) {
             player.specialAttackCooldown--;
             console.log("Special attack cooldown decreased to:", player.specialAttackCooldown);
         }
-
+        
+        const targetEnemy = enemies[selectedEnemyIndex];
         let damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
         
-        if (enemies[selectedEnemyIndex].parryNextAttack) {
+        if (targetEnemy.parryNextAttack) {
             console.log("Enemy parried the attack!");
             damageDisplay.player.damage = damage;
             damageDisplay.player.x = 75;
             damageDisplay.player.y = 150;
             damageDisplay.player.alpha = 1;
             player.health -= damage;
-            enemies[selectedEnemyIndex].parryNextAttack = false;
+            targetEnemy.parryNextAttack = false;
             damage = 0;
         } else {
-            if (enemies[selectedEnemyIndex].exposed) {
+            if (targetEnemy.exposed) {
                 damage *= 2;
-                enemies[selectedEnemyIndex].exposed = false;
+                targetEnemy.exposed = false;
             }
             
-            if (enemies[selectedEnemyIndex].defending) {
+            if (targetEnemy.defending) {
                 damage = Math.floor(damage / 2);
-                enemies[selectedEnemyIndex].defending = false;
+                targetEnemy.defending = false;
             }
-
-            enemies[selectedEnemyIndex].health -= damage;
-
+            targetEnemy.health -= damage;
             damageDisplay.enemy.damage = damage;
             damageDisplay.enemy.x = 725;
             damageDisplay.enemy.y = 150 + (selectedEnemyIndex * 130);
             damageDisplay.enemy.alpha = 1;
         }
-
         
         // Apply poison damage to the enemy at the end of player's turn
-        if (enemies[selectedEnemyIndex].poisonCounter > 0) {
-            const poisonDamage = enemies[selectedEnemyIndex].poisonCounter;
-            enemies[selectedEnemyIndex].health -= poisonDamage;
+        if (targetEnemy.poisonCounter > 0) {
+            const poisonDamage = targetEnemy.poisonCounter;
+            targetEnemy.health -= poisonDamage;
             console.log(`Enemy takes ${poisonDamage} poison damage`);
-            enemies[selectedEnemyIndex].poisonCounter++;
+            targetEnemy.poisonCounter++;
         }
+        
         applyPoisonDamage(); // Apply poison damage at the end of the turn
         checkEnemyDefeat();
-
         if (gameState !== 'victory' && gameState !== 'duelVictory') {
             gameState = 'enemyTurn';
             updateButtonStates();
@@ -1547,6 +1544,16 @@ function drawParty(ctx) {
                 attackEnemies(index + 1);
                 return;
             }
+			
+			if (enemy.blind && Math.random() * 100 < enemy.blind) {
+                displayMessage(`${enemy.type}'s attack missed due to being blinded!`);
+                enemy.blind = Math.max(0, enemy.blind - 25);
+                if (enemy.blind === 0) {
+                    displayMessage(`${enemy.type} is no longer blinded.`);
+                }
+                attackEnemies(index + 1);
+                return;
+            }
 
             let damage = Math.floor(Math.random() * (enemy.maxDamage - enemy.minDamage + 1)) + enemy.minDamage;
 
@@ -1566,14 +1573,7 @@ function drawParty(ctx) {
     }
 }
 
-            if (player.blind) {
-                if (Math.random() * 100 < player.blind) {
-                    damage = 0;
-                    console.log("Enemy attack missed due to blindness");
-                }
-                player.blind = Math.max(0, player.blind - 25);
-            }
-
+             
             if (player.parry) {
                 damageDisplay.enemy.damage = damage;
                 damageDisplay.enemy.x = 725;
@@ -1601,6 +1601,11 @@ function drawParty(ctx) {
             damageDisplay.player.x = 75;
             damageDisplay.player.y = 150 + (index * 30);
             damageDisplay.player.alpha = 1;
+			
+			if (enemy.blind) {
+                enemy.blind = 0;
+                displayMessage(`${enemy.type}'s attack hit! It is no longer blinded.`);
+            }
 
             // Apply conditional damage to player
             if (player.burnedTurns > 0) {
@@ -1796,10 +1801,7 @@ function drawParty(ctx) {
 
         function continueJourney() {
     console.log("Entering continueJourney function");
-    hideVictoryScreen();
-    hideStoryEventScreen();
-    hideCampScreen();
-    
+    hideAllScreens();
     
     const eventType = getEventType();
     console.log("Event type selected:", eventType);
@@ -1819,7 +1821,7 @@ function drawParty(ctx) {
             break;
         case 'battle':
             console.log("Starting battle");
-            startBattle(); // Use startBattle without specifying a class
+            startBattle();
             break;
     }
 }
@@ -2804,6 +2806,7 @@ function logButtonStates() {
 			hideCampScreen();
 			document.getElementById('continueJourneyFromCampButton').style.display = 'none';
 			resetPurchasedItems(); // Reset purchased items when leaving camp
+			gameState = 'exploring'; // Set a transitional state
 			continueJourney();
 		}
         
@@ -2876,14 +2879,25 @@ function returnToCampFromStory() {
     clericSkills.style.display = 'none';
     rogueSkills.style.display = 'none';
 
+    let skillsToShow;
     if (player.class === 'Mage') {
-        mageSkills.style.display = 'block';
+        skillsToShow = mageSkills;
     } else if (player.class === 'Warrior') {
-        warriorSkills.style.display = 'block';
+        skillsToShow = warriorSkills;
     } else if (player.class === 'Cleric') {
-        clericSkills.style.display = 'block';
+        skillsToShow = clericSkills;
     } else if (player.class === 'Rogue') {
-        rogueSkills.style.display = 'block';
+        skillsToShow = rogueSkills;
+    }
+
+    if (skillsToShow) {
+        skillsToShow.style.display = 'block';
+        // Set up skill buttons
+        const buttons = skillsToShow.getElementsByTagName('button');
+        for (let i = 0; i < buttons.length; i++) {
+            const skillName = buttons[i].textContent;
+            buttons[i].onclick = () => selectSpecialSkill(skillName);
+        }
     }
     
     ensureButtonVisibility();
@@ -3021,10 +3035,11 @@ function getClassSkills(characterClass) {
                 'Life Transfer': {
                     name: 'Life Transfer',
                     use: function(user, target) {
-                        const transfer = Math.floor(user.health * 0.3);
-                        user.health -= transfer;
-                        target.health = Math.min(target.health + transfer, target.maxHealth);
-                        return `${user.class} used Life Transfer and transferred ${transfer} HP to ${target.class}!`;
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        target.health -= damage;
+                        const healAmount = damage; // Heal for the exact amount of damage dealt
+                        user.health = Math.min(user.health + healAmount, user.maxHealth);
+                        return `${user.class} used Life Transfer, dealing ${damage} damage to the enemy and healing for ${healAmount} HP!`;
                     }
                 },
                 'Shield of Light': {
@@ -3041,11 +3056,11 @@ function getClassSkills(characterClass) {
                 'Blind Shot': {
                     name: 'Blind Shot',
                     use: function(user, target) {
-                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-                        target.health -= damage;
-                        target.blind = 100;
-                        return `${user.class} used Blind Shot for ${damage} damage and blinded the target!`;
-                    }
+						const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+						target.health -= damage;
+						target.blind = 100;
+						return `${user.class} used Blind Shot for ${damage} damage and blinded the target (100% chance to miss)!`;
+					}
                 },
                 'Toxic Stab': {
                     name: 'Toxic Stab',
@@ -3059,6 +3074,8 @@ function getClassSkills(characterClass) {
                 'Perfect Parry': {
                     name: 'Perfect Parry',
                     use: function(user) {
+						const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+						target.health -= damage;
                         user.parry = true;
                         return `${user.class} used Perfect Parry and is ready to counter the next attack!`;
                     }
@@ -3081,11 +3098,13 @@ function displayMessage(message) {
 
         function selectSpecialSkill(skillName) {
     console.log("Selecting special skill: " + skillName);
+    
+    // Don't modify the skillName, use it as is
     if (player.specialSkills[skillName]) {
         player.specialSkill = player.specialSkills[skillName];
         console.log("Selected skill:", player.specialSkill);
         
-        // Hide the skill selection after choosing a skill
+        // Hide all skill selection screens
         document.getElementById('skillSelection').style.display = 'none';
         document.getElementById('storySkillSelection').style.display = 'none';
         
@@ -3112,6 +3131,7 @@ function displayMessage(message) {
         ensureButtonVisibility();
     } else {
         console.error("Skill not found:", skillName);
+        console.log("Available skills:", Object.keys(player.specialSkills));
     }
 }
 
@@ -3319,17 +3339,20 @@ function updateTentButtonStates() {
         }
 
         function startDuelEvent() {
-            console.log("Starting duel event");
-            const classes = ['Warrior', 'Mage', 'Cleric', 'Rogue'];
-            const enemyClass = classes[Math.floor(Math.random() * classes.length)];
-            const enemy = createEnemyCharacter(enemyClass);
-            
-            document.getElementById('gameCanvas').style.display = 'none';
-            document.getElementById('gameButtons').style.display = 'none';
-            document.getElementById('duelEventScreen').style.display = 'block';
-            document.getElementById('duelText').innerHTML = `You've encountered a ${enemyClass} who challenges you to a duel!`;
-            document.getElementById('startDuelButton').onclick = () => startDuelBattle(enemy);
-        }
+			console.log("Starting duel event");
+			const classes = ['Warrior', 'Mage', 'Cleric', 'Rogue'];
+			const enemyClass = classes[Math.floor(Math.random() * classes.length)];
+			const enemy = createEnemyCharacter(enemyClass);
+			
+			hideAllScreens();
+			document.getElementById('duelEventScreen').style.display = 'block';
+			document.getElementById('duelText').innerHTML = `You've encountered a ${enemyClass} who challenges you to a duel!`;
+			document.getElementById('startDuelButton').onclick = () => startDuelBattle(enemy);
+			
+			// Reset game state
+			gameState = 'duel';
+			inStoryEvent = false;
+		}
 
         function createEnemyCharacter(characterClass) {
             const enemy = {
@@ -3357,24 +3380,21 @@ function updateTentButtonStates() {
         }
 
         function startDuelBattle(enemy) {
-    console.log("Starting duel battle");
-    currentBattleExpGained = 0;
-    enemies = [enemy];
-    gameState = 'playerTurn';  // Change this from 'duel' to 'playerTurn'
-    document.getElementById('duelEventScreen').style.display = 'none';
-    document.getElementById('gameCanvas').style.display = 'block';
-    document.getElementById('gameButtons').style.display = 'block';
-    
-    // Ensure all battle buttons are enabled
-    document.getElementById('attackButton').disabled = false;
-    document.getElementById('defendButton').disabled = false;
-    document.getElementById('specialAttackButton').disabled = false;
-    document.getElementById('retreatButton').disabled = false;
-    
-    updateButtonStates();
-    drawGame();
-    showPlayerTurnNotification();
-}
+			console.log("Starting duel battle");
+			currentBattleExpGained = 0;
+			enemies = [enemy];
+			gameState = 'playerTurn';
+			
+			hideAllScreens();
+			document.getElementById('gameContainer').style.display = 'flex';
+			document.getElementById('gameCanvas').style.display = 'block';
+			document.getElementById('gameButtons').style.display = 'flex';
+			
+			updateSpecialAttackButton();
+			updateButtonStates();
+			drawGame();
+			showPlayerTurnNotification();
+		}
 
         function showDuelVictoryScreen(defeatedEnemy) {
     console.log("Showing duel victory screen");
@@ -3485,15 +3505,9 @@ function updateCampScreen() {
     // Clear existing tents
     playerTentsRow.innerHTML = '';
 
-    // Ensure recruitedCharacters is initialized
-    if (!player.recruitedCharacters) {
-        player.recruitedCharacters = [];
-    }
-
-    // Ensure party is initialized
-    if (!player.party) {
-        player.party = [];
-    }
+    // Ensure recruitedCharacters and party are initialized
+    if (!player.recruitedCharacters) player.recruitedCharacters = [];
+    if (!player.party) player.party = [];
 
     // Create and update all tents
     for (let i = 1; i <= player.tents; i++) {
@@ -3504,7 +3518,7 @@ function updateCampScreen() {
             updateTentContent(tentElement, i, player.class, false); // Player's tent, not recruitable
         } else if (i <= player.recruitedCharacters.length + 1) {
             const character = player.recruitedCharacters[i-2];
-            const isInParty = player.party.includes(character);
+            const isInParty = player.party.some(member => member.class === character.class);
             updateTentContent(tentElement, i, character.class, isInParty);
         } else {
             updateTentContent(tentElement, i, 'Empty', false);
@@ -3542,17 +3556,28 @@ function updateTentContent(tentElement, tentNumber, occupant, isInParty) {
     const partyButton = tentElement.querySelector('.party-button');
     const partyStatus = tentElement.querySelector('.party-status');
 
-    occupantElement.textContent = occupant;
+    if (occupantElement) {
+        occupantElement.textContent = occupant;
+    }
 
     if (tentNumber > 1 && occupant !== 'Empty') {
-        partyButton.style.display = 'inline-block';
-        partyButton.textContent = isInParty ? 'Remove from Party' : 'Add to Party';
-        partyButton.onclick = () => togglePartyMembership(tentNumber);
+        if (partyButton) {
+            partyButton.style.display = 'inline-block';
+            partyButton.textContent = isInParty ? 'Remove from Party' : 'Add to Party';
+            partyButton.onclick = () => togglePartyMembership(tentNumber);
+        }
 
-        partyStatus.style.display = isInParty ? 'inline' : 'none';
+        if (partyStatus) {
+            partyStatus.style.display = isInParty ? 'inline' : 'none';
+            partyStatus.textContent = isInParty ? 'In Party' : '';
+        }
     } else {
-        partyButton.style.display = 'none';
-        partyStatus.style.display = 'none';
+        if (partyButton) {
+            partyButton.style.display = 'none';
+        }
+        if (partyStatus) {
+            partyStatus.style.display = 'none';
+        }
     }
 }
 
@@ -3652,7 +3677,8 @@ function togglePartyMembership(tentNumber) {
         return;
     }
 
-    const partyIndex = player.party.findIndex(member => member === character);
+    // Use class for comparison to avoid reference issues after loading
+    const partyIndex = player.party.findIndex(member => member.class === character.class);
     const isInParty = partyIndex !== -1;
 
     if (isInParty) {
@@ -3670,8 +3696,14 @@ function togglePartyMembership(tentNumber) {
         }
     }
     
-    updateTentContent(tentNumber, character.class);
+    // Update the tent content
+    const tentElement = document.getElementById(`tent${tentNumber}`);
+    if (tentElement) {
+        updateTentContent(tentElement, tentNumber, character.class, !isInParty);
+    }
+
     updatePartyDisplay();
+    saveGame(); // Save the game state after updating the party
 }
 
 function updateMerchantTent() {
@@ -3889,56 +3921,39 @@ function updateMerchantTent() {
 function loadGame() {
     const savedGame = localStorage.getItem('rpgGameSave');
     if (savedGame) {
-        try {
-            const gameData = JSON.parse(savedGame);
-            player = {
-                ...gameData.player,
-                recruitedCharacters: gameData.player.recruitedCharacters || [],
-                party: (gameData.player.party || []).map(member => ({
-                    ...member,
-                    specialSkills: {}, // This will be populated in the next step
-                    specialSkill: null // This will be reconstructed in the next step
-                })),
-                tents: gameData.player.tents || 1
-            };
-            enemies = gameData.enemies || [];
-            gameState = gameData.gameState || 'mainMenu';
-            currentStory = gameData.currentStory || null;
-            treantEncountered = gameData.treantEncountered || false;
-            duelEventsUnlocked = gameData.duelEventsUnlocked || false;
+        const gameData = JSON.parse(savedGame);
+        player = {
+            ...gameData.player,
+            recruitedCharacters: gameData.player.recruitedCharacters || [],
+            party: gameData.player.party || [],
+            tents: gameData.player.tents || 1
+        };
+        enemies = gameData.enemies;
+        gameState = gameData.gameState;
+        currentStory = gameData.currentStory;
+        treantEncountered = gameData.treantEncountered;
+        duelEventsUnlocked = gameData.duelEventsUnlocked;
 
-            // Reconstruct the special skills for the main player
-            setupClassSkills();
-            if (player.specialSkill && player.specialSkill.name) {
-                player.specialSkill = player.specialSkills[player.specialSkill.name];
-            } else {
-                player.specialSkill = null;
-            }
-
-            // Reconstruct special skills for party members
-            player.party.forEach(member => {
-                member.specialSkills = getClassSkills(member.class);
-                if (member.specialSkill && member.specialSkill.name) {
-                    member.specialSkill = member.specialSkills[member.specialSkill.name];
-                } else {
-                    member.specialSkill = null;
-                }
-            });
-
-            setupGameAfterLoad();
-            startGame(false); // Call startGame with isNewGame set to false
-            updateCampScreen(); // Update the camp screen
-            updatePartyDisplay(); // New function to update party display
-
-            console.log('Game loaded successfully!');
-        } catch (error) {
-            console.error('Error loading game:', error);
-            alert('Error loading game. Starting a new game.');
-            startNewGame();
+        // Reconstruct the special skills
+        setupClassSkills();
+        if (player.specialSkill) {
+            player.specialSkill = player.specialSkills[player.specialSkill.name];
         }
+
+        // Reconstruct special skills for party members
+        player.party.forEach(member => {
+            member.specialSkills = getClassSkills(member.class);
+            if (member.specialSkill) {
+                member.specialSkill = member.specialSkills[member.specialSkill.name];
+            }
+        });
+
+        setupGameAfterLoad();
+        startGame(false); // Call startGame with isNewGame set to false
+        updateCampScreen(); // Update the camp screen
+        updatePartyDisplay(); // New function to update party display
     } else {
         alert('No saved game found!');
-        startNewGame();
     }
 }
 
@@ -3948,15 +3963,18 @@ function loadGame() {
         }
         
         function hideAllScreens() {
-            document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('characterSelectScreen').style.display = 'none';
-            document.getElementById('gameCanvas').style.display = 'none';
-            document.getElementById('gameButtons').style.display = 'none';
-            document.getElementById('gameVictoryScreen').style.display = 'none';
-            document.getElementById('gameDefeatScreen').style.display = 'none';
-            document.getElementById('duelEventScreen').style.display = 'none';
-            document.getElementById('storyEventScreen').style.display = 'none';
-        }
+			const screens = [
+				'mainMenu', 'characterSelectScreen', 'gameContainer', 'gameCanvas', 
+				'gameButtons', 'gameVictoryScreen', 'gameDefeatScreen', 
+				'duelEventScreen', 'storyEventScreen', 'campScreen'
+			];
+			screens.forEach(screenId => {
+				const screen = document.getElementById(screenId);
+				if (screen) {
+					screen.style.display = 'none';
+				}
+			});
+		}
         
         function setupGameAfterLoad() {
             updateGameUI();
@@ -4049,7 +4067,7 @@ function loadGame() {
 
     const specialAttackButton = document.getElementById('specialAttackButton');
     if (player.specialSkill && player.specialSkillUnlocked && player.level >= 3) {
-        console.log("Displaying special attack button");
+        //console.log("Displaying special attack button");
         specialAttackButton.style.display = 'inline-block';
         if (player.specialAttackCooldown > 0) {
             specialAttackButton.textContent = `${player.specialSkill.name} (${player.specialAttackCooldown})`;
@@ -4065,30 +4083,30 @@ function loadGame() {
 }
   
         function updateButtonStates() {
-      const buttons = ['attackButton', 'defendButton', 'retreatButton', 'specialAttackButton'];
-      const isPlayerTurn = gameState === 'playerTurn';
-  
-      buttons.forEach(buttonId => {
-          const button = document.getElementById(buttonId);
-          if (button) {
-              button.disabled = !isPlayerTurn;
-              
-              if (buttonId === 'specialAttackButton') {
-                  if (isPlayerTurn && player.specialAttackCooldown === 0 && player.specialSkill) {
-                      button.classList.add('available');
-                      button.classList.remove('cooldown');
-                      button.disabled = false;
-                  } else {
-                      button.classList.remove('available');
-                      if (player.specialAttackCooldown > 0) {
-                          button.classList.add('cooldown');
-                      }
-                      button.disabled = true;
-                  }
-              }
-          }
-      });
-  }
+    const buttons = ['attackButton', 'defendButton', 'retreatButton', 'specialAttackButton'];
+    const isPlayerTurn = gameState === 'playerTurn' || gameState === 'duel';
+
+    buttons.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = !isPlayerTurn;
+            
+            if (buttonId === 'specialAttackButton') {
+                if (isPlayerTurn && player.specialAttackCooldown === 0 && player.specialSkill) {
+                    button.classList.add('available');
+                    button.classList.remove('cooldown');
+                    button.disabled = false;
+                } else {
+                    button.classList.remove('available');
+                    if (player.specialAttackCooldown > 0) {
+                        button.classList.add('cooldown');
+                    }
+                    button.disabled = true;
+                }
+            }
+        }
+    });
+}
   
         function updateShopButtons(isVictoryScreen = false) {
     const buttons = [
