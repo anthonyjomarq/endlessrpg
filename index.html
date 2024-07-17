@@ -785,15 +785,32 @@ function initGame() {
         window.onload = initGame;
 
         function createEnemyByType(type) {
-            const enemyType = enemyTypes.find(enemy => enemy.type === type);
-            return {
-                type: enemyType.type,
-                health: enemyType.baseHP,
-                maxHealth: enemyType.baseHP,
-                minDamage: enemyType.minDamage,
-                maxDamage: enemyType.maxDamage
-            };
-        }
+			console.log("Creating enemy of type:", type);
+			
+			if (!enemyTypes) {
+				console.error("enemyTypes is not defined");
+				return null;
+			}
+			
+			const enemyType = enemyTypes.find(enemy => enemy.type === type);
+			
+			if (!enemyType) {
+				console.error("Enemy type not found:", type);
+				console.log("Available enemy types:", enemyTypes.map(e => e.type));
+				return null;
+			}
+			
+			const enemy = {
+				type: enemyType.type,
+				health: enemyType.baseHP,
+				maxHealth: enemyType.baseHP,
+				minDamage: enemyType.minDamage,
+				maxDamage: enemyType.maxDamage
+			};
+			
+			console.log("Created enemy:", enemy);
+			return enemy;
+		}
 
         function createEnemies(playerLevel) {
             let enemies = [];
@@ -956,8 +973,12 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
         
 
     function drawGame() {
+	console.log("Drawing game. Game state:", gameState);
+    console.log("Enemies:", enemies);
+	
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+	 console.log("Canvas dimensions:", canvas.width, "x", canvas.height);
     
     ctx.clearRect(0, 0, 800, 500);
     
@@ -1361,65 +1382,54 @@ function drawParty(ctx) {
     console.log("Special attack cooldown:", player.specialAttackCooldown);
     console.log("Player special skill:", player.specialSkill);
 
-    if (gameState !== 'playerTurn' || !player.specialSkill || player.specialAttackCooldown > 0) {
+    if (gameState === 'playerTurn' && player.specialSkill && player.specialAttackCooldown === 0) {
+        showPlayerTurnNotification();
+        if (typeof player.specialSkill.use !== 'function') {
+            console.error("Special skill 'use' is not a function!", player.specialSkill);
+            return;
+        }
+        console.log("Using special skill:", player.specialSkill.name);
+        
+        try {
+            const result = player.specialSkill.use(player);
+            console.log("Skill use result:", result);
+
+            if (result.damage > 0) {
+                enemies[selectedEnemyIndex].health -= result.damage;
+                // Update damage display
+                damageDisplay.enemy.damage = result.damage;
+                damageDisplay.enemy.x = 725;
+                damageDisplay.enemy.y = 150;
+                damageDisplay.enemy.alpha = 1;
+            }
+
+            displayMessage(result.effect);
+            
+            player.specialAttackCooldown = 3; // Set cooldown after using the skill
+            console.log("Set special attack cooldown to:", player.specialAttackCooldown);
+            
+            applyPoisonDamage(); // Apply poison damage at the end of the turn
+            checkEnemyDefeat();
+            if (gameState !== 'victory') {
+                gameState = 'enemyTurn';
+                updateButtonStates();
+                drawGame();
+                animateDamage();
+                setTimeout(() => {
+                    handleEnemyTurn();
+                }, 500);
+            }
+        } catch (error) {
+            console.error("Error using special skill:", error);
+        }
+    } else {
         console.log("Cannot use special attack now");
-        return;
-    }
-
-    showPlayerTurnNotification();
-
-    if (typeof player.specialSkill.use !== 'function') {
-        console.error("Special skill 'use' is not a function!", player.specialSkill);
-        return;
-    }
-
-    console.log("Using special skill:", player.specialSkill.name);
-
-    try {
-        let result;
-        if (player.specialSkill.name === 'Hail Storm') {
-            result = player.specialSkill.use(player, enemies);
-            // For Hail Storm, we'll show the total damage on the first enemy
-            damageDisplay.enemy.damage = parseInt(result.match(/(\d+)/)[0]);
-        } else {
-            const targetEnemy = enemies[selectedEnemyIndex];
-            if (!targetEnemy) {
-                console.error("No valid target enemy");
-                return;
-            }
-            result = player.specialSkill.use(player, targetEnemy);
-            // Extract damage from the result string
-            const damageMatch = result.match(/(\d+) damage/);
-            if (damageMatch) {
-                damageDisplay.enemy.damage = parseInt(damageMatch[1]);
-            }
+        if (player.specialAttackCooldown > 0) {
+            console.log("Special attack on cooldown:", player.specialAttackCooldown);
         }
-
-        console.log("Skill use result:", result);
-        displayMessage(result);
-
-        // Set up damage display for animation
-        damageDisplay.enemy.x = 725;
-        damageDisplay.enemy.y = 150;
-        damageDisplay.enemy.alpha = 1;
-
-        player.specialAttackCooldown = 3; // Set cooldown after using the skill
-        console.log("Set special attack cooldown to:", player.specialAttackCooldown);
-
-        applyPoisonDamage(); // Apply poison damage at the end of the turn
-        checkEnemyDefeat();
-
-        if (gameState !== 'victory') {
-            gameState = 'enemyTurn';
-            updateButtonStates();
-            drawGame();
-            animateDamage(); // Start the damage animation
-            setTimeout(() => {
-                handleEnemyTurn();
-            }, 1000); // Increased delay to allow for animation
+        if (!player.specialSkill) {
+            console.log("Player does not have a special skill");
         }
-    } catch (error) {
-        console.error("Error using special skill:", error);
     }
 }
 
@@ -1575,25 +1585,27 @@ function drawParty(ctx) {
 
              
             if (player.parry) {
-                damageDisplay.enemy.damage = damage;
-                damageDisplay.enemy.x = 725;
-                damageDisplay.enemy.y = 150 + (index * 130);
-                damageDisplay.enemy.alpha = 1;
-                enemy.health -= damage;
-                player.parry = false;
-                damage = 0;
-                console.log("Player parried the attack");
-            } else if (player.defending) {
-                damage = Math.floor(damage / 2);
-                player.defending = false;
-            } else if (player.shieldOfLight > 0) {
-                damage = Math.max(0, damage - 6);
-                player.shieldOfLight--;
-                if (player.shieldOfLight === 0) {
-                    player.maxDamage -= 2;
-                    player.health = Math.min(player.health + 6, player.maxHealth);
-                }
+            const parryDamage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage + 1;
+            enemy.health -= parryDamage;
+            damageDisplay.enemy.damage = parryDamage;
+            damageDisplay.enemy.x = 725;
+            damageDisplay.enemy.y = 150 + (index * 130);
+            damageDisplay.enemy.alpha = 1;
+            player.parry = false;
+            displayMessage(`You parried the attack and dealt ${parryDamage} damage!`);
+            console.log("Player parried the attack");
+            damage = 0;  // The enemy's attack does no damage
+        } else if (player.defending) {
+            damage = Math.floor(damage / 2);
+            player.defending = false;
+        } else if (player.shieldOfLight > 0) {
+            damage = Math.max(0, damage - 6);
+            player.shieldOfLight--;
+            if (player.shieldOfLight === 0) {
+                player.maxDamage -= 2;
+                player.health = Math.min(player.health + 6, player.maxHealth);
             }
+        }
 
             player.health -= damage;
 
@@ -2791,15 +2803,67 @@ function logButtonStates() {
 }
 
         function startTreantBattle() {
-            console.log("Executing startTreantBattle");
-            treantEncountered = true;
-            enemies = [createEnemyByType('Treant')];
-            gameState = 'playerTurn';
-            updateButtonStates();
-            drawGame();
-            canvas.style.display = 'block';
-            document.getElementById('gameButtons').style.display = 'block';
-        }
+    console.log("Executing startTreantBattle");
+    treantEncountered = true;
+    
+    const treantEnemy = createEnemyByType('Treant');
+    if (!treantEnemy) {
+        console.error("Failed to create Treant enemy");
+        return;
+    }
+    
+    enemies = [treantEnemy];
+    console.log("Enemies array:", enemies);
+    
+    gameState = 'playerTurn';
+    console.log("Game state set to:", gameState);
+    
+    // Hide all screens first
+    hideAllScreens();
+    console.log("All screens hidden");
+    
+    // Show the game container and canvas
+    const gameContainer = document.getElementById('gameContainer');
+    if (gameContainer) {
+        gameContainer.style.display = 'block';
+        console.log("Game container display set to block");
+    } else {
+        console.error("Game container element not found");
+    }
+    
+    const canvas = document.getElementById('gameCanvas');
+    if (canvas) {
+        canvas.style.display = 'block';
+        console.log("Canvas display set to block");
+    } else {
+        console.error("Canvas element not found");
+    }
+    
+    const gameButtons = document.getElementById('gameButtons');
+    if (gameButtons) {
+        gameButtons.style.display = 'block';
+        console.log("Game buttons display set to block");
+    } else {
+        console.error("Game buttons element not found");
+    }
+    
+    updateButtonStates();
+    console.log("Button states updated");
+    
+    console.log("Attempting to draw game");
+    drawGame();
+    console.log("Game drawn");
+    
+    // Set inStoryEvent to false as we're now in battle
+    inStoryEvent = false;
+    console.log("inStoryEvent set to false");
+
+    // Force a redraw after a short delay
+    setTimeout(() => {
+        console.log("Forcing redraw");
+        drawGame();
+    }, 100);
+}
 
         function continueJourneyFromCamp() {
 			console.log("Executing continueJourneyFromCamp");
@@ -3075,10 +3139,12 @@ function getClassSkills(characterClass) {
                     name: 'Perfect Parry',
                     use: function(user) {
 						const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-						target.health -= damage;
-                        user.parry = true;
-                        return `${user.class} used Perfect Parry and is ready to counter the next attack!`;
-                    }
+						user.parry = true;
+						return {
+							damage: 0,  // No immediate damage
+							effect: `${user.class} used Perfect Parry, dealing ${damage} damage on the next enemy attack and is ready to counter!`
+						};
+					}
                 }
             };
         default:
@@ -3966,7 +4032,7 @@ function loadGame() {
 			const screens = [
 				'mainMenu', 'characterSelectScreen', 'gameContainer', 'gameCanvas', 
 				'gameButtons', 'gameVictoryScreen', 'gameDefeatScreen', 
-				'duelEventScreen', 'storyEventScreen', 'campScreen'
+				'duelEventScreen', 'storyEventScreen', 'campScreen', 'duelVictoryScreen'
 			];
 			screens.forEach(screenId => {
 				const screen = document.getElementById(screenId);
