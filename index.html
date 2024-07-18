@@ -661,9 +661,10 @@ player.purchasedItems = {
             { type: 'Poisonous Plant', baseHP: 28, minDamage: 2, maxDamage: 8, xp: 13 },
             { type: 'Werewolf', baseHP: 35, minDamage: 2, maxDamage: 9, xp: 14 },
             { type: 'Troll', baseHP: 40, minDamage: 3, maxDamage: 8, xp: 15 },
-            { type: 'Dragon', baseHP: 70, minDamage: 5, maxDamage: 12, xp: 20 },
+            { type: 'Dragon', baseHP: 70, minDamage: 5, maxDamage: 12, xp: 24 },
             { type: 'Skeletal Warrior', baseHP: 45, minDamage: 4, maxDamage: 10, xp: 18 },
-            { type: 'Treant', baseHP: 75, minDamage: 6, maxDamage: 14, xp: 25 }
+            { type: 'Treant', baseHP: 75, minDamage: 6, maxDamage: 14, xp: 25 },
+			{ type: 'Angry Spirit', baseHP: 50, minDamage: 4, maxDamage: 11, xp: 17 }
         ];
         
         const characterSprites = {};
@@ -700,6 +701,7 @@ player.purchasedItems = {
         let currentStory = null;
         const STORY_OLD_MAN = 'old_man';
         const STORY_TREANT = 'treant';
+		const STORY_ABANDONED_HOUSE = 'abandonedHouse';
         
         // Add these new functions
 function showLoadingScreen() {
@@ -805,7 +807,8 @@ function initGame() {
 				health: enemyType.baseHP,
 				maxHealth: enemyType.baseHP,
 				minDamage: enemyType.minDamage,
-				maxDamage: enemyType.maxDamage
+				maxDamage: enemyType.maxDamage,
+				xp: enemyType.xp
 			};
 			
 			console.log("Created enemy:", enemy);
@@ -973,12 +976,12 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
         
 
     function drawGame() {
-	console.log("Drawing game. Game state:", gameState);
-    console.log("Enemies:", enemies);
+	//console.log("Drawing game. Game state:", gameState);
+    //console.log("Enemies:", enemies);
 	
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-	 console.log("Canvas dimensions:", canvas.width, "x", canvas.height);
+	 //console.log("Canvas dimensions:", canvas.width, "x", canvas.height);
     
     ctx.clearRect(0, 0, 800, 500);
     
@@ -1381,7 +1384,7 @@ function drawParty(ctx) {
     console.log("Current game state:", gameState);
     console.log("Special attack cooldown:", player.specialAttackCooldown);
     console.log("Player special skill:", player.specialSkill);
-
+    
     if (gameState === 'playerTurn' && player.specialSkill && player.specialAttackCooldown === 0) {
         showPlayerTurnNotification();
         if (typeof player.specialSkill.use !== 'function') {
@@ -1391,16 +1394,32 @@ function drawParty(ctx) {
         console.log("Using special skill:", player.specialSkill.name);
         
         try {
-            const result = player.specialSkill.use(player);
+            const targetEnemy = enemies[selectedEnemyIndex];
+            if (!targetEnemy) {
+                console.error("No valid target enemy");
+                return;
+            }
+
+            const result = player.specialSkill.use(player, targetEnemy);
             console.log("Skill use result:", result);
 
             if (result.damage > 0) {
-                enemies[selectedEnemyIndex].health -= result.damage;
+                let finalDamage = result.damage;
+                if (targetEnemy.exposed) {
+                    finalDamage *= 2;
+                    targetEnemy.exposed = false;
+                    console.log("Target was exposed. Damage doubled to:", finalDamage);
+                }
+                targetEnemy.health -= finalDamage;
                 // Update damage display
-                damageDisplay.enemy.damage = result.damage;
+                damageDisplay.enemy.damage = finalDamage;
                 damageDisplay.enemy.x = 725;
                 damageDisplay.enemy.y = 150;
                 damageDisplay.enemy.alpha = 1;
+            }
+
+            if (result.applyEffect) {
+                result.applyEffect(targetEnemy);
             }
 
             displayMessage(result.effect);
@@ -1815,10 +1834,10 @@ function drawParty(ctx) {
     console.log("Entering continueJourney function");
     hideAllScreens();
 	
-	if (gameState !== 'exploring') {
-            console.warn(`Unexpected gameState in continueJourney: ${gameState}`);
-            gameState = 'exploring';
-        }
+    if (gameState !== 'exploring') {
+        console.warn(`Unexpected gameState in continueJourney: ${gameState}`);
+        gameState = 'exploring';
+    }
     
     const eventType = getEventType();
     console.log("Event type selected:", eventType);
@@ -1830,10 +1849,13 @@ function drawParty(ctx) {
             break;
         case 'story':
             console.log("Starting story event");
-            if (Math.random() <= 0.5) {
+            const storyEvent = Math.random();
+            if (storyEvent < 0.33) {
                 showStoryEvent1();
-            } else {
+            } else if (storyEvent < 0.66) {
                 showStoryEvent2();
+            } else {
+                showStoryEvent3();
             }
             break;
         case 'battle':
@@ -2758,6 +2780,156 @@ function logButtonStates() {
             document.getElementById('storyText').innerHTML = "You walk away, finding the whole situation very strange.";
             showFinalContinueButton(); // Show final continue button and update stats
         }
+		
+		function showStoryEvent3() {
+			console.log("Entering showStoryEvent3");
+			inStoryEvent = true;
+			ensureButtonVisibility();
+			currentStory = STORY_ABANDONED_HOUSE;
+			document.getElementById('storyLevelUpMessage').style.display = 'none';
+			document.getElementById('storyLevelUpMessage').innerHTML = '';
+			document.getElementById('gameCanvas').style.display = 'none';
+			document.getElementById('gameButtons').style.display = 'none';
+			document.getElementById('storyEventScreen').style.display = 'block';
+			document.getElementById('storyText').innerHTML = "You encounter an abandoned house right off the main road. You feel that something is calling to you from inside. It seems dangerous.";
+
+			document.getElementById('storyChoice1Button').textContent = "Shout to see if you get a reply";
+			document.getElementById('storyChoice2Button').textContent = "Walk up to the door";
+			document.getElementById('storyChoice3Button').textContent = "Leave right away";
+
+			removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+			document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseShout);
+			document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseDoor);
+			document.getElementById('storyChoice3Button').addEventListener('click', handleAbandonedHouseLeave);
+
+			document.getElementById('storyChoices').style.display = 'block';
+			document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+			document.getElementById('continueToBattleButton').style.display = 'none';
+			document.getElementById('storyStats').style.display = 'none';
+		}
+		
+		function handleAbandonedHouseShout() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "You shout and a voice yells back 'Why are you being rude, stop yelling and come inside'";
+
+    document.getElementById('storyChoice1Button').textContent = "Yell 'Who are you'";
+    document.getElementById('storyChoice2Button').textContent = "Walk up to the door";
+    document.getElementById('storyChoice3Button').textContent = "Walk away";
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseYellWho);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseDoor);
+    document.getElementById('storyChoice3Button').addEventListener('click', handleAbandonedHouseWalkAway);
+}
+
+function handleAbandonedHouseLeave() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    const goldFound = Math.floor(Math.random() * (100 - 25 + 1)) + 25;
+    player.gold += goldFound;
+    document.getElementById('storyText').innerHTML = `You leave and find a coin purse on the road. You receive ${goldFound} gold.`;
+    showFinalContinueButton();
+}
+
+function handleAbandonedHouseYellWho() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "No one replies.";
+
+    document.getElementById('storyChoice1Button').textContent = "Walk up to the door";
+    document.getElementById('storyChoice2Button').textContent = "Walk away";
+    document.getElementById('storyChoice3Button').style.display = 'none';
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseDoor);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseWalkAway);
+}
+
+function handleAbandonedHouseWalkAway() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "As you walk away, an angry spirit attacks you!";
+    document.getElementById('storyChoices').style.display = 'none';
+    document.getElementById('continueToBattleButton').style.display = 'inline-block';
+    document.getElementById('continueToBattleButton').onclick = function() {
+        hideStoryEventScreen();
+        startAngrySpirit();
+    };
+}
+
+function handleAbandonedHouseDoor() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "You walk up to the door.";
+
+    document.getElementById('storyChoice1Button').textContent = "Open door";
+    document.getElementById('storyChoice2Button').textContent = "Knock on the door";
+    document.getElementById('storyChoice3Button').style.display = 'none';
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseOpenDoor);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseKnock);
+}
+
+function handleAbandonedHouseOpenDoor() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "You open the door. An angry spirit screams that you have no manners and attacks you!";
+    document.getElementById('storyChoices').style.display = 'none';
+    document.getElementById('continueToBattleButton').style.display = 'inline-block';
+    document.getElementById('continueToBattleButton').onclick = function() {
+        hideStoryEventScreen();
+        startAngrySpirit();
+    };
+}
+
+function handleAbandonedHouseKnock() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "A spirit invites you in.";
+
+    document.getElementById('storyChoice1Button').textContent = "Accept the invitation";
+    document.getElementById('storyChoice2Button').textContent = "Refuse and leave";
+    document.getElementById('storyChoice3Button').style.display = 'none';
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseAccept);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseWalkAway);
+}
+
+function handleAbandonedHouseAccept() {
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "You are invited in. There is a feast setup on the dining table. The food and drink are amazing and delicious. You have a great time, and the spirit grants you an HP potion and a coin purse with 500 Gold. You gain 25 XP. The HP potion grants 5 maximum HP, and your HP is restored.";
+    
+    player.gold += 500;
+    player.experience += 25;
+    player.maxHealth += 5;
+    player.health = player.maxHealth;
+    
+    checkStoryLevelUp();
+    updateStoryScreenStats();
+    showFinalContinueButton();
+}
+
+function startAngrySpirit() {
+    console.log("Starting Angry Spirit battle");
+    const angrySpirit = createEnemyByType('Angry Spirit');
+    if (!angrySpirit) {
+        console.error("Failed to create Angry Spirit enemy");
+        return;
+    }
+    
+    enemies = [angrySpirit];
+    gameState = 'playerTurn';
+    hideAllScreens();
+    document.getElementById('gameContainer').style.display = 'block';
+    document.getElementById('gameCanvas').style.display = 'block';
+    document.getElementById('gameButtons').style.display = 'block';
+    updateButtonStates();
+    drawGame();
+    inStoryEvent = false;
+}
+    
+   
 
         function showFinalContinueButton() {
     console.log("Executing showFinalContinueButton");
@@ -3033,27 +3205,35 @@ function getClassSkills(characterClass) {
                             const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
                             totalDamage += damage;
                         }
-                        target.health -= totalDamage;
-                        return `${user.class} used Double Attack for ${totalDamage} damage!`;
+                        return {
+                            damage: totalDamage,
+                            effect: `${user.class} used Double Attack for ${totalDamage} damage!`
+                        };
                     }
                 },
                 'Stone Skin': {
                     name: 'Stone Skin',
                     use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
-                        target.health -= damage;
-                        user.defending = true;
-                        return `${user.class} used Stone Skin, dealt ${damage} damage, and is now defending!`;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Stone Skin, dealt ${damage} damage, and is now defending!`,
+                            applyEffect: () => { user.defending = true; }
+                        };
                     }
                 },
                 'Life Attack': {
                     name: 'Life Attack',
                     use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
-                        target.health -= damage;
                         const healAmount = Math.floor(damage / 2);
-                        user.health = Math.min(user.health + healAmount, user.maxHealth);
-                        return `${user.class} used Life Attack for ${damage} damage and healed for ${healAmount}!`;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Life Attack for ${damage} damage and healed for ${healAmount}!`,
+                            applyEffect: () => {
+                                user.health = Math.min(user.health + healAmount, user.maxHealth);
+                            }
+                        };
                     }
                 }
             };
@@ -3063,30 +3243,33 @@ function getClassSkills(characterClass) {
                     name: 'Thunder',
                     use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-                        target.health -= damage;
-                        target.stunnedTurns = 1;
-                        return `${user.class} used Thunder for ${damage} damage and stunned the target!`;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Thunder for ${damage} damage and stunned the target!`,
+                            applyEffect: (target) => { target.stunnedTurns = 1; }
+                        };
                     }
                 },
                 'Fireball': {
                     name: 'Fireball',
                     use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 2;
-                        target.health -= damage;
-                        target.burnedTurns = 2;
-                        return `${user.class} used Fireball for ${damage} damage and burned the target!`;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Fireball for ${damage} damage and burned the target!`,
+                            applyEffect: (target) => { target.burnedTurns = 2; }
+                        };
                     }
                 },
                 'Hail Storm': {
                     name: 'Hail Storm',
                     use: function(user, targets) {
-                        let totalDamage = 0;
-                        targets.forEach(target => {
-                            const damage = Math.floor(Math.random() * (user.maxDamage / 2 - user.minDamage / 2 + 1)) + user.minDamage / 2 + 1;
-                            target.health -= damage;
-                            totalDamage += damage;
-                        });
-                        return `${user.class} used Hail Storm for ${totalDamage} total damage across all enemies!`;
+                        const damage = Math.floor(Math.random() * (user.maxDamage / 2 - user.minDamage / 2 + 1)) + user.minDamage / 2 + 1;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Hail Storm for ${damage} damage to all enemies!`,
+                            isAOE: true
+                        };
                     }
                 }
             };
@@ -3095,28 +3278,38 @@ function getClassSkills(characterClass) {
                 'Holy Light': {
                     name: 'Holy Light',
                     use: function(user, target) {
-                        const healing = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-                        target.health = Math.min(target.health + healing, target.maxHealth);
-                        target.exposed = true;
-                        return `${user.class} used Holy Light, healed ${target.class} for ${healing} HP, and exposed the target!`;
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Holy Light for ${damage} damage and exposed the target!`,
+                            applyEffect: (target) => { target.exposed = true; }
+                        };
                     }
                 },
                 'Life Transfer': {
                     name: 'Life Transfer',
                     use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-                        target.health -= damage;
-                        const healAmount = damage; // Heal for the exact amount of damage dealt
-                        user.health = Math.min(user.health + healAmount, user.maxHealth);
-                        return `${user.class} used Life Transfer, dealing ${damage} damage to the enemy and healing for ${healAmount} HP!`;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Life Transfer, dealing ${damage} damage to the enemy and healing for ${damage} HP!`,
+                            applyEffect: () => {
+                                user.health = Math.min(user.health + damage, user.maxHealth);
+                            }
+                        };
                     }
                 },
                 'Shield of Light': {
                     name: 'Shield of Light',
                     use: function(user) {
-                        user.shieldOfLight = 2;
-                        user.maxDamage += 2;
-                        return `${user.class} used Shield of Light and is now protected for 2 turns with increased damage!`;
+                        return {
+                            damage: 0,
+                            effect: `${user.class} used Shield of Light and is now protected for 2 turns with increased damage!`,
+                            applyEffect: () => {
+                                user.shieldOfLight = 2;
+                                user.maxDamage += 2;
+                            }
+                        };
                     }
                 }
             };
@@ -3125,31 +3318,41 @@ function getClassSkills(characterClass) {
                 'Blind Shot': {
                     name: 'Blind Shot',
                     use: function(user, target) {
-						const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-						target.health -= damage;
-						target.blind = 100;
-						return `${user.class} used Blind Shot for ${damage} damage and blinded the target (100% chance to miss)!`;
-					}
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Blind Shot for ${damage} damage and blinded the target (100% chance to miss)!`,
+                            applyEffect: (target) => { target.blind = 100; }
+                        };
+                    }
                 },
                 'Toxic Stab': {
                     name: 'Toxic Stab',
                     use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 2;
-                        target.health -= damage;
-                        target.poison = (target.poison || 0) + 1;
-                        return `${user.class} used Toxic Stab for ${damage} damage and poisoned the target!`;
+                        return {
+                            damage: damage,
+                            effect: `${user.class} used Toxic Stab for ${damage} damage and poisoned the target!`,
+                            applyEffect: (target) => { 
+                                if (!target.poisonCounter) {
+                                    target.poisonCounter = 1;
+                                } else {
+                                    target.poisonCounter++;
+                                }
+                            }
+                        };
                     }
                 },
                 'Perfect Parry': {
                     name: 'Perfect Parry',
                     use: function(user) {
-						const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-						user.parry = true;
-						return {
-							damage: 0,  // No immediate damage
-							effect: `${user.class} used Perfect Parry, dealing ${damage} damage on the next enemy attack and is ready to counter!`
-						};
-					}
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        return {
+                            damage: 0,
+                            effect: `${user.class} used Perfect Parry, dealing ${damage} damage on the next enemy attack and is ready to counter!`,
+                            applyEffect: () => { user.parry = true; }
+                        };
+                    }
                 }
             };
         default:
