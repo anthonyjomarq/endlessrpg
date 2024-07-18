@@ -920,7 +920,7 @@ function initGame() {
     console.log("Player special skill:", player.specialSkill);
     showLoadingScreen();
 
-   // Ensure we have a valid character class
+    // Ensure we have a valid character class
     const selectedClass = characterClass || player.class;
     if (!selectedClass) {
         console.error('No character class selected');
@@ -934,27 +934,30 @@ function initGame() {
             setupClassSkills();
         }
     
-    hideAllScreens();
+        hideAllScreens();
     
-    const gameContainer = document.getElementById('gameContainer');
-    gameContainer.style.display = 'flex';
+        const gameContainer = document.getElementById('gameContainer');
+        gameContainer.style.display = 'flex';
     
-    document.getElementById('gameCanvas').style.display = 'block';
-    document.getElementById('gameButtons').style.display = 'flex';
+        document.getElementById('gameCanvas').style.display = 'block';
+        document.getElementById('gameButtons').style.display = 'flex';
     
-       // Update the special attack button
-    //updateSpecialAttackButton();
+        // Update the special attack button
+        // updateSpecialAttackButton();
     
-    currentBattleExpGained = 0;
-    gameState = 'playerTurn';
-    updateButtonStates();
-    enemies = createEnemies(player.level);
+        currentBattleExpGained = 0;
+        gameState = 'playerTurn';
+        updateButtonStates();
+        enemies = createEnemies(player.level);
     
-    if (isMobile()) {
+        if (isMobile()) {
+            createMobileMenu();
+        }
+
+        // Call resizeGame for both mobile and desktop
         resizeGame();
-    }
     
-    hideLoadingScreen();
+        hideLoadingScreen();
         drawGame();
         animateDamage();
     }).catch(error => {
@@ -4133,33 +4136,65 @@ function updateMerchantTent() {
 
     let newWidth, newHeight;
 
-    if (windowWidth / windowHeight > gameAspectRatio) {
-        newHeight = Math.min(windowHeight - 100, 500); // Cap at original height
-        newWidth = newHeight * gameAspectRatio;
+    if (isMobile() && windowHeight > windowWidth) {
+        // Vertical mobile screen
+        newWidth = windowWidth;
+        newHeight = windowWidth / gameAspectRatio;
+        
+        // If the calculated height is greater than the window height, adjust
+        if (newHeight > windowHeight * 0.9) {
+            newHeight = windowHeight * 0.9;
+            newWidth = newHeight * gameAspectRatio;
+        }
     } else {
-        newWidth = Math.min(windowWidth, 800); // Cap at original width
-        newHeight = newWidth / gameAspectRatio;
+        // Horizontal or desktop screen
+        if (windowWidth / windowHeight > gameAspectRatio) {
+            newHeight = Math.min(windowHeight - 100, 500);
+            newWidth = newHeight * gameAspectRatio;
+        } else {
+            newWidth = Math.min(windowWidth, 800);
+            newHeight = newWidth / gameAspectRatio;
+        }
     }
 
     gameContainer.style.width = `${newWidth}px`;
+    gameContainer.style.height = `${newHeight}px`;
     game.style.width = `${newWidth}px`;
     game.style.height = `${newHeight}px`;
 
-    // Only change actual canvas dimensions on mobile
-    if (isMobile()) {
-        game.width = newWidth;
-        game.height = newHeight;
-    } else {
-        game.width = 800;
-        game.height = 500;
-    }
+    // Update canvas dimensions
+    game.width = newWidth;
+    game.height = newHeight;
 
     const ctx = game.getContext('2d');
-    ctx.setTransform(game.width / 800, 0, 0, game.height / 500, 0, 0);
+    ctx.setTransform(newWidth / 800, 0, 0, newHeight / 500, 0, 0);
 
     if (gameState !== 'mainMenu') {
         drawGame();
     }
+
+    // Adjust other UI elements if necessary
+    adjustUIElements(newWidth, newHeight);
+}
+
+function adjustUIElements(newWidth, newHeight) {
+    // Adjust positions and sizes of other UI elements
+    const gameButtons = document.getElementById('gameButtons');
+    if (gameButtons) {
+        gameButtons.style.top = `${newHeight}px`;
+        gameButtons.style.width = `${newWidth}px`;
+    }
+
+    // Position the mobile menu
+    const mobileMenu = document.getElementById('mobileMenu');
+    if (mobileMenu) {
+        mobileMenu.style.position = 'absolute';
+        mobileMenu.style.top = `${newHeight}px`;
+        mobileMenu.style.left = '0';
+        mobileMenu.style.width = `${newWidth}px`;
+    }
+
+    // Add more adjustments for other UI elements as needed
 }
         
         function createMobileMenu() {
