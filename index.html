@@ -973,12 +973,12 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
         
 
     function drawGame() {
-	//console.log("Drawing game. Game state:", gameState);
-    //console.log("Enemies:", enemies);
+	console.log("Drawing game. Game state:", gameState);
+    console.log("Enemies:", enemies);
 	
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-	 //console.log("Canvas dimensions:", canvas.width, "x", canvas.height);
+	 console.log("Canvas dimensions:", canvas.width, "x", canvas.height);
     
     ctx.clearRect(0, 0, 800, 500);
     
@@ -1064,9 +1064,7 @@ if (enemies.length > 1) {
         if (enemy.burnedTurns > 0) drawEnemyStatus('Burned', 'orange');
         if (enemy.exposed) drawEnemyStatus('Exposed', 'green');
         if (enemy.blind) drawEnemyStatus(`Blind (${enemy.blind}% chance to miss)`, 'gray');
-        if (enemy.poisonCounter && enemy.poisonCounter > 0) {
-            drawEnemyStatus(`Poisoned (${enemy.poisonCounter} damage next turn)`, 'purple');
-        }
+        if (enemy.poison && enemy.poison > 0) drawEnemyStatus(`Poisoned (${enemy.poison})`, 'purple');
     });
 
     // Draw player stats
@@ -1328,9 +1326,8 @@ function drawParty(ctx) {
         }
         
         const targetEnemy = enemies[selectedEnemyIndex];
-         let damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
-        let finalDamage = damage;
-
+        let damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
+        
         if (targetEnemy.parryNextAttack) {
             console.log("Enemy parried the attack!");
             damageDisplay.player.damage = damage;
@@ -1339,37 +1336,33 @@ function drawParty(ctx) {
             damageDisplay.player.alpha = 1;
             player.health -= damage;
             targetEnemy.parryNextAttack = false;
-            finalDamage = 0;
+            damage = 0;
         } else {
             if (targetEnemy.exposed) {
-                finalDamage *= 2;
+                damage *= 2;
                 targetEnemy.exposed = false;
-                console.log("Target was exposed. Damage doubled to:", finalDamage);
             }
             
             if (targetEnemy.defending) {
-                finalDamage = Math.floor(finalDamage / 2);
+                damage = Math.floor(damage / 2);
                 targetEnemy.defending = false;
             }
-
-            targetEnemy.health -= finalDamage;
-            damageDisplay.enemy.damage = finalDamage;
+            targetEnemy.health -= damage;
+            damageDisplay.enemy.damage = damage;
             damageDisplay.enemy.x = 725;
             damageDisplay.enemy.y = 150 + (selectedEnemyIndex * 130);
             damageDisplay.enemy.alpha = 1;
         }
-
-        // Display the attack result
-        if (finalDamage > 0) {
-            displayMessage(`You dealt ${finalDamage} damage to the ${targetEnemy.type}!`);
-        } else {
-            displayMessage("Your attack was parried!");
-        }
         
         // Apply poison damage to the enemy at the end of player's turn
-        applyPlayerPoisonDamage();
+        if (targetEnemy.poisonCounter > 0) {
+            const poisonDamage = targetEnemy.poisonCounter;
+            targetEnemy.health -= poisonDamage;
+            console.log(`Enemy takes ${poisonDamage} poison damage`);
+            targetEnemy.poisonCounter++;
+        }
         
-        //applyPoisonDamage(); // Apply poison damage at the end of the turn
+        applyPoisonDamage(); // Apply poison damage at the end of the turn
         checkEnemyDefeat();
         if (gameState !== 'victory' && gameState !== 'duelVictory') {
             gameState = 'enemyTurn';
@@ -1401,39 +1394,21 @@ function drawParty(ctx) {
             const result = player.specialSkill.use(player);
             console.log("Skill use result:", result);
 
-            const targetEnemy = enemies[selectedEnemyIndex];
-            if (!targetEnemy) {
-                console.error("No valid target enemy");
-                return;
+            if (result.damage > 0) {
+                enemies[selectedEnemyIndex].health -= result.damage;
+                // Update damage display
+                damageDisplay.enemy.damage = result.damage;
+                damageDisplay.enemy.x = 725;
+                damageDisplay.enemy.y = 150;
+                damageDisplay.enemy.alpha = 1;
             }
-
-            let finalDamage = result.damage;
-			if (targetEnemy.exposed) {
-				finalDamage *= 2;
-				targetEnemy.exposed = false; // Remove exposed status after applying double damage
-				console.log("Target was exposed. Damage doubled to:", finalDamage);
-			}
-
-			targetEnemy.health -= finalDamage;
-
-			// Update damage display
-			damageDisplay.enemy.damage = finalDamage;
-			damageDisplay.enemy.x = 725;
-			damageDisplay.enemy.y = 150;
-			damageDisplay.enemy.alpha = 1;
-
-            if (result.applyEffect) {
-                result.applyEffect(targetEnemy);
-            }
-			
-			applyPlayerPoisonDamage();
 
             displayMessage(result.effect);
             
             player.specialAttackCooldown = 3; // Set cooldown after using the skill
             console.log("Set special attack cooldown to:", player.specialAttackCooldown);
             
-            //applyPoisonDamage(); // Apply poison damage at the end of the turn
+            applyPoisonDamage(); // Apply poison damage at the end of the turn
             checkEnemyDefeat();
             if (gameState !== 'victory') {
                 gameState = 'enemyTurn';
@@ -1497,12 +1472,10 @@ function drawParty(ctx) {
             player.specialAttackCooldown--;
             console.log("Special attack cooldown decreased to:", player.specialAttackCooldown);
         }
-		
-		
     if (gameState !== 'victory' && gameState !== 'duelVictory') {
         player.defending = true;
         //
-        applyPlayerPoisonDamage(); // Apply poison damage at the end of the turn
+        applyPoisonDamage(); // Apply poison damage at the end of the turn
         gameState = 'enemyTurn';
         showPlayerTurnNotification();
         updateButtonStates();
@@ -1670,21 +1643,13 @@ function drawParty(ctx) {
                 enemy.burnedTurns--;
             }
 
-             // Apply poison damage after the enemy attacks
-            if (enemy.poisonCounter && enemy.poisonCounter > 0) {
-                const poisonDamage = enemy.poisonCounter;
+            if (enemy.poison) {
+                const poisonDamage = enemy.poison;
                 enemy.health -= poisonDamage;
-                displayMessage(`${enemy.type} took ${poisonDamage} poison damage!`);
-                console.log(`${enemy.type} took ${poisonDamage} poison damage. Poison counter: ${enemy.poisonCounter}`);
-                
-                // Update damage display for poison
                 damageDisplay.enemy.damage = poisonDamage;
                 damageDisplay.enemy.x = 725;
                 damageDisplay.enemy.y = 150 + (index * 130);
                 damageDisplay.enemy.alpha = 1;
-
-                // Increment poison counter for next turn
-                enemy.poisonCounter++;
             }
 
             if (conditionalDamage > 0) {
@@ -1849,6 +1814,11 @@ function drawParty(ctx) {
         function continueJourney() {
     console.log("Entering continueJourney function");
     hideAllScreens();
+	
+	if (gameState !== 'exploring') {
+            console.warn(`Unexpected gameState in continueJourney: ${gameState}`);
+            gameState = 'exploring';
+        }
     
     const eventType = getEventType();
     console.log("Event type selected:", eventType);
@@ -3057,37 +3027,33 @@ function getClassSkills(characterClass) {
             return {
                 'Double Attack': {
                     name: 'Double Attack',
-                    use: function(user) {
+                    use: function(user, target) {
                         let totalDamage = 0;
                         for (let i = 0; i < 2; i++) {
-                            totalDamage += Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
+                            const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
+                            totalDamage += damage;
                         }
-                        return {
-                            damage: totalDamage,
-                            effect: `${user.class} used Double Attack for ${totalDamage} damage!`
-                        };
+                        target.health -= totalDamage;
+                        return `${user.class} used Double Attack for ${totalDamage} damage!`;
                     }
                 },
                 'Stone Skin': {
                     name: 'Stone Skin',
-                    use: function(user) {
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
+                        target.health -= damage;
                         user.defending = true;
-                        return {
-                            damage: 0,
-                            effect: `${user.class} used Stone Skin and is now defending!`
-                        };
+                        return `${user.class} used Stone Skin, dealt ${damage} damage, and is now defending!`;
                     }
                 },
                 'Life Attack': {
                     name: 'Life Attack',
-                    use: function(user) {
+                    use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage;
+                        target.health -= damage;
                         const healAmount = Math.floor(damage / 2);
                         user.health = Math.min(user.health + healAmount, user.maxHealth);
-                        return {
-                            damage: damage,
-                            effect: `${user.class} used Life Attack for ${damage} damage and healed for ${healAmount}!`
-                        };
+                        return `${user.class} used Life Attack for ${damage} damage and healed for ${healAmount}!`;
                     }
                 }
             };
@@ -3095,35 +3061,32 @@ function getClassSkills(characterClass) {
             return {
                 'Thunder': {
                     name: 'Thunder',
-                    use: function(user) {
+                    use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-                        return {
-                            damage: damage,
-                            effect: `${user.class} used Thunder for ${damage} damage and stunned the target!`,
-                            applyEffect: (target) => { target.stunnedTurns = 1; }
-                        };
+                        target.health -= damage;
+                        target.stunnedTurns = 1;
+                        return `${user.class} used Thunder for ${damage} damage and stunned the target!`;
                     }
                 },
                 'Fireball': {
                     name: 'Fireball',
-                    use: function(user) {
+                    use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 2;
-                        return {
-                            damage: damage,
-                            effect: `${user.class} used Fireball for ${damage} damage and burned the target!`,
-                            applyEffect: (target) => { target.burnedTurns = 2; }
-                        };
+                        target.health -= damage;
+                        target.burnedTurns = 2;
+                        return `${user.class} used Fireball for ${damage} damage and burned the target!`;
                     }
                 },
                 'Hail Storm': {
                     name: 'Hail Storm',
-                    use: function(user) {
-                        const damage = Math.floor(Math.random() * (user.maxDamage / 2 - user.minDamage / 2 + 1)) + user.minDamage / 2 + 1;
-                        return {
-                            damage: damage,
-                            effect: `${user.class} used Hail Storm for ${damage} damage to all enemies!`,
-                            isAOE: true
-                        };
+                    use: function(user, targets) {
+                        let totalDamage = 0;
+                        targets.forEach(target => {
+                            const damage = Math.floor(Math.random() * (user.maxDamage / 2 - user.minDamage / 2 + 1)) + user.minDamage / 2 + 1;
+                            target.health -= damage;
+                            totalDamage += damage;
+                        });
+                        return `${user.class} used Hail Storm for ${totalDamage} total damage across all enemies!`;
                     }
                 }
             };
@@ -3131,31 +3094,21 @@ function getClassSkills(characterClass) {
             return {
                 'Holy Light': {
                     name: 'Holy Light',
-                    use: function(user) {
-                        const minDamage = user.minDamage + 1;
-                        const maxDamage = user.maxDamage + 1;
-                        const damage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
-                        return {
-                            damage: damage,
-                            effect: `${user.class} used Holy Light for ${damage} damage and exposed the target!`,
-                            applyEffect: (target) => { 
-                                target.exposed = true;
-                            }
-                        };
+                    use: function(user, target) {
+                        const healing = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        target.health = Math.min(target.health + healing, target.maxHealth);
+                        target.exposed = true;
+                        return `${user.class} used Holy Light, healed ${target.class} for ${healing} HP, and exposed the target!`;
                     }
                 },
                 'Life Transfer': {
                     name: 'Life Transfer',
-                    use: function(user) {
-                        const transfer = Math.floor(user.health * 0.3);
-                        return {
-                            damage: 0,
-                            effect: `${user.class} used Life Transfer, transferring ${transfer} HP!`,
-                            applyEffect: (target) => {
-                                user.health -= transfer;
-                                target.health = Math.min(target.health + transfer, target.maxHealth);
-                            }
-                        };
+                    use: function(user, target) {
+                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+                        target.health -= damage;
+                        const healAmount = damage; // Heal for the exact amount of damage dealt
+                        user.health = Math.min(user.health + healAmount, user.maxHealth);
+                        return `${user.class} used Life Transfer, dealing ${damage} damage to the enemy and healing for ${healAmount} HP!`;
                     }
                 },
                 'Shield of Light': {
@@ -3163,10 +3116,7 @@ function getClassSkills(characterClass) {
                     use: function(user) {
                         user.shieldOfLight = 2;
                         user.maxDamage += 2;
-                        return {
-                            damage: 0,
-                            effect: `${user.class} used Shield of Light and is now protected for 2 turns with increased damage!`
-                        };
+                        return `${user.class} used Shield of Light and is now protected for 2 turns with increased damage!`;
                     }
                 }
             };
@@ -3174,72 +3124,37 @@ function getClassSkills(characterClass) {
             return {
                 'Blind Shot': {
                     name: 'Blind Shot',
-                    use: function(user) {
-                        const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
-                        return {
-                            damage: damage,
-                            effect: `${user.class} used Blind Shot for ${damage} damage and blinded the target!`,
-                            applyEffect: (target) => { target.blind = 100; }
-                        };
-                    }
+                    use: function(user, target) {
+						const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+						target.health -= damage;
+						target.blind = 100;
+						return `${user.class} used Blind Shot for ${damage} damage and blinded the target (100% chance to miss)!`;
+					}
                 },
                 'Toxic Stab': {
                     name: 'Toxic Stab',
-                    use: function(user) {
+                    use: function(user, target) {
                         const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 2;
-						return {
-							damage: damage,
-							effect: `${user.class} used Toxic Stab for ${damage} damage and poisoned the target!`,
-							applyEffect: (target) => { 
-								if (!target.poisonCounter) {
-									target.poisonCounter = 1;
-								} else {
-									target.poisonCounter++;
-								}
-								console.log(`Applied poison to ${target.type}. Poison counter: ${target.poisonCounter}`);
-							}
-						};
-					}
-                    
+                        target.health -= damage;
+                        target.poison = (target.poison || 0) + 1;
+                        return `${user.class} used Toxic Stab for ${damage} damage and poisoned the target!`;
+                    }
                 },
                 'Perfect Parry': {
                     name: 'Perfect Parry',
                     use: function(user) {
-                        user.parry = true;
-                        return {
-                            damage: 0,
-                            effect: `${user.class} used Perfect Parry and is ready to counter the next attack!`
-                        };
-                    }
+						const damage = Math.floor(Math.random() * (user.maxDamage - user.minDamage + 1)) + user.minDamage + 1;
+						user.parry = true;
+						return {
+							damage: 0,  // No immediate damage
+							effect: `${user.class} used Perfect Parry, dealing ${damage} damage on the next enemy attack and is ready to counter!`
+						};
+					}
                 }
             };
         default:
             console.error(`Unknown class: ${characterClass}`);
             return {};
-    }
-}
-
-function applyPlayerPoisonDamage() {
-    if (player.poisonCounter && player.poisonCounter > 0) {
-        const poisonDamage = player.poisonCounter;
-        player.health -= poisonDamage;
-        displayMessage(`You took ${poisonDamage} poison damage!`);
-        console.log(`Player took ${poisonDamage} poison damage`);
-        
-        // Update damage display for poison
-        damageDisplay.player.damage = poisonDamage;
-        damageDisplay.player.x = 75;
-        damageDisplay.player.y = 150;
-        damageDisplay.player.alpha = 1;
-
-        // Increment poison counter for next turn
-        player.poisonCounter++;
-
-        // Check if player is defeated
-        if (player.health <= 0) {
-            gameState = 'defeat';
-            showDefeatScreen();
-        }
     }
 }
 
@@ -3638,10 +3553,18 @@ function returnToCampFromDuel() {
 }
 
 function hideDuelVictoryScreen() {
-    document.getElementById('duelVictoryScreen').style.display = 'none';
+    console.log("Hiding duel victory screen");
+    const victoryScreen = document.getElementById('duelVictoryScreen');
+    if (victoryScreen) {
+        victoryScreen.style.display = 'none';
+    } else {
+        console.warn("Duel victory screen element not found");
+    }
     const buttonContainer = document.getElementById('duelVictoryButtons');
     if (buttonContainer) {
         buttonContainer.style.display = 'none';
+    } else {
+        console.warn("Duel victory buttons container not found");
     }
 }
 
@@ -3875,9 +3798,19 @@ function updateMerchantTent() {
 }
 
         function continueDuelJourney() {
-    hideDuelVictoryScreen();
-    gameState = 'exploring';
-    startJourney();
+    console.log("Entering continueDuelJourney function");
+    try {
+        console.log("Hiding duel victory screen");
+        hideDuelVictoryScreen();
+        console.log("Setting gameState to exploring");
+        gameState = 'exploring';
+        console.log("Calling continueJourney");
+        continueJourney();
+    } catch (error) {
+        console.error("Error in continueDuelJourney:", error);
+        showErrorScreen(error);
+    }
+    console.log("Exiting continueDuelJourney function");
 }
 
         function useEnemySpecialSkill(enemy) {
