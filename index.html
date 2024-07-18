@@ -942,9 +942,6 @@ function initGame() {
         document.getElementById('gameCanvas').style.display = 'block';
         document.getElementById('gameButtons').style.display = 'flex';
     
-        // Update the special attack button
-        // updateSpecialAttackButton();
-    
         currentBattleExpGained = 0;
         gameState = 'playerTurn';
         updateButtonStates();
@@ -954,7 +951,7 @@ function initGame() {
             createMobileMenu();
         }
 
-        // Call resizeGame for both mobile and desktop
+        // Call resizeGame after setting up the game elements
         resizeGame();
     
         hideLoadingScreen();
@@ -974,6 +971,10 @@ document.getElementById('mageButton').addEventListener('click', () => {
 });
 document.getElementById('clericButton').addEventListener('click', () => startBattle('Cleric'));
 document.getElementById('rogueButton').addEventListener('click', () => startBattle('Rogue'));
+
+window.addEventListener('orientationchange', function() {
+    setTimeout(resizeGame, 100); // Short delay to ensure new dimensions are available
+});
 
         let lastPoisonStatus = null;
         
@@ -4130,71 +4131,92 @@ function updateMerchantTent() {
         function resizeGame() {
     const gameContainer = document.getElementById('gameContainer');
     const game = document.getElementById('gameCanvas');
-    const gameAspectRatio = 800 / 500;
+    const originalWidth = 800;
+    const originalHeight = 500;
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
 
-    let newWidth, newHeight;
-
     if (isMobile() && windowHeight > windowWidth) {
         // Vertical mobile screen
-        newWidth = windowWidth;
-        newHeight = windowWidth / gameAspectRatio;
+        const scale = Math.min(windowWidth / originalWidth, windowHeight / (originalHeight + 100)); // 100px for buttons
         
-        // If the calculated height is greater than the window height, adjust
-        if (newHeight > windowHeight * 0.9) {
-            newHeight = windowHeight * 0.9;
-            newWidth = newHeight * gameAspectRatio;
-        }
+        gameContainer.style.transform = `scale(${scale})`;
+        gameContainer.style.transformOrigin = 'top left';
+        gameContainer.style.width = `${originalWidth}px`;
+        gameContainer.style.height = `${originalHeight}px`;
+        
+        game.width = originalWidth;
+        game.height = originalHeight;
+        
+        // Position the scaled container
+        const scaledHeight = (originalHeight + 100) * scale; // 100px for buttons
+        gameContainer.style.position = 'absolute';
+        gameContainer.style.top = `${(windowHeight - scaledHeight) / 2}px`;
+        gameContainer.style.left = `${(windowWidth - (originalWidth * scale)) / 2}px`;
     } else {
-        // Horizontal or desktop screen
+        // Horizontal or desktop screen (use previous logic)
+        let newWidth, newHeight;
+        const gameAspectRatio = originalWidth / originalHeight;
+
         if (windowWidth / windowHeight > gameAspectRatio) {
-            newHeight = Math.min(windowHeight - 100, 500);
+            newHeight = Math.min(windowHeight - 100, originalHeight);
             newWidth = newHeight * gameAspectRatio;
         } else {
-            newWidth = Math.min(windowWidth, 800);
+            newWidth = Math.min(windowWidth, originalWidth);
             newHeight = newWidth / gameAspectRatio;
         }
+
+        gameContainer.style.width = `${newWidth}px`;
+        gameContainer.style.height = `${newHeight}px`;
+        game.style.width = `${newWidth}px`;
+        game.style.height = `${newHeight}px`;
+        game.width = newWidth;
+        game.height = newHeight;
+
+        gameContainer.style.transform = 'none';
+        gameContainer.style.position = 'static';
     }
 
-    gameContainer.style.width = `${newWidth}px`;
-    gameContainer.style.height = `${newHeight}px`;
-    game.style.width = `${newWidth}px`;
-    game.style.height = `${newHeight}px`;
-
-    // Update canvas dimensions
-    game.width = newWidth;
-    game.height = newHeight;
-
     const ctx = game.getContext('2d');
-    ctx.setTransform(newWidth / 800, 0, 0, newHeight / 500, 0, 0);
+    ctx.setTransform(game.width / originalWidth, 0, 0, game.height / originalHeight, 0, 0);
 
     if (gameState !== 'mainMenu') {
         drawGame();
     }
 
-    // Adjust other UI elements if necessary
-    adjustUIElements(newWidth, newHeight);
+    adjustUIElements();
 }
 
-function adjustUIElements(newWidth, newHeight) {
-    // Adjust positions and sizes of other UI elements
+function adjustUIElements() {
+    const gameContainer = document.getElementById('gameContainer');
     const gameButtons = document.getElementById('gameButtons');
-    if (gameButtons) {
-        gameButtons.style.top = `${newHeight}px`;
-        gameButtons.style.width = `${newWidth}px`;
-    }
-
-    // Position the mobile menu
     const mobileMenu = document.getElementById('mobileMenu');
-    if (mobileMenu) {
-        mobileMenu.style.position = 'absolute';
-        mobileMenu.style.top = `${newHeight}px`;
-        mobileMenu.style.left = '0';
-        mobileMenu.style.width = `${newWidth}px`;
-    }
 
-    // Add more adjustments for other UI elements as needed
+    if (isMobile() && window.innerHeight > window.innerWidth) {
+        // Vertical mobile screen
+        if (gameButtons) {
+            gameButtons.style.position = 'absolute';
+            gameButtons.style.bottom = '0';
+            gameButtons.style.left = '0';
+            gameButtons.style.width = '100%';
+        }
+        if (mobileMenu) {
+            mobileMenu.style.position = 'absolute';
+            mobileMenu.style.bottom = '0';
+            mobileMenu.style.left = '0';
+            mobileMenu.style.width = '100%';
+            mobileMenu.style.transform = 'none';
+        }
+    } else {
+        // Horizontal or desktop screen
+        if (gameButtons) {
+            gameButtons.style.position = 'static';
+            gameButtons.style.width = '100%';
+        }
+        if (mobileMenu) {
+            mobileMenu.style.display = 'none';
+        }
+    }
 }
         
         function createMobileMenu() {
