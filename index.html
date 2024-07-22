@@ -642,7 +642,8 @@
 	recruitedCharacters: [],
 	party: [],  // New party array
     tents: 1,
-    poisonCounter: 0
+    poisonCounter: 0,
+	hpRegen: 0
     
 };
 
@@ -699,9 +700,11 @@ player.purchasedItems = {
 
         // Flags for story events
         let currentStory = null;
+		let currentStoryContext = null;
         const STORY_OLD_MAN = 'old_man';
         const STORY_TREANT = 'treant';
 		const STORY_ABANDONED_HOUSE = 'abandonedHouse';
+		const STORY_CHILLING_SCREAM = 'chillingScream';
         
         // Add these new functions
 function showLoadingScreen() {
@@ -1712,25 +1715,26 @@ function drawParty(ctx) {
 }
 
         function checkVictory() {
-            if (enemies.length === 0) {
-                gameState = 'victory';
-                clearNotification();
-                showVictoryScreen();
-            }
-        }
+			if (enemies.length === 0) {
+				gameState = 'victory';
+				clearNotification();
+				console.log("Checking victory. currentStoryContext:", currentStoryContext);
+				showVictoryScreen(false, currentStoryContext);
+			}
+		}
+		
+function showVictoryScreen(isDoubleBattle = false, currentStory = null) {
+    const storyContext = currentStory || currentStoryContext;
+    console.log("Showing victory screen. Story context:", storyContext);
 
-        function showVictoryScreen(isDoubleBattle = false) {
     let goldEarned = Math.floor(Math.random() * 201) + 100;
-    // Reset purchases for the new victory screen visit
     currentVictoryScreenPurchases = {};
     
-    // Add extra gold for double battle
     if (isDoubleBattle) {
         goldEarned += 100;
     }
-
+    
     player.gold += goldEarned;
-
     let totalExpGained = currentBattleExpGained;
     if (player.expBooster) {
         totalExpGained *= 2;
@@ -1738,44 +1742,24 @@ function drawParty(ctx) {
     }
     player.experience += totalExpGained;
     victoryExpGained = totalExpGained;
-
+    
     if (player.experience >= player.xpToNextLevel) {
         checkBattleLevelUp();
     }
-
-    let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
-    if (victoryLevelUpMessage) {
-        victoryMessage += `${victoryLevelUpMessage}<br>`;
-        victoryLevelUpMessage = '';
-    }
-    victoryMessage += `Current Stats:<br>
-    Health: ${player.health}/${player.maxHealth}<br>
-    Min Damage: ${player.minDamage}<br>
-    Max Damage: ${player.maxDamage}<br>
-    XP: ${player.experience}/${player.xpToNextLevel}`;
-
-    const goldMessage = `You earned ${goldEarned} gold.<br>Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
-    document.getElementById('victoryMessage').innerHTML = victoryMessage;
-    document.getElementById('goldMessage').innerHTML = goldMessage;
-
+    
+    updateVictoryScreenStats(storyContext === STORY_CHILLING_SCREAM);
+    
     updateShopButtons(true);
-
-    // Set up event listeners for navigation buttons
-    document.getElementById('continueJourneyButton').onclick = continueJourney;
-    document.getElementById('returnToCampButton').onclick = returnToCamp;
-    document.getElementById('developerGoldButton').onclick = () => {
-        player.gold += 1500;
-        updateGoldMessage();
-        updateVictoryScreenStats();
-        alert("Added 1500 gold to the player!");
-    };
-
-    // Show/hide elements
     canvas.style.display = 'none';
     document.getElementById('gameButtons').style.display = 'none';
     document.getElementById('gameVictoryScreen').style.display = 'block';
-
-    // Check for skill selection
+    
+    if (storyContext === STORY_CHILLING_SCREAM) {
+        handleChillingScreamVictory();
+    } else {
+        showNormalVictoryButtons();
+    }
+    
     if (player.level >= 3 && !player.specialSkill) {
         document.getElementById('skillSelection').style.display = 'block';
         document.getElementById('continueJourneyButton').style.display = 'none';
@@ -1783,17 +1767,63 @@ function drawParty(ctx) {
         showBattleSkillSelection();
     } else {
         document.getElementById('skillSelection').style.display = 'none';
-        document.getElementById('continueJourneyButton').style.display = 'inline-block';
-        document.getElementById('returnToCampButton').style.display = 'inline-block';
     }
-
+    
     currentBattleExpGained = 0;
     resetDamageDisplay();
     autoSave();
     resetPurchasedItems();
     updateLoadGameButton();
     ensureButtonVisibility();
+
+    // Clear the story context
+    currentStoryContext = null;
 }
+
+			function handleChillingScreamVictory() {
+				console.log("Handling Chilling Scream Victory");
+				
+				// Hide the continue journey and return to camp buttons
+				document.getElementById('continueJourneyButton').style.display = 'none';
+				document.getElementById('returnToCampButton').style.display = 'none';
+				
+				const rewardContainer = document.createElement('div');
+				rewardContainer.id = 'chillingScreamRewardContainer';
+				
+				const rewardButton1 = document.createElement('button');
+				rewardButton1.textContent = "Take the amulet";
+				rewardButton1.onclick = function() {
+					player.hpRegen = (player.hpRegen || 0) + 1;
+					player.experience += 30;
+					updateVictoryScreenStats();
+					showNormalVictoryButtons();
+					rewardContainer.remove();
+				};
+				
+				const rewardButton2 = document.createElement('button');
+				rewardButton2.textContent = "Take the gold and cookie";
+				rewardButton2.onclick = function() {
+					player.gold += 750;
+					player.maxHealth += 4;
+					player.health = player.maxHealth;
+					player.experience += 30;
+					updateVictoryScreenStats();
+					showNormalVictoryButtons();
+					rewardContainer.remove();
+				};
+				
+				rewardContainer.appendChild(rewardButton1);
+				rewardContainer.appendChild(rewardButton2);
+				document.getElementById('gameVictoryScreen').appendChild(rewardContainer);
+			}
+
+function showNormalVictoryButtons() {
+    console.log("Showing normal victory buttons");
+    document.getElementById('continueJourneyButton').style.display = 'inline-block';
+    document.getElementById('returnToCampButton').style.display = 'inline-block';
+}
+
+
         
         function hideVictoryScreen() {
             document.getElementById('gameVictoryScreen').style.display = 'none';
@@ -1833,7 +1863,8 @@ function drawParty(ctx) {
         function continueJourney() {
     console.log("Entering continueJourney function");
     hideAllScreens();
-	
+	victoryLevelUpMessage = '';
+		
     if (gameState !== 'exploring') {
         console.warn(`Unexpected gameState in continueJourney: ${gameState}`);
         gameState = 'exploring';
@@ -1850,12 +1881,14 @@ function drawParty(ctx) {
         case 'story':
             console.log("Starting story event");
             const storyEvent = Math.random();
-            if (storyEvent < 0.33) {
+            if (storyEvent < 0.25) {
                 showStoryEvent1();
-            } else if (storyEvent < 0.66) {
+            } else if (storyEvent < 0.5) {
                 showStoryEvent2();
-            } else {
+            } else if (storyEvent < 0.75) {
                 showStoryEvent3();
+            } else {
+                showStoryEvent4();
             }
             break;
         case 'battle':
@@ -2196,7 +2229,7 @@ function logButtonStates() {
                 }
             } else {
                 // Duel events locked
-                if (eventRoll < 0.85) {
+                if (eventRoll < 0.5) {
                     return 'battle';
                 } else {
                     return 'story';
@@ -2482,27 +2515,36 @@ function logButtonStates() {
             document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
         }
 
-        function updateVictoryScreenStats() {
-            let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
+        function updateVictoryScreenStats(includeStoryConclusion = false) {
+			let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
+			if (victoryLevelUpMessage) {
+				victoryMessage += `${victoryLevelUpMessage}<br>`;
+			}
+			victoryMessage += `Current Stats:<br>
+			Health: ${player.health}/${player.maxHealth}<br>
+			Min Damage: ${player.minDamage}<br>
+			Max Damage: ${player.maxDamage}<br>
+			XP: ${player.experience}/${player.xpToNextLevel}`;
 
-            if (victoryLevelUpMessage) {
-                victoryMessage += `${victoryLevelUpMessage}<br>`;
-            }
+			if (includeStoryConclusion && currentStoryContext === STORY_CHILLING_SCREAM) {
+				let storyConclusion = "You walk up to the terrified woman and help her stand. She starts crying and thanks you for helping her. She says she would have died if not for you. She doesn't have much on her, but she offers you a strange amulet or all her gold and a Premium HP Cookie.";
+				victoryMessage += `<br><br>${storyConclusion}`;
+			}
 
-            victoryMessage += `Current Stats:<br>
-            Health: ${player.health}/${player.maxHealth}<br>
-            Min Damage: ${player.minDamage}<br>
-            Max Damage: ${player.maxDamage}<br>
-            XP: ${player.experience}/${player.xpToNextLevel}`;
-
-            document.getElementById('victoryMessage').innerHTML = victoryMessage;
-            document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
-        }
+			document.getElementById('victoryMessage').innerHTML = victoryMessage;
+			document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
+		}
 
         function clearNotification() {
             const notificationElement = document.getElementById('notificationText');
             notificationElement.textContent = '';
         }
+		
+		function resetStoryChoices() {
+			document.getElementById('storyChoice1Button').style.display = 'inline-block';
+			document.getElementById('storyChoice2Button').style.display = 'inline-block';
+			document.getElementById('storyChoice3Button').style.display = 'inline-block';
+		}
 
         function showStoryEvent1() {
             console.log("Entering showStoryEvent1");
@@ -2515,6 +2557,8 @@ function logButtonStates() {
             document.getElementById('gameButtons').style.display = 'none';
             document.getElementById('storyEventScreen').style.display = 'block';
             document.getElementById('storyText').innerHTML = "You encounter an old man on the road. He asks if you can spare 100 gold for some food and a warm bed.";
+
+			resetStoryChoices();  // Reset all choice buttons
 
             document.getElementById('storyChoice1Button').textContent = "Give the old man 100 gold";
             document.getElementById('storyChoice2Button').textContent = "Ask what he is doing on the road";
@@ -2646,6 +2690,8 @@ function logButtonStates() {
             document.getElementById('gameButtons').style.display = 'none';
             document.getElementById('storyEventScreen').style.display = 'block';
             document.getElementById('storyText').innerHTML = "You find a tree that seems to be murmuring to itself. You get close to the tree and have 3 options.";
+
+			resetStoryChoices();  // Reset all choice buttons
 
             document.getElementById('storyChoice1Button').textContent = "Poke the tree with your weapon";
             document.getElementById('storyChoice2Button').textContent = "Ask if it's alright";
@@ -2793,6 +2839,8 @@ function logButtonStates() {
 			document.getElementById('storyEventScreen').style.display = 'block';
 			document.getElementById('storyText').innerHTML = "You encounter an abandoned house right off the main road. You feel that something is calling to you from inside. It seems dangerous.";
 
+			resetStoryChoices();  // Reset all choice buttons
+
 			document.getElementById('storyChoice1Button').textContent = "Shout to see if you get a reply";
 			document.getElementById('storyChoice2Button').textContent = "Walk up to the door";
 			document.getElementById('storyChoice3Button').textContent = "Leave right away";
@@ -2840,7 +2888,7 @@ function handleAbandonedHouseYellWho() {
     document.getElementById('storyChoice2Button').textContent = "Walk away";
     document.getElementById('storyChoice3Button').style.display = 'none';
 
-    removeEventListeners('storyChoice1Button', 'storyChoice2Button');
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
 
     document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseDoor);
     document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseWalkAway);
@@ -2871,15 +2919,18 @@ function handleAbandonedHouseDoor() {
     document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseKnock);
 }
 
-function handleAbandonedHouseOpenDoor() {
+function handleAbandonedHouseDoor() {
     if (currentStory !== STORY_ABANDONED_HOUSE) return;
-    document.getElementById('storyText').innerHTML = "You open the door. An angry spirit screams that you have no manners and attacks you!";
-    document.getElementById('storyChoices').style.display = 'none';
-    document.getElementById('continueToBattleButton').style.display = 'inline-block';
-    document.getElementById('continueToBattleButton').onclick = function() {
-        hideStoryEventScreen();
-        startAngrySpirit();
-    };
+    document.getElementById('storyText').innerHTML = "You walk up to the door.";
+
+    document.getElementById('storyChoice1Button').textContent = "Open door";
+    document.getElementById('storyChoice2Button').textContent = "Knock on the door";
+    document.getElementById('storyChoice3Button').style.display = 'none';
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseOpenDoor);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseKnock);
 }
 
 function handleAbandonedHouseKnock() {
@@ -2929,55 +2980,205 @@ function startAngrySpirit() {
     inStoryEvent = false;
 }
     
+	function showStoryEvent4() {
+    console.log("Entering showStoryEvent4");
+    inStoryEvent = true;
+    ensureButtonVisibility();
+    currentStory = STORY_CHILLING_SCREAM;
+    document.getElementById('storyLevelUpMessage').style.display = 'none';
+    document.getElementById('storyLevelUpMessage').innerHTML = '';
+    document.getElementById('gameCanvas').style.display = 'none';
+    document.getElementById('gameButtons').style.display = 'none';
+    document.getElementById('storyEventScreen').style.display = 'block';
+    document.getElementById('storyText').innerHTML = "You are walking on the main road at night. It's a cloudless sky tonight filled with countless stars, truly a beautiful sight. You start to think that this is such a pretty night and so peaceful when suddenly you hear a chilling scream in the woods to your right. It stops you in your tracks, your gaze fixed towards the position you heard the scream coming from. What should you do?";
+
+	resetStoryChoices();  // Reset all choice buttons
+	
+    document.getElementById('storyChoice1Button').textContent = "Run towards the scream";
+    document.getElementById('storyChoice2Button').textContent = "Walk with caution towards the scream";
+    document.getElementById('storyChoice3Button').textContent = "Not my problem and walk away";
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleChillingScreamRun);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleChillingScreamCaution);
+    document.getElementById('storyChoice3Button').addEventListener('click', handleChillingScreamIgnore);
+
+    document.getElementById('storyChoices').style.display = 'block';
+    document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+    document.getElementById('continueToBattleButton').style.display = 'none';
+    document.getElementById('storyStats').style.display = 'none';
+}
+
+	function handleChillingScreamRun() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You start running as fast as you can through the woods in the direction you heard the scream. A couple of moments later you find the source of the scream. You see a werewolf slowly approaching a woman that's on the floor, she is petrified with fear, trembling, staring at the beast as it slowly advances towards her.";
+
+    document.getElementById('storyChoice1Button').textContent = "Run towards the werewolf and attack it";
+    document.getElementById('storyChoice2Button').textContent = "Stay hidden and watch what happens";
+    document.getElementById('storyChoice3Button').textContent = "Give into your fear and run away";
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleChillingScreamAttack);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleChillingScreamHide);
+    document.getElementById('storyChoice3Button').addEventListener('click', handleChillingScreamFlee);
+}
+
+function handleChillingScreamAttack() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You bravely run towards the werewolf to attack it!";
+    document.getElementById('storyChoices').style.display = 'none';
+    document.getElementById('continueToBattleButton').style.display = 'inline-block';
+    document.getElementById('continueToBattleButton').onclick = function() {
+        hideStoryEventScreen();
+        startWerewolfBattle();
+    };
+}
+
+function handleChillingScreamHide() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You hide and watch as a second later the werewolf leaps on the woman and starts attacking and ripping her flesh. You watch in horror as it starts eating his victim and with a howl, the werewolf runs off deeper into the woods. You go to the dead woman's body and find a pouch with 400 Gold and an HP cookie.";
+    
+    player.gold += 400;
+    player.maxHealth += 2;
+    player.experience += 20;
+    
+    checkStoryLevelUp();
+    updateStoryScreenStats();
+    showFinalContinueButton();
+}
+
+function handleChillingScreamFlee() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You give into your fear and run away as fast as you can.";
+    showFinalContinueButton();
+}
+
+function handleChillingScreamIgnore() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You keep walking but at a faster pace. You hear a second scream and you start running out of there.";
+    showFinalContinueButton();
+}
+
+function handleChillingScreamCaution() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You start walking towards the scream, alert to every sound and movement. Suddenly, you hear a second visceral scream that sends shivers down your spine.";
+
+    document.getElementById('storyChoice1Button').textContent = "Run towards the visceral scream";
+    document.getElementById('storyChoice2Button').textContent = "Continue your cautious approach";
+    document.getElementById('storyChoice3Button').textContent = "Turn around and leave";
+
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
+
+    document.getElementById('storyChoice1Button').addEventListener('click', handleChillingScreamVisceral);
+    document.getElementById('storyChoice2Button').addEventListener('click', handleChillingScreamContinueCaution);
+    document.getElementById('storyChoice3Button').addEventListener('click', handleChillingScreamTurnAround);
+}
+
+function handleChillingScreamVisceral() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You run at full speed towards the scream. Within seconds you reach the source. You see a werewolf attacking a woman on the ground. It's feasting upon her body when it snaps its head towards you. The werewolf immediately lounges at you!";
+    document.getElementById('storyChoices').style.display = 'none';
+    document.getElementById('continueToBattleButton').style.display = 'inline-block';
+    document.getElementById('continueToBattleButton').onclick = function() {
+        hideStoryEventScreen();
+        startWerewolfBattle();
+    };
+}
+
+function handleChillingScreamContinueCaution() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You continue to creep forward, not wanting to alert anything of your presence. You eventually find the source of the screams. There is a dead body that has been eaten and mangled beyond recognition. You find a pouch with 300 gold and an HP cookie.";
+    
+    player.gold += 300;
+    player.maxHealth += 2;
+    player.experience += 15;
+    
+    checkStoryLevelUp();
+    updateStoryScreenStats();
+    showFinalContinueButton();
+}
+
+function handleChillingScreamTurnAround() {
+    if (currentStory !== STORY_CHILLING_SCREAM) return;
+    document.getElementById('storyText').innerHTML = "You decide it is not worth continuing forward and turn around to leave. Just before reaching the road, you find a berry bush and decide to eat some.";
+    
+    player.health = Math.min(player.health + 5, player.maxHealth);
+    
+    updateStoryScreenStats();
+    showFinalContinueButton();
+}
+
+function startWerewolfBattle() {
+    console.log("Starting Werewolf battle");
+    const werewolf = createEnemyByType('Werewolf');
+    if (!werewolf) {
+        console.error("Failed to create Werewolf enemy");
+        return;
+    }
+    
+    enemies = [werewolf];
+    gameState = 'playerTurn';
+    hideAllScreens();
+    document.getElementById('gameContainer').style.display = 'block';
+    document.getElementById('gameCanvas').style.display = 'block';
+    document.getElementById('gameButtons').style.display = 'block';
+    updateButtonStates();
+    drawGame();
+    inStoryEvent = false;
+    
+    // Set the current story context
+    currentStoryContext = STORY_CHILLING_SCREAM;
+    console.log("Set currentStoryContext to:", currentStoryContext);
+}
    
 
         function showFinalContinueButton() {
-    console.log("Executing showFinalContinueButton");
-    updateStoryScreenStats(); // Update stats on story screen
-    document.getElementById('storyChoices').style.display = 'none'; // Hide story choices
-    document.getElementById('storyStats').style.display = 'block'; // Show stats at the end
-    document.getElementById('continueToBattleButton').style.display = 'none'; // Ensure the button is hidden
+			console.log("Executing showFinalContinueButton");
+			updateStoryScreenStats();
+			document.getElementById('storyChoices').style.display = 'none';
+			document.getElementById('storyStats').style.display = 'block';
+			document.getElementById('continueToBattleButton').style.display = 'none';
 
-    inStoryEvent = false; // Story event is now over
-    gameState = 'storyComplete'; // Set game state to storyComplete
+			inStoryEvent = false;
+			gameState = 'storyComplete';
 
-    // Create a container for the buttons if it doesn't exist
-    let buttonContainer = document.getElementById('storyFinalButtons');
-    if (!buttonContainer) {
-        buttonContainer = document.createElement('div');
-        buttonContainer.id = 'storyFinalButtons';
-        document.getElementById('storyEventScreen').appendChild(buttonContainer);
-    }
-    buttonContainer.style.display = 'block';
+			let buttonContainer = document.getElementById('storyFinalButtons');
+			if (!buttonContainer) {
+				buttonContainer = document.createElement('div');
+				buttonContainer.id = 'storyFinalButtons';
+				document.getElementById('storyEventScreen').appendChild(buttonContainer);
+			}
+			buttonContainer.style.display = 'block';
 
-    // Ensure the continue journey button is present and clickable
-    let continueButton = document.getElementById('continueJourneyFromStoryButton');
-    if (!continueButton) {
-        continueButton = document.createElement('button');
-        continueButton.id = 'continueJourneyFromStoryButton';
-        continueButton.textContent = 'Continue Journey';
-        buttonContainer.appendChild(continueButton);
-    }
-    continueButton.onclick = continueJourneyFromStory;
-    continueButton.style.display = 'inline-block';
+			let continueButton = document.getElementById('continueJourneyFromStoryButton');
+			if (!continueButton) {
+				continueButton = document.createElement('button');
+				continueButton.id = 'continueJourneyFromStoryButton';
+				continueButton.textContent = 'Continue Journey';
+				buttonContainer.appendChild(continueButton);
+			}
+			continueButton.onclick = continueJourneyFromStory;
+			continueButton.style.display = 'inline-block';
 
-    // Add or show the Return to Camp button
-    let campButton = document.getElementById('returnToCampFromStoryButton');
-    if (!campButton) {
-        campButton = document.createElement('button');
-        campButton.id = 'returnToCampFromStoryButton';
-        campButton.textContent = 'Return to Camp';
-        buttonContainer.appendChild(campButton);
-    }
-    campButton.onclick = returnToCampFromStory;
-    campButton.style.display = 'inline-block';
+			let campButton = document.getElementById('returnToCampFromStoryButton');
+			if (!campButton) {
+				campButton = document.createElement('button');
+				campButton.id = 'returnToCampFromStoryButton';
+				campButton.textContent = 'Return to Camp';
+				buttonContainer.appendChild(campButton);
+			}
+			campButton.onclick = returnToCampFromStory;
+			campButton.style.display = 'inline-block';
 
-    console.log("Continue journey and Return to Camp buttons should now be visible");
+			console.log("Continue journey and Return to Camp buttons should now be visible");
 
-    ensureButtonVisibility(); // Update button visibility
-    autoSave();
-    updateLoadGameButton();
-}
+			resetStoryChoices();  // Reset all choice buttons
+			ensureButtonVisibility();
+			autoSave();
+			updateLoadGameButton();
+		}
 
         function startTreantBattle() {
     console.log("Executing startTreantBattle");
