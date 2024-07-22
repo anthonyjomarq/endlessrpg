@@ -2913,27 +2913,28 @@ function handleAbandonedHouseDoor() {
     document.getElementById('storyChoice2Button').textContent = "Knock on the door";
     document.getElementById('storyChoice3Button').style.display = 'none';
 
-    removeEventListeners('storyChoice1Button', 'storyChoice2Button');
-
-    document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseOpenDoor);
-    document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseKnock);
-}
-
-function handleAbandonedHouseDoor() {
-    if (currentStory !== STORY_ABANDONED_HOUSE) return;
-    document.getElementById('storyText').innerHTML = "You walk up to the door.";
-
-    document.getElementById('storyChoice1Button').textContent = "Open door";
-    document.getElementById('storyChoice2Button').textContent = "Knock on the door";
-    document.getElementById('storyChoice3Button').style.display = 'none';
-
     removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
 
     document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseOpenDoor);
     document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseKnock);
+
+    console.log("Door options set up"); // Add this log for debugging
+}
+
+function handleAbandonedHouseOpenDoor() {
+    console.log("Opening the door"); // Add this log for debugging
+    if (currentStory !== STORY_ABANDONED_HOUSE) return;
+    document.getElementById('storyText').innerHTML = "You open the door. An angry spirit screams that you have no manners and attacks you!";
+    document.getElementById('storyChoices').style.display = 'none';
+    document.getElementById('continueToBattleButton').style.display = 'inline-block';
+    document.getElementById('continueToBattleButton').onclick = function() {
+        hideStoryEventScreen();
+        startAngrySpirit();
+    };
 }
 
 function handleAbandonedHouseKnock() {
+    console.log("Knocking on the door"); // Add this log for debugging
     if (currentStory !== STORY_ABANDONED_HOUSE) return;
     document.getElementById('storyText').innerHTML = "A spirit invites you in.";
 
@@ -2941,7 +2942,7 @@ function handleAbandonedHouseKnock() {
     document.getElementById('storyChoice2Button').textContent = "Refuse and leave";
     document.getElementById('storyChoice3Button').style.display = 'none';
 
-    removeEventListeners('storyChoice1Button', 'storyChoice2Button');
+    removeEventListeners('storyChoice1Button', 'storyChoice2Button', 'storyChoice3Button');
 
     document.getElementById('storyChoice1Button').addEventListener('click', handleAbandonedHouseAccept);
     document.getElementById('storyChoice2Button').addEventListener('click', handleAbandonedHouseWalkAway);
