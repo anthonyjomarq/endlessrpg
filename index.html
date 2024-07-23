@@ -669,6 +669,7 @@ player.purchasedItems = {
         ];
         
         const characterSprites = {};
+		const enemySprites = {};
 
         let enemies = []; // Initialize enemies array
         
@@ -718,15 +719,32 @@ function hideLoadingScreen() {
 function loadInitialGameAssets() {
     const characterClasses = ['Warrior', 'Mage', 'Cleric', 'Rogue'];
     const spriteLoadPromises = characterClasses.map(loadCharacterSprite);
+	
+	 // Add enemy sprite loading
+    const enemyTypes = ['Wolf', 'Goblin', 'Orc', 'Poisonous Plant', 'Werewolf',];
+    const enemySpriteLoadPromises = enemyTypes.map(loadEnemySprite);
 
     return Promise.all([
         ...spriteLoadPromises,
+		...enemySpriteLoadPromises,
         // Add other initial asset loading promises here if needed
     ]);
 }
 
 function loadCharacterAssets(characterClass) {
     return loadCharacterSprite(characterClass);
+}
+
+function loadEnemySprite(enemyType) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            enemySprites[enemyType] = img;
+            resolve(img);
+        };
+        img.onerror = reject;
+        img.src = `images/${enemyType.toLowerCase()}-sprite.png`;
+    });
 }
 
 // Modify your existing initGame function
@@ -812,7 +830,13 @@ function initGame() {
 				minDamage: enemyType.minDamage,
 				maxDamage: enemyType.maxDamage,
 				xp: enemyType.xp
+				
 			};
+			
+			// Add sprite if it exists
+    if (enemySprites[enemyType.type]) {
+        enemy.sprite = enemySprites[enemyType.type];
+    }
 			
 			console.log("Created enemy:", enemy);
 			return enemy;
@@ -1025,10 +1049,10 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     // Draw enemies
     enemies.forEach((enemy, index) => {
         const baseYOffset = 180 + (index * 130);
-        const yOffset = index === 0 ? baseYOffset - 20 : baseYOffset;
+        const yOffset = index === 0 ? baseYOffset - 60 : baseYOffset;
         const hpBarYOffset = yOffset - 30;
         const hpTextYOffset = hpBarYOffset - 10;
-        const typeTextYOffset = yOffset + 75;
+        const typeTextYOffset = yOffset + 205;
 
         // In the drawGame function, replace the part you mentioned with this:
 if (enemies.length > 1) {
@@ -1046,8 +1070,15 @@ if (enemies.length > 1) {
     }
 }
 
-        ctx.fillStyle = 'red';
-        ctx.fillRect(650, yOffset, 50, 50);
+         // Draw enemy sprite if available, otherwise draw red rectangle
+        if (enemy.sprite) {
+            const spriteWidth = 200;  // Adjust as needed
+            const spriteHeight = 200; // Adjust as needed
+            ctx.drawImage(enemy.sprite, 550, yOffset, spriteWidth, spriteHeight);
+        } else {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(650, yOffset, 50, 50);
+        }
 
         ctx.fillStyle = 'green';
         ctx.fillRect(540, hpBarYOffset, (enemy.health / enemy.maxHealth) * 200, 20);
@@ -2229,7 +2260,7 @@ function logButtonStates() {
                 }
             } else {
                 // Duel events locked
-                if (eventRoll < 0.5) {
+                if (eventRoll < 0.85) {
                     return 'battle';
                 } else {
                     return 'story';
