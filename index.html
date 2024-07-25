@@ -721,7 +721,7 @@ function loadInitialGameAssets() {
     const spriteLoadPromises = characterClasses.map(loadCharacterSprite);
 	
 	 // Add enemy sprite loading
-    const enemyTypes = ['Wolf', 'Goblin', 'Orc', 'Poisonous Plant', 'Werewolf',];
+    const enemyTypes = ['Wolf', 'Goblin', 'Orc', 'Poisonous Plant', 'Werewolf', 'Troll', 'Treant', 'Skeletal Warrior',];
     const enemySpriteLoadPromises = enemyTypes.map(loadEnemySprite);
 
     return Promise.all([
