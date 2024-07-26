@@ -1047,12 +1047,18 @@ document.getElementById('rogueButton').addEventListener('click', () => startBatt
     if (player.shieldOfLight > 0) drawStatus(`Shield of Light (${player.shieldOfLight} turns)`, 'yellow');
 
     // Draw enemies
-    enemies.forEach((enemy, index) => {
-        const baseYOffset = 180 + (index * 130);
-        const yOffset = index === 0 ? baseYOffset - 60 : baseYOffset;
-        const hpBarYOffset = yOffset - 30;
-        const hpTextYOffset = hpBarYOffset - 10;
-        const typeTextYOffset = yOffset + 205;
+enemies.forEach((enemy, index) => {
+    let yOffset;
+    if (index === 0) {
+        // First enemy (top)
+        yOffset = 70; // Reduced from 100 to move the first enemy up by 30 pixels
+    } else {
+        // Second enemy (bottom)
+        yOffset = 270; // This should keep the second enemy in its current position
+    }
+    const hpBarYOffset = yOffset - 30;
+    const hpTextYOffset = hpBarYOffset - 10;
+    const typeTextYOffset = yOffset + 185;
 
         // In the drawGame function, replace the part you mentioned with this:
 if (enemies.length > 1) {
@@ -1071,14 +1077,14 @@ if (enemies.length > 1) {
 }
 
          // Draw enemy sprite if available, otherwise draw red rectangle
-        if (enemy.sprite) {
-            const spriteWidth = 200;  // Adjust as needed
-            const spriteHeight = 200; // Adjust as needed
-            ctx.drawImage(enemy.sprite, 550, yOffset, spriteWidth, spriteHeight);
-        } else {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(650, yOffset, 50, 50);
-        }
+         if (enemy.sprite) {
+			const spriteWidth = 180;  // Adjust as needed
+			const spriteHeight = 180; // Adjust as needed
+			ctx.drawImage(enemy.sprite, 550, yOffset, spriteWidth, spriteHeight);
+		} else {
+			ctx.fillStyle = 'red';
+			ctx.fillRect(650, yOffset, 50, 50);
+		}
 
         ctx.fillStyle = 'green';
         ctx.fillRect(540, hpBarYOffset, (enemy.health / enemy.maxHealth) * 200, 20);
@@ -1086,7 +1092,7 @@ if (enemies.length > 1) {
         ctx.fillStyle = 'black';
         ctx.font = '20px Arial';
         ctx.fillText(`Enemy Health: ${enemy.health}`, 540, hpBarYOffset - 25); // Changed from hpTextYOffset to hpBarYOffset - 10
-        ctx.fillText(`${enemy.type}`, 650, typeTextYOffset);
+        ctx.fillText(`${enemy.type}`, 620, typeTextYOffset);
 
         let statusY = typeTextYOffset + 20;
         const drawEnemyStatus = (text, color = 'black') => {
