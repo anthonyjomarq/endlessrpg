@@ -2091,8 +2091,55 @@ function createPartyMember(characterClass) {
     
     if (player.merchantTent) {
         const merchantTentElement = createTentElement('Merchant');
-        updateTentContent(merchantTentElement, 'Merchant');
         commercialTentsRow.appendChild(merchantTentElement);
+        updateMerchantTentContent(merchantTentElement);
+    }
+}
+
+function updateMerchantTentContent(tentElement) {
+    tentElement.innerHTML = `
+        <strong>Merchant Tent</strong><br>
+        <span class="tent-occupant">Merchant</span><br>
+        <button id="upgradesButton">Upgrades</button>
+    `;
+    
+    // Use setTimeout to ensure the button is in the DOM before we try to access it
+    setTimeout(() => {
+        const upgradesButton = document.getElementById('upgradesButton');
+        if (upgradesButton) {
+            upgradesButton.onclick = showUpgradesPopup;
+        } else {
+            console.error('Upgrades button not found');
+        }
+    }, 0);
+}
+
+function showUpgradesPopup() {
+    const popup = document.createElement('div');
+    popup.id = 'upgradesPopup';
+    popup.style.position = 'fixed';
+    popup.style.left = '50%';
+    popup.style.top = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.backgroundColor = 'white';
+    popup.style.padding = '20px';
+    popup.style.border = '2px solid black';
+    popup.style.zIndex = '1000';
+
+    popup.innerHTML = `
+        <h2>Upgrades</h2>
+        <p>Future upgrades will be available here.</p>
+        <button id="closeUpgradesPopup">Close</button>
+    `;
+
+    document.body.appendChild(popup);
+    document.getElementById('closeUpgradesPopup').onclick = closeUpgradesPopup;
+}
+
+function closeUpgradesPopup() {
+    const popup = document.getElementById('upgradesPopup');
+    if (popup) {
+        popup.remove();
     }
 }
         
@@ -3802,8 +3849,8 @@ function buyMerchantTent() {
         
         // Update camp bank display
         updateCampBankDisplay();
-		
-		updateCampMessage();
+        
+        updateCampMessage();
         
         // Update commercial tents (to show the new merchant tent)
         updateCommercialTents();
@@ -4072,33 +4119,41 @@ function createTentElement(number) {
     return tent;
 }
 
-function updateTentContent(tentElement, tentNumber, occupant, isInParty) {
-    const occupantElement = tentElement.querySelector('.tent-occupant');
-    const partyButton = tentElement.querySelector('.party-button');
-    const partyStatus = tentElement.querySelector('.party-status');
+function updateTentContent(tentNumber, occupant) {
+    const tentElement = document.getElementById(`tent${tentNumber}`);
+    if (!tentElement) {
+        console.error(`Tent element not found for tent ${tentNumber}`);
+        return;
+    }
 
+    const occupantElement = tentElement.querySelector('.tent-occupant');
     if (occupantElement) {
         occupantElement.textContent = occupant;
     }
 
+    // Only add party buttons for recruited characters (not the player's tent and not empty tents)
     if (tentNumber > 1 && occupant !== 'Empty') {
-        if (partyButton) {
-            partyButton.style.display = 'inline-block';
-            partyButton.textContent = isInParty ? 'Remove from Party' : 'Add to Party';
-            partyButton.onclick = () => togglePartyMembership(tentNumber);
+        const isInParty = player.party.some(member => member.class === occupant);
+        
+        let partyButton = tentElement.querySelector('.party-button');
+        if (!partyButton) {
+            partyButton = document.createElement('button');
+            partyButton.className = 'party-button';
+            tentElement.appendChild(partyButton);
         }
 
-        if (partyStatus) {
-            partyStatus.style.display = isInParty ? 'inline' : 'none';
-            partyStatus.textContent = isInParty ? 'In Party' : '';
+        partyButton.textContent = isInParty ? 'Remove from Party' : 'Add to Party';
+        partyButton.onclick = () => togglePartyMembership(tentNumber);
+
+        let partyStatus = tentElement.querySelector('.party-status');
+        if (!partyStatus) {
+            partyStatus = document.createElement('span');
+            partyStatus.className = 'party-status';
+            tentElement.appendChild(partyStatus);
         }
-    } else {
-        if (partyButton) {
-            partyButton.style.display = 'none';
-        }
-        if (partyStatus) {
-            partyStatus.style.display = 'none';
-        }
+
+        partyStatus.textContent = isInParty ? 'In Party' : '';
+        partyStatus.style.display = isInParty ? 'inline' : 'none';
     }
 }
 
@@ -4198,17 +4253,14 @@ function togglePartyMembership(tentNumber) {
         return;
     }
 
-    // Use class for comparison to avoid reference issues after loading
     const partyIndex = player.party.findIndex(member => member.class === character.class);
     const isInParty = partyIndex !== -1;
 
     if (isInParty) {
-        // Remove from party
         player.party.splice(partyIndex, 1);
         console.log(`Removed ${character.class} from party`);
     } else {
-        // Add to party
-        if (player.party.length < 4) { // Assuming max party size of 4 additional members
+        if (player.party.length < 4) {
             player.party.push(character);
             console.log(`Added ${character.class} to party`);
         } else {
@@ -4217,14 +4269,9 @@ function togglePartyMembership(tentNumber) {
         }
     }
     
-    // Update the tent content
-    const tentElement = document.getElementById(`tent${tentNumber}`);
-    if (tentElement) {
-        updateTentContent(tentElement, tentNumber, character.class, !isInParty);
-    }
-
+    updateTentContent(tentNumber, character.class);
     updatePartyDisplay();
-    saveGame(); // Save the game state after updating the party
+    saveGame();
 }
 
 function updateMerchantTent() {
