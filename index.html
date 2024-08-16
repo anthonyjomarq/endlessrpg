@@ -702,6 +702,9 @@ player.purchasedItems = {
         let inStoryEvent = false; // Flag to indicate if we are in a story event
         let treantEncountered = false; // Track if the player has encountered the Treant
         let currentVictoryScreenPurchases = {};
+		if (!merchantUpgrades.hasOwnProperty('flexibleCurrency')) {
+				merchantUpgrades.flexibleCurrency = false;
+			}
 
         // Flags for story events
         let currentStory = null;
@@ -2129,6 +2132,14 @@ function updateUpgradeOptions() {
             </button>
             <p>Allows purchasing two healing potions before sold out</p>
         </div>
+        <div>
+            <button id="flexibleCurrencyUpgrade" 
+                    ${merchantUpgrades.flexibleCurrency ? 'disabled' : ''}
+                    onclick="purchaseUpgrade('flexibleCurrency', 700)">
+                ${merchantUpgrades.flexibleCurrency ? 'Flexible Currency (Purchased)' : 'Flexible Currency (700 Gold)'}
+            </button>
+            <p>Allows using Camp Bank for purchases</p>
+        </div>
     `;
 }
 
@@ -2217,44 +2228,40 @@ function updatePartyDisplay() {
 }
         
 			function buyVictoryItem(item, cost, itemName) {
-		if (player.gold < cost) {
-			alert("Not enough gold!");
-			return;
-		}
+				const purchaseResult = handleFlexiblePurchase(item, cost, itemName, true);
+				if (!purchaseResult.canPurchase) {
+					return;
+				}
 
-		if (item === 'healingPotion') {
-			if (!currentVictoryScreenPurchases[item]) {
-				currentVictoryScreenPurchases[item] = 0;
+				if (item === 'healingPotion') {
+					if (!currentVictoryScreenPurchases[item]) {
+						currentVictoryScreenPurchases[item] = 0;
+					}
+					if (currentVictoryScreenPurchases[item] >= (merchantUpgrades.additionalPotions ? 2 : 1)) {
+						alert("Healing Potions are sold out!");
+						return;
+					}
+					currentVictoryScreenPurchases[item]++;
+				} else if (currentVictoryScreenPurchases[item]) {
+					alert(`${itemName} is already sold out!`);
+					return;
+				} else {
+					currentVictoryScreenPurchases[item] = true;
+				}
+
+				if (purchaseResult.usingCampBank) {
+					player.campBank -= cost;
+				} else {
+					player.gold -= cost;
+				}
+
+				const effectMessage = applyItemEffect(item);
+				updateGoldMessage();
+				updateVictoryScreenStats();
+				updateVictoryShopButtons();
+				alert(`You bought ${itemName} for ${cost} gold ${purchaseResult.usingCampBank ? 'from your Camp Bank' : ''}. ${effectMessage}`);
 			}
-			if (currentVictoryScreenPurchases[item] >= (merchantUpgrades.additionalPotions ? 2 : 1)) {
-				alert("Healing Potions are sold out!");
-				return;
-			}
-			currentVictoryScreenPurchases[item]++;
-		} else if (currentVictoryScreenPurchases[item]) {
-			alert(`${itemName} is already sold out!`);
-			return;
-		} else {
-			currentVictoryScreenPurchases[item] = true;
-		}
 
-		player.gold -= cost;
-		applyItemEffect(item);
-		updateGoldMessage();
-		updateVictoryScreenStats();
-		updateVictoryShopButtons();
-		alert(`You bought ${itemName} for ${cost} gold.`);
-	}
-
-        function resetPurchasedItems() {
-    player.purchasedItems = {
-        healingPotion: 0,
-        expBooster: false,
-        antidote: false,
-        lotus: false,
-        redPill: false
-    };
-}
         
         function updateCampMessage() {
             const campMessageElement = document.getElementById('campMessage');
@@ -2416,15 +2423,30 @@ function logButtonStates() {
     });
 }
 
+function handleFlexiblePurchase(item, cost, itemName, isVictoryScreen = false) {
+    if (player.gold >= cost) {
+        // If player has enough gold, proceed with normal purchase
+        return { canPurchase: true, usingCampBank: false };
+    } else if (merchantUpgrades.flexibleCurrency && player.campBank >= cost) {
+        // If player doesn't have enough gold but has the upgrade and enough in camp bank
+        const useBank = confirm(`You don't have enough gold (${player.gold}/${cost}), but you have enough in your Camp Bank (${player.campBank}). Would you like to use your Camp Bank for this purchase?`);
+        if (useBank) {
+            return { canPurchase: true, usingCampBank: true };
+        }
+    }
+    // If player can't or doesn't want to make the purchase
+    alert("Not enough gold!");
+    return { canPurchase: false, usingCampBank: false };
+}
+
 function buyItemInCamp(item, cost, itemName) {
-    // Disable the button immediately to prevent double clicks
     const button = document.getElementById(`camp${item.charAt(0).toUpperCase() + item.slice(1)}Button`);
     if (button) {
         button.disabled = true;
     }
 
-    if (player.gold < cost) {
-        alert("Not enough gold!");
+    const purchaseResult = handleFlexiblePurchase(item, cost, itemName);
+    if (!purchaseResult.canPurchase) {
         if (button) button.disabled = false;
         return;
     }
@@ -2453,13 +2475,16 @@ function buyItemInCamp(item, cost, itemName) {
         player.purchasedItems[item] = true;
     }
 
-    player.gold -= cost;
+    if (purchaseResult.usingCampBank) {
+        player.campBank -= cost;
+    } else {
+        player.gold -= cost;
+    }
+
     const effectMessage = applyItemEffect(item);
     updateCampMessage();
     updateCampShopButtons();
-    
-    // Combine purchase and effect messages
-    alert(`You bought ${itemName} for ${cost} gold. ${effectMessage}`);
+    alert(`You bought ${itemName} for ${cost} gold ${purchaseResult.usingCampBank ? 'from your Camp Bank' : ''}. ${effectMessage}`);
 }
         
        function applyItemEffect(item) {
