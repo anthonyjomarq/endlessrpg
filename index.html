@@ -705,6 +705,16 @@ player.purchasedItems = {
 		if (!merchantUpgrades.hasOwnProperty('flexibleCurrency')) {
 				merchantUpgrades.flexibleCurrency = false;
 			}
+		if (!merchantUpgrades.hasOwnProperty('increasedPotionPotency')) {
+			merchantUpgrades.increasedPotionPotency = false;
+			}
+		if (!merchantUpgrades.hasOwnProperty('massProducedAntidote')) {
+				merchantUpgrades.massProducedAntidote = false;
+			}
+		if (!merchantUpgrades.hasOwnProperty('improvedLotusHarvesting')) {
+			merchantUpgrades.improvedLotusHarvesting = false;
+			}	
+		
 
         // Flags for story events
         let currentStory = null;
@@ -1767,62 +1777,61 @@ function drawParty(ctx) {
 			}
 		}
 		
-function showVictoryScreen(isDoubleBattle = false, currentStory = null) {
-    const storyContext = currentStory || currentStoryContext;
-    console.log("Showing victory screen. Story context:", storyContext);
+		function showVictoryScreen(isDoubleBattle = false, currentStory = null) {
+			const storyContext = currentStory || currentStoryContext;
+			console.log("Showing victory screen. Story context:", storyContext);
 
-    let goldEarned = Math.floor(Math.random() * 201) + 100;
-    currentVictoryScreenPurchases = {};
-    
-    if (isDoubleBattle) {
-        goldEarned += 100;
-    }
-    
-    player.gold += goldEarned;
-    let totalExpGained = currentBattleExpGained;
-    if (player.expBooster) {
-        totalExpGained *= 2;
-        player.expBooster = false;
-    }
-    player.experience += totalExpGained;
-    victoryExpGained = totalExpGained;
-    
-    if (player.experience >= player.xpToNextLevel) {
-        checkBattleLevelUp();
-    }
-    
-    updateVictoryScreenStats(storyContext === STORY_CHILLING_SCREAM);
-    
-    updateShopButtons(true);
-    canvas.style.display = 'none';
-    document.getElementById('gameButtons').style.display = 'none';
-    document.getElementById('gameVictoryScreen').style.display = 'block';
-    
-    if (storyContext === STORY_CHILLING_SCREAM) {
-        handleChillingScreamVictory();
-    } else {
-        showNormalVictoryButtons();
-    }
-    
-    if (player.level >= 3 && !player.specialSkill) {
-        document.getElementById('skillSelection').style.display = 'block';
-        document.getElementById('continueJourneyButton').style.display = 'none';
-        document.getElementById('returnToCampButton').style.display = 'none';
-        showBattleSkillSelection();
-    } else {
-        document.getElementById('skillSelection').style.display = 'none';
-    }
-    
-    currentBattleExpGained = 0;
-    resetDamageDisplay();
-    autoSave();
-    resetPurchasedItems();
-    updateLoadGameButton();
-    ensureButtonVisibility();
+			let goldEarned = Math.floor(Math.random() * 201) + 100;
+			resetPurchasedItems(); // Reset purchased items for the new victory screen
+			
+			if (isDoubleBattle) {
+				goldEarned += 100;
+			}
+			
+			player.gold += goldEarned;
+			let totalExpGained = currentBattleExpGained;
+			if (player.expBooster) {
+				totalExpGained *= 2;
+				player.expBooster = false;
+			}
+			player.experience += totalExpGained;
+			victoryExpGained = totalExpGained;
+			
+			if (player.experience >= player.xpToNextLevel) {
+				checkBattleLevelUp();
+			}
+			
+			updateVictoryScreenStats(storyContext === STORY_CHILLING_SCREAM);
+			
+			updateVictoryShopButtons();
+			canvas.style.display = 'none';
+			document.getElementById('gameButtons').style.display = 'none';
+			document.getElementById('gameVictoryScreen').style.display = 'block';
+			
+			if (storyContext === STORY_CHILLING_SCREAM) {
+				handleChillingScreamVictory();
+			} else {
+				showNormalVictoryButtons();
+			}
+			
+			if (player.level >= 3 && !player.specialSkill) {
+				document.getElementById('skillSelection').style.display = 'block';
+				document.getElementById('continueJourneyButton').style.display = 'none';
+				document.getElementById('returnToCampButton').style.display = 'none';
+				showBattleSkillSelection();
+			} else {
+				document.getElementById('skillSelection').style.display = 'none';
+			}
+			
+			currentBattleExpGained = 0;
+			resetDamageDisplay();
+			autoSave();
+			updateLoadGameButton();
+			ensureButtonVisibility();
 
-    // Clear the story context
-    currentStoryContext = null;
-}
+			// Clear the story context
+			currentStoryContext = null;
+		}
 
 			function handleChillingScreamVictory() {
 				console.log("Handling Chilling Scream Victory");
@@ -2140,21 +2149,64 @@ function updateUpgradeOptions() {
             </button>
             <p>Allows using Camp Bank for purchases</p>
         </div>
+        <div>
+            <button id="increasedPotionPotencyUpgrade" 
+                    ${merchantUpgrades.increasedPotionPotency ? 'disabled' : ''}
+                    onclick="purchaseUpgrade('increasedPotionPotency', 1250)">
+                ${merchantUpgrades.increasedPotionPotency ? 'Increased Potion Potency (Purchased)' : 'Increased Potion Potency (1250 Gold)'}
+            </button>
+            <p>Doubles the healing effect of HP potions</p>
+        </div>
+        <div>
+            <button id="massProducedAntidoteUpgrade" 
+                    ${merchantUpgrades.massProducedAntidote ? 'disabled' : ''}
+                    onclick="purchaseUpgrade('massProducedAntidote', 900)">
+                ${merchantUpgrades.massProducedAntidote ? 'Mass Produced Antidote (Purchased)' : 'Mass Produced Antidote (900 Gold)'}
+            </button>
+            <p>Reduces the price of antidotes from 300 to 150 gold</p>
+        </div>
+        <div>
+            <button id="improvedLotusHarvestingUpgrade" 
+                    ${merchantUpgrades.improvedLotusHarvesting ? 'disabled' : ''}
+                    onclick="purchaseUpgrade('improvedLotusHarvesting', 1500)">
+                ${merchantUpgrades.improvedLotusHarvesting ? 'Improved Lotus Harvesting (Purchased)' : 'Improved Lotus Harvesting (1500 Gold)'}
+            </button>
+            <p>Doubles the XP gained from Lotus of Experience (20 XP instead of 10 XP)</p>
+        </div>
     `;
 }
 
-function purchaseUpgrade(upgrade, cost) {
-    if (player.campBank < cost) {
-        alert("Not enough gold in the Camp Bank!");
-        return;
-    }
+		function purchaseUpgrade(upgrade, cost) {
+			if (player.campBank < cost) {
+				alert("Not enough gold in the Camp Bank!");
+				return;
+			}
 
-    player.campBank -= cost;
-    merchantUpgrades[upgrade] = true;
-    updateUpgradeOptions();
-    updateCampMessage();
-    alert(`You have purchased the ${upgrade} upgrade!`);
-}
+			player.campBank -= cost;
+			merchantUpgrades[upgrade] = true;
+			updateUpgradeOptions();
+			updateCampMessage();
+			
+			let upgradeMessage = `You have purchased the ${upgrade} upgrade!`;
+			switch(upgrade) {
+				case 'increasedPotionPotency':
+					upgradeMessage += " HP potions will now heal twice as much.";
+					break;
+				case 'massProducedAntidote':
+					upgradeMessage += " Antidotes now cost 150 gold instead of 300 gold.";
+					break;
+				case 'improvedLotusHarvesting':
+					upgradeMessage += " Lotus of Experience will now grant 20 XP instead of 10 XP.";
+					break;
+			}
+			
+			alert(upgradeMessage);
+			
+			// If in camp, update the shop to reflect any changes
+			if (document.getElementById('campShop')) {
+				showShopInCamp();
+			}
+		}
         
        function createTentElement(number) {
     const tent = document.createElement('div');
@@ -2214,15 +2266,27 @@ function updatePartyDisplay() {
         function createShopItem(id, name, gold, description) {
     const itemKey = id.replace('camp', '').replace('Button', '').toLowerCase();
     const isPurchased = player.purchasedItems && player.purchasedItems[itemKey];
+    const healAmount = merchantUpgrades.increasedPotionPotency ? 50 : 25;
+    let updatedDescription = description;
+    let updatedGold = gold;
+
+    if (itemKey === 'healingpotion') {
+        updatedDescription = `Heal ${healAmount} HP`;
+    } else if (itemKey === 'antidote' && merchantUpgrades.massProducedAntidote) {
+        updatedGold = 150;
+    } else if (itemKey === 'lotus') {
+        updatedDescription = `Grants ${merchantUpgrades.improvedLotusHarvesting ? 20 : 10} XP`;
+    }
+    
     return `
         <div class="shop-item" style="margin-bottom: 10px; width: 100%; max-width: 300px;">
             <button id="${id}" ${isPurchased ? 'disabled' : ''} style="width: 100%;">
                 <div class="button-content">
                     <span class="item-name">${isPurchased ? 'Sold Out' : name}</span>
-                    ${!isPurchased ? `<span class="gold-amount">${gold} Gold</span>` : ''}
+                    ${!isPurchased ? `<span class="gold-amount">${updatedGold} Gold</span>` : ''}
                 </div>
             </button>
-            <span class="item-description" style="display: block; margin-top: 5px;">${description}</span>
+            <span class="item-description" style="display: block; margin-top: 5px;">${updatedDescription}</span>
         </div>
     `;
 }
@@ -2355,12 +2419,10 @@ function logButtonStates() {
     const buttons = [
         { id: 'healingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion' },
         { id: 'expBoosterButton', item: 'expBooster', cost: 200, name: 'EXP Booster' },
-        { id: 'antidoteButton', item: 'antidote', cost: 300, name: 'Antidote' },
+        { id: 'antidoteButton', item: 'antidote', cost: merchantUpgrades.massProducedAntidote ? 150 : 300, name: 'Antidote' },
         { id: 'lotusButton', item: 'lotus', cost: 500, name: 'Lotus of Experience' },
         { id: 'redPillButton', item: 'redPill', cost: 1000, name: 'Red Pill' }
     ];
-
-	updateShopButtons(true);
 
     buttons.forEach(button => {
         const element = document.getElementById(button.id);
@@ -2387,7 +2449,7 @@ function logButtonStates() {
     const buttons = [
         { id: 'campHealingPotionButton', item: 'healingPotion', cost: 100, name: 'Healing Potion', description: 'Heal 25 HP' },
         { id: 'campExpBoosterButton', item: 'expBooster', cost: 200, name: 'EXP Booster', description: 'Double the next XP gained' },
-        { id: 'campAntidoteButton', item: 'antidote', cost: 300, name: 'Antidote', description: 'Heals poison' },
+        { id: 'campAntidoteButton', item: 'antidote', cost: merchantUpgrades.massProducedAntidote ? 150 : 300, name: 'Antidote', description: 'Heals poison' },
         { id: 'campLotusButton', item: 'lotus', cost: 500, name: 'Lotus of Experience', description: 'Grants 10 XP' },
         { id: 'campRedPillButton', item: 'redPill', cost: 1000, name: 'Red Pill', description: '+1 Min Damage' }
     ];
@@ -2416,102 +2478,115 @@ function logButtonStates() {
                 `;
                 element.onclick = () => buyItemInCamp(button.item, button.cost, button.name);
             }
-            
-            // Ensure the button remains full width
-            element.style.width = '100%';
         }
     });
 }
 
-function handleFlexiblePurchase(item, cost, itemName, isVictoryScreen = false) {
-    if (player.gold >= cost) {
-        // If player has enough gold, proceed with normal purchase
-        return { canPurchase: true, usingCampBank: false };
-    } else if (merchantUpgrades.flexibleCurrency && player.campBank >= cost) {
-        // If player doesn't have enough gold but has the upgrade and enough in camp bank
-        const useBank = confirm(`You don't have enough gold (${player.gold}/${cost}), but you have enough in your Camp Bank (${player.campBank}). Would you like to use your Camp Bank for this purchase?`);
-        if (useBank) {
-            return { canPurchase: true, usingCampBank: true };
-        }
-    }
-    // If player can't or doesn't want to make the purchase
-    alert("Not enough gold!");
-    return { canPurchase: false, usingCampBank: false };
-}
+		function handleFlexiblePurchase(item, cost, itemName, isVictoryScreen = false) {
+			if (player.gold >= cost) {
+				// If player has enough gold, proceed with normal purchase
+				return { canPurchase: true, usingCampBank: false };
+			} else if (merchantUpgrades.flexibleCurrency && player.campBank >= cost) {
+				// If player doesn't have enough gold but has the upgrade and enough in camp bank
+				const useBank = confirm(`You don't have enough gold (${player.gold}/${cost}), but you have enough in your Camp Bank (${player.campBank}). Would you like to use your Camp Bank for this purchase?`);
+				if (useBank) {
+					return { canPurchase: true, usingCampBank: true };
+				}
+			}
+			// If player can't or doesn't want to make the purchase
+			alert("Not enough gold!");
+			return { canPurchase: false, usingCampBank: false };
+		}
 
-function buyItemInCamp(item, cost, itemName) {
-    const button = document.getElementById(`camp${item.charAt(0).toUpperCase() + item.slice(1)}Button`);
-    if (button) {
-        button.disabled = true;
-    }
+		function buyItemInCamp(item, cost, itemName) {
+			const button = document.getElementById(`camp${item.charAt(0).toUpperCase() + item.slice(1)}Button`);
+			if (button) {
+				button.disabled = true;
+			}
 
-    const purchaseResult = handleFlexiblePurchase(item, cost, itemName);
-    if (!purchaseResult.canPurchase) {
-        if (button) button.disabled = false;
-        return;
-    }
+			const purchaseResult = handleFlexiblePurchase(item, cost, itemName);
+			if (!purchaseResult.canPurchase) {
+				if (button) button.disabled = false;
+				return;
+			}
 
-    if (item === 'healingPotion') {
-        if (player.health >= player.maxHealth) {
-            alert("Your HP is full! You can't buy a Healing Potion right now.");
-            if (button) button.disabled = false;
-            return;
-        }
+			if (item === 'healingPotion') {
+				if (player.health >= player.maxHealth) {
+					alert("Your HP is full! You can't buy a Healing Potion right now.");
+					if (button) button.disabled = false;
+					return;
+				}
 
-        if (!player.purchasedItems[item]) {
-            player.purchasedItems[item] = 0;
-        }
-        if (player.purchasedItems[item] >= (merchantUpgrades.additionalPotions ? 2 : 1)) {
-            alert("Healing Potions are sold out!");
-            if (button) button.disabled = false;
-            return;
-        }
-        player.purchasedItems[item]++;
-    } else if (player.purchasedItems[item]) {
-        alert(`${itemName} is already sold out!`);
-        if (button) button.disabled = false;
-        return;
-    } else {
-        player.purchasedItems[item] = true;
-    }
+				if (!player.purchasedItems[item]) {
+					player.purchasedItems[item] = 0;
+				}
+				if (player.purchasedItems[item] >= (merchantUpgrades.additionalPotions ? 2 : 1)) {
+					alert("Healing Potions are sold out!");
+					if (button) button.disabled = false;
+					return;
+				}
+				player.purchasedItems[item]++;
+			} else if (player.purchasedItems[item]) {
+				alert(`${itemName} is already sold out!`);
+				if (button) button.disabled = false;
+				return;
+			} else {
+				player.purchasedItems[item] = true;
+			}
 
-    if (purchaseResult.usingCampBank) {
-        player.campBank -= cost;
-    } else {
-        player.gold -= cost;
-    }
+			if (purchaseResult.usingCampBank) {
+				player.campBank -= cost;
+			} else {
+				player.gold -= cost;
+			}
 
-    const effectMessage = applyItemEffect(item);
-    updateCampMessage();
-    updateCampShopButtons();
-    alert(`You bought ${itemName} for ${cost} gold ${purchaseResult.usingCampBank ? 'from your Camp Bank' : ''}. ${effectMessage}`);
-}
+			const effectMessage = applyItemEffect(item);
+			updateCampMessage();
+			updateCampShopButtons();
+			alert(`You bought ${itemName} for ${cost} gold ${purchaseResult.usingCampBank ? 'from your Camp Bank' : ''}. ${effectMessage}`);
+			
+			// If the player leveled up, we need to update the UI
+			if (item === 'lotus') {
+				updatePlayerStats();
+			}
+		}
+		
+		function updatePlayerStats() {
+			// Update any UI elements that display player stats
+			// For example:
+			document.getElementById('playerLevel').textContent = player.level;
+			document.getElementById('playerHealth').textContent = `${player.health}/${player.maxHealth}`;
+			document.getElementById('playerExperience').textContent = `${player.experience}/${player.xpToNextLevel}`;
+			// Add any other stats that need updating
+		}
         
-       function applyItemEffect(item) {
-    switch(item) {
-        case 'healingPotion':
-            const healAmount = 25;
-            const oldHealth = player.health;
-            player.health = Math.min(player.health + healAmount, player.maxHealth);
-            const actualHeal = player.health - oldHealth;
-            return `You've been healed for ${actualHeal} HP.`;
-        case 'expBooster':
-            player.expBooster = true;
-            return "Your next XP gain will be doubled.";
-        case 'antidote':
-            player.poisonCounter = 0;
-            return "You've been cured of poison.";
-        case 'lotus':
-            player.experience += 10;
-            checkLevelUp();
-            return "You gained 10 XP.";
-        case 'redPill':
-            player.minDamage += 1;
-            return "Your minimum damage has increased by 1.";
-        default:
-            return "";
-    }
-}
+        function applyItemEffect(item) {
+			switch(item) {
+				case 'healingPotion':
+					const baseHealAmount = 25;
+					const healAmount = merchantUpgrades.increasedPotionPotency ? baseHealAmount * 2 : baseHealAmount;
+					const oldHealth = player.health;
+					player.health = Math.min(player.health + healAmount, player.maxHealth);
+					const actualHeal = player.health - oldHealth;
+					return `You've been healed for ${actualHeal} HP.`;
+				case 'expBooster':
+					player.expBooster = true;
+					return "Your next XP gain will be doubled.";
+				case 'antidote':
+					player.poisonCounter = 0;
+					return "You've been cured of poison.";
+				case 'lotus':
+					const lotusXP = merchantUpgrades.improvedLotusHarvesting ? 20 : 10;
+					player.experience += lotusXP;
+					const leveledUp = checkLevelUp();
+					return `You gained ${lotusXP} XP.${leveledUp ? ' You leveled up!' : ''}`;
+				case 'redPill':
+					player.minDamage += 1;
+					return "Your minimum damage has increased by 1.";
+				default:
+					return "";
+			}
+		}
         
         function buyHealingPotion() {
             buyItem('Healing Potion', 100, () => {
@@ -2638,6 +2713,52 @@ function buyItemInCamp(item, cost, itemName) {
 			showBattleSkillSelection();
 			break; // Exit the loop after showing skill selection
 		}
+    }
+    return leveledUp;
+}
+
+function checkLevelUp() {
+    let leveledUp = false;
+    while (player.experience >= player.xpToNextLevel) {
+        leveledUp = true;
+        player.level++;
+        player.experience -= player.xpToNextLevel;
+        player.xpToNextLevel += 20;
+
+        player.healthGain = Math.floor(Math.random() * 5) + 3;
+        player.maxHealth += player.healthGain;
+        player.health = player.maxHealth;
+
+        player.minDamageGain = 0;
+        player.maxDamageGain = 0;
+        if (Math.random() <= 0.25) {
+            player.minDamage += 1;
+            player.minDamageGain = 1;
+        }
+
+        const maxDamageIncreaseRoll = Math.random() * 100;
+        if (maxDamageIncreaseRoll <= 60) {
+            player.maxDamage += 1;
+            player.maxDamageGain = 1;
+        } else if (maxDamageIncreaseRoll <= 90) {
+            player.maxDamage += 2;
+            player.maxDamageGain = 2;
+        } else {
+            player.maxDamage += 3;
+            player.maxDamageGain = 3;
+        }
+
+        let levelUpMessage = `You leveled up! Gained ${player.healthGain} health, +${player.minDamageGain} min damage, +${player.maxDamageGain} max damage.`;
+        alert(levelUpMessage);
+
+        // Show special skill selection when reaching level 3
+        if (player.level === 3 && !player.specialSkillUnlocked) {
+            console.log("Player reached level 3, setting up class skills");
+            setupClassSkills();
+            player.specialSkillUnlocked = true;
+            showBattleSkillSelection();
+            break; // Exit the loop after showing skill selection
+        }
     }
     return leveledUp;
 }
@@ -3385,34 +3506,44 @@ function startWerewolfBattle() {
 		}
         
         function continueJourneyFromStory() {
-    console.log("Executing continueJourneyFromStory");
-    hideStoryEventScreen();
-    inStoryEvent = false;
-    gameState = 'exploring'; // Set game state to exploring
-    ensureButtonVisibility(); // Update button visibility
-    continueJourney();
-}
+			console.log("Executing continueJourneyFromStory");
+			hideStoryEventScreen();
+			inStoryEvent = false;
+			gameState = 'exploring'; // Set game state to exploring
+			ensureButtonVisibility(); // Update button visibility
+			continueJourney();
+		}
 
-function returnToCampFromStory() {
-    console.log("Executing returnToCampFromStory");
-    hideStoryEventScreen();
-    inStoryEvent = false;
-    gameState = 'camp'; // Set game state to camp
-    ensureButtonVisibility(); // Update button visibility
-    showCampScreen();
-}
+		function returnToCampFromStory() {
+			console.log("Executing returnToCampFromStory");
+			hideStoryEventScreen();
+			inStoryEvent = false;
+			gameState = 'camp'; // Set game state to camp
+			ensureButtonVisibility(); // Update button visibility
+			showCampScreen();
+		}
+
+		function resetPurchasedItems() {
+			player.purchasedItems = {
+				healingPotion: 0,
+				expBooster: false,
+				antidote: false,
+				lotus: false,
+				redPill: false
+			};
+		}
 		
-	    	function hideDuelEventScreen() {
+		function hideDuelEventScreen() {
 			document.getElementById('duelEventScreen').style.display = 'none';
 		}
 
         function hideStoryEventScreen() {
-    document.getElementById('storyEventScreen').style.display = 'none';
-    const buttonContainer = document.getElementById('storyFinalButtons');
-    if (buttonContainer) {
-        buttonContainer.style.display = 'none';
-    }
-}
+			document.getElementById('storyEventScreen').style.display = 'none';
+			const buttonContainer = document.getElementById('storyFinalButtons');
+			if (buttonContainer) {
+				buttonContainer.style.display = 'none';
+			}
+		}
 
         function updateStoryScreenStats() {
             console.log("Executing updateStoryScreenStats");
@@ -3436,46 +3567,46 @@ function returnToCampFromStory() {
         }
 
         function showStorySkillSelection() {
-    console.log("Showing story skill selection for " + player.class);
-    const skillSelection = document.getElementById('storySkillSelection');
-    
-    skillSelection.style.display = 'block';
-    document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
-    document.getElementById('storyChoices').style.display = 'none';
+			console.log("Showing story skill selection for " + player.class);
+			const skillSelection = document.getElementById('storySkillSelection');
+			
+			skillSelection.style.display = 'block';
+			document.getElementById('continueJourneyFromStoryButton').style.display = 'none';
+			document.getElementById('storyChoices').style.display = 'none';
 
-    const mageSkills = document.getElementById('storySkillSelectionMageSkills');
-    const warriorSkills = document.getElementById('storySkillSelectionWarriorSkills');
-    const clericSkills = document.getElementById('storySkillSelectionClericSkills');
-    const rogueSkills = document.getElementById('storySkillSelectionRogueSkills');
+			const mageSkills = document.getElementById('storySkillSelectionMageSkills');
+			const warriorSkills = document.getElementById('storySkillSelectionWarriorSkills');
+			const clericSkills = document.getElementById('storySkillSelectionClericSkills');
+			const rogueSkills = document.getElementById('storySkillSelectionRogueSkills');
 
-    mageSkills.style.display = 'none';
-    warriorSkills.style.display = 'none';
-    clericSkills.style.display = 'none';
-    rogueSkills.style.display = 'none';
+			mageSkills.style.display = 'none';
+			warriorSkills.style.display = 'none';
+			clericSkills.style.display = 'none';
+			rogueSkills.style.display = 'none';
 
-    let skillsToShow;
-    if (player.class === 'Mage') {
-        skillsToShow = mageSkills;
-    } else if (player.class === 'Warrior') {
-        skillsToShow = warriorSkills;
-    } else if (player.class === 'Cleric') {
-        skillsToShow = clericSkills;
-    } else if (player.class === 'Rogue') {
-        skillsToShow = rogueSkills;
-    }
+			let skillsToShow;
+			if (player.class === 'Mage') {
+				skillsToShow = mageSkills;
+			} else if (player.class === 'Warrior') {
+				skillsToShow = warriorSkills;
+			} else if (player.class === 'Cleric') {
+				skillsToShow = clericSkills;
+			} else if (player.class === 'Rogue') {
+				skillsToShow = rogueSkills;
+			}
 
-    if (skillsToShow) {
-        skillsToShow.style.display = 'block';
-        // Set up skill buttons
-        const buttons = skillsToShow.getElementsByTagName('button');
-        for (let i = 0; i < buttons.length; i++) {
-            const skillName = buttons[i].textContent;
-            buttons[i].onclick = () => selectSpecialSkill(skillName);
-        }
-    }
-    
-    ensureButtonVisibility();
-}
+			if (skillsToShow) {
+				skillsToShow.style.display = 'block';
+				// Set up skill buttons
+				const buttons = skillsToShow.getElementsByTagName('button');
+				for (let i = 0; i < buttons.length; i++) {
+					const skillName = buttons[i].textContent;
+					buttons[i].onclick = () => selectSpecialSkill(skillName);
+				}
+			}
+			
+			ensureButtonVisibility();
+		}
 
         function showBattleSkillSelection() {
     console.log("Showing battle skill selection for " + player.class);
