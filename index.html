@@ -2108,22 +2108,47 @@ function showUpgradesPopup() {
     popup.style.padding = '20px';
     popup.style.border = '2px solid black';
     popup.style.zIndex = '1000';
+    popup.style.maxWidth = '90%';
+    popup.style.maxHeight = '80%';
+    popup.style.overflowY = 'auto';
+    popup.style.boxSizing = 'border-box';
 
     popup.innerHTML = `
-        <h2>Upgrades</h2>
+        <h2 style="text-align: center; margin-top: 0;">Upgrades</h2>
         <div id="upgradeOptions"></div>
-        <button id="closeUpgradesPopup">Close</button>
+        <button id="closeUpgradesPopup" style="display: block; margin: 20px auto 0;">Close</button>
     `;
 
     document.body.appendChild(popup);
     document.getElementById('closeUpgradesPopup').onclick = closeUpgradesPopup;
     
     updateUpgradeOptions();
+
+    // Adjust popup size for mobile devices
+    const adjustPopupSize = () => {
+        const windowHeight = window.innerHeight;
+        const windowWidth = window.innerWidth;
+        const isLandscape = windowWidth > windowHeight;
+
+        if (windowWidth <= 768) { // Mobile breakpoint
+            popup.style.width = isLandscape ? '70%' : '90%';
+            popup.style.height = isLandscape ? '90%' : '70%';
+            popup.style.maxHeight = isLandscape ? '90%' : '70%';
+        } else {
+            popup.style.width = 'auto';
+            popup.style.height = 'auto';
+            popup.style.maxHeight = '80%';
+        }
+    };
+
+    adjustPopupSize();
+    window.addEventListener('resize', adjustPopupSize);
 }
 
 function closeUpgradesPopup() {
     const popup = document.getElementById('upgradesPopup');
     if (popup) {
+        window.removeEventListener('resize', popup.adjustPopupSize);
         popup.remove();
     }
 }
@@ -2132,81 +2157,89 @@ function updateUpgradeOptions() {
     const upgradeOptions = document.getElementById('upgradeOptions');
     if (!upgradeOptions) return;
 
-    upgradeOptions.innerHTML = `
-        <div>
-            <button id="additionalPotionsUpgrade" 
-                    ${merchantUpgrades.additionalPotions ? 'disabled' : ''}
-                    onclick="purchaseUpgrade('additionalPotions', 500)">
-                ${merchantUpgrades.additionalPotions ? 'Additional Potions (Purchased)' : 'Additional Potions (500 Gold)'}
+    const upgrades = [
+        {
+            id: 'additionalPotions',
+            name: 'Additional Potions',
+            cost: 500,
+            description: 'Allows purchasing two healing potions before sold out'
+        },
+        {
+            id: 'flexibleCurrency',
+            name: 'Flexible Currency',
+            cost: 700,
+            description: 'Allows using Camp Bank for purchases'
+        },
+        {
+            id: 'increasedPotionPotency',
+            name: 'Increased Potion Potency',
+            cost: 1250,
+            description: 'Doubles the healing effect of HP potions'
+        },
+        {
+            id: 'massProducedAntidote',
+            name: 'Mass Produced Antidote',
+            cost: 900,
+            description: 'Reduces the price of antidotes from 300 to 150 gold'
+        },
+        {
+            id: 'improvedLotusHarvesting',
+            name: 'Improved Lotus Harvesting',
+            cost: 1500,
+            description: 'Doubles the XP gained from Lotus of Experience (20 XP instead of 10 XP)'
+        }
+    ];
+
+    upgradeOptions.innerHTML = upgrades.map(upgrade => `
+        <div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+            <button id="${upgrade.id}Upgrade" 
+                    ${merchantUpgrades[upgrade.id] ? 'disabled' : ''}
+                    onclick="purchaseUpgrade('${upgrade.id}', ${upgrade.cost})"
+                    style="width: 100%; padding: 10px; margin-bottom: 10px;">
+                ${merchantUpgrades[upgrade.id] ? `${upgrade.name} (Purchased)` : `${upgrade.name} (${upgrade.cost} Gold)`}
             </button>
-            <p>Allows purchasing two healing potions before sold out</p>
+            <p style="margin: 0; font-size: 14px;">${upgrade.description}</p>
         </div>
-        <div>
-            <button id="flexibleCurrencyUpgrade" 
-                    ${merchantUpgrades.flexibleCurrency ? 'disabled' : ''}
-                    onclick="purchaseUpgrade('flexibleCurrency', 700)">
-                ${merchantUpgrades.flexibleCurrency ? 'Flexible Currency (Purchased)' : 'Flexible Currency (700 Gold)'}
-            </button>
-            <p>Allows using Camp Bank for purchases</p>
-        </div>
-        <div>
-            <button id="increasedPotionPotencyUpgrade" 
-                    ${merchantUpgrades.increasedPotionPotency ? 'disabled' : ''}
-                    onclick="purchaseUpgrade('increasedPotionPotency', 1250)">
-                ${merchantUpgrades.increasedPotionPotency ? 'Increased Potion Potency (Purchased)' : 'Increased Potion Potency (1250 Gold)'}
-            </button>
-            <p>Doubles the healing effect of HP potions</p>
-        </div>
-        <div>
-            <button id="massProducedAntidoteUpgrade" 
-                    ${merchantUpgrades.massProducedAntidote ? 'disabled' : ''}
-                    onclick="purchaseUpgrade('massProducedAntidote', 900)">
-                ${merchantUpgrades.massProducedAntidote ? 'Mass Produced Antidote (Purchased)' : 'Mass Produced Antidote (900 Gold)'}
-            </button>
-            <p>Reduces the price of antidotes from 300 to 150 gold</p>
-        </div>
-        <div>
-            <button id="improvedLotusHarvestingUpgrade" 
-                    ${merchantUpgrades.improvedLotusHarvesting ? 'disabled' : ''}
-                    onclick="purchaseUpgrade('improvedLotusHarvesting', 1500)">
-                ${merchantUpgrades.improvedLotusHarvesting ? 'Improved Lotus Harvesting (Purchased)' : 'Improved Lotus Harvesting (1500 Gold)'}
-            </button>
-            <p>Doubles the XP gained from Lotus of Experience (20 XP instead of 10 XP)</p>
-        </div>
-    `;
+    `).join('');
 }
 
 		function purchaseUpgrade(upgrade, cost) {
-			if (player.campBank < cost) {
-				alert("Not enough gold in the Camp Bank!");
-				return;
-			}
+    if (player.campBank < cost) {
+        alert("Not enough gold in the Camp Bank!");
+        return;
+    }
 
-			player.campBank -= cost;
-			merchantUpgrades[upgrade] = true;
-			updateUpgradeOptions();
-			updateCampMessage();
-			
-			let upgradeMessage = `You have purchased the ${upgrade} upgrade!`;
-			switch(upgrade) {
-				case 'increasedPotionPotency':
-					upgradeMessage += " HP potions will now heal twice as much.";
-					break;
-				case 'massProducedAntidote':
-					upgradeMessage += " Antidotes now cost 150 gold instead of 300 gold.";
-					break;
-				case 'improvedLotusHarvesting':
-					upgradeMessage += " Lotus of Experience will now grant 20 XP instead of 10 XP.";
-					break;
-			}
-			
-			alert(upgradeMessage);
-			
-			// If in camp, update the shop to reflect any changes
-			if (document.getElementById('campShop')) {
-				showShopInCamp();
-			}
-		}
+    player.campBank -= cost;
+    merchantUpgrades[upgrade] = true;
+    updateUpgradeOptions();
+    updateCampMessage();
+    
+    let upgradeMessage = `You have purchased the ${upgrade} upgrade!`;
+    switch(upgrade) {
+        case 'increasedPotionPotency':
+            upgradeMessage += " HP potions will now heal twice as much.";
+            break;
+        case 'massProducedAntidote':
+            upgradeMessage += " Antidotes now cost 150 gold instead of 300 gold.";
+            break;
+        case 'improvedLotusHarvesting':
+            upgradeMessage += " Lotus of Experience will now grant 20 XP instead of 10 XP.";
+            break;
+    }
+    
+    alert(upgradeMessage);
+    
+    // If in camp, update the shop to reflect any changes
+    if (document.getElementById('campShop')) {
+        showShopInCamp();
+    }
+
+    // Check if all upgrades are purchased
+    if (Object.values(merchantUpgrades).every(upgrade => upgrade)) {
+        alert("Congratulations! You've purchased all available upgrades.");
+        closeUpgradesPopup();
+    }
+}
         
        function createTentElement(number) {
     const tent = document.createElement('div');
