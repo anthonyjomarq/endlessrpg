@@ -256,6 +256,23 @@
     cursor: not-allowed;
 }
 
+#craftersTentButton {
+    display: block;
+    width: 200px;
+    height: 50px;
+    margin: 10px auto;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#craftersTentButton:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
 #tentSquares {
     display: flex;
     flex-direction: column;
@@ -283,6 +300,41 @@
     justify-content: center;
     text-align: center;
     font-size: 12px;
+}
+
+#inventoryPopup {
+    font-family: Arial, sans-serif;
+}
+
+#inventoryPopup h2 {
+    color: #4CAF50;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 10px;
+}
+
+#inventoryPopup ul {
+    margin-top: 20px;
+}
+
+#inventoryPopup li {
+    margin-bottom: 5px;
+    padding: 5px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+}
+
+#closeInventoryPopup {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#closeInventoryPopup:hover {
+    background-color: #45a049;
 }
 
 
@@ -438,6 +490,7 @@
         <p id="goldMessage"></p>
         <button id="developerGoldButton">Developer Gold</button>
                 <div id="shop">
+		<button id="inventoryButton" class="bigButton">View Inventory</button>
     <h2>Shop</h2>
     <div class="shop-items">
         <div class="shop-item">
@@ -568,6 +621,7 @@
         <button id="fourthTentButton" class="tentButton" style="display: none;">Buy Fourth Tent (2500 Gold)</button>
         <button id="fifthTentButton" class="tentButton" style="display: none;">Buy Fifth Tent (3000 Gold)</button>
         <button id="merchantTentButton" class="tentButton">Buy Merchant Tent (1000 Gold)</button>
+		<button id="craftersTentButton" onclick="buyCraftersTent()">Buy Crafter's Tent (2000 Gold)</button>
     </div>
     <button id="continueJourneyFromCampButton">Continue Journey</button>
     <button id="saveGameButton">Save Game</button>
@@ -617,8 +671,50 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+		
+		// Inventory Manager
+		const InventoryManager = (function() {
+			let inventory = [];
+			let capacity = 50;
 
-        let player = {
+			return {
+				getInventory: function() {
+					return inventory;
+				},
+				getCapacity: function() {
+					return capacity;
+				},
+				addItem: function(item) {
+					if (inventory.length < capacity) {
+						inventory.push(item);
+						return true;
+					}
+					return false;
+				},
+				removeItem: function(index) {
+					if (index >= 0 && index < inventory.length) {
+						return inventory.splice(index, 1)[0];
+					}
+					return null;
+				},
+				clear: function() {
+					inventory = [];
+				},
+				setCapacity: function(newCapacity) {
+					capacity = newCapacity;
+				},
+				getSize: function() {
+					return inventory.length;
+				},
+				initialize: function() {
+					inventory = [];
+					capacity = 50;
+				}
+			};
+		})();
+
+
+       let player = {
     class: '',
     specialSkills: {},
     specialAttackCooldown: 0,
@@ -633,19 +729,23 @@
     campBank: 0,
     expBooster: false,
     defending: false,
-    specialAttackCooldown: 0,
     specialSkillUnlocked: false,
     specialSkill: null,
     healthGain: 0,
     minDamageGain: 0,
     maxDamageGain: 0,
-	recruitedCharacters: [],
-	party: [],  // New party array
+    recruitedCharacters: [],
+    party: [],  // New party array
     tents: 1,
     poisonCounter: 0,
-	hpRegen: 0
-    
+    hpRegen: 0,
+    craftersTent: false,
+    inventoryCapacity: 50,
+    inventory: []
 };
+
+
+
 
 player.purchasedItems = {
     healingPotion: false,
@@ -670,7 +770,9 @@ player.purchasedItems = {
         
         const characterSprites = {};
 		const enemySprites = {};
-
+		const CRAFTERS_TENT_COST = 2000;
+		
+		
         let enemies = []; // Initialize enemies array
         
         let duelEventsUnlocked = false;
@@ -748,6 +850,11 @@ function loadInitialGameAssets() {
     ]);
 }
 
+function initializePlayerInventory() {
+    InventoryManager.initialize();
+    player.inventoryCapacity = InventoryManager.getCapacity();
+}
+
 function loadCharacterAssets(characterClass) {
     return loadCharacterSprite(characterClass);
 }
@@ -777,14 +884,16 @@ function initGame() {
 
     // Show loading screen
     showLoadingScreen();
-	player.party = [];  // Initialize empty party array
+
+    // Initialize player inventory
+    initializePlayerInventory();
 
     // Load initial game assets
     loadInitialGameAssets().then(() => {
         // Hide loading screen
         hideLoadingScreen();
 
-         // Show main menu instead of character select screen
+        // Show main menu instead of character select screen
         document.getElementById('mainMenu').style.display = 'block';
 
         // Set up event listeners
@@ -794,6 +903,9 @@ function initGame() {
         } else {
             canvas.addEventListener('click', handleMouseClick, false);
         }
+
+        // Check inventory state after initialization
+        checkInventoryState();
 
         // Any other initialization code...
 
@@ -905,14 +1017,143 @@ function initGame() {
     }
 });
 
+const lootTables = {
+    Goblin: {
+        common: [
+            { name: "Tattered Cloth" },
+            { name: "Rusty Nail" },
+            { name: "Bent Copper Coin" }
+        ],
+        uncommon: [
+            { name: "Goblin Ear" },
+            { name: "Crude Dagger" }
+        ],
+        rare: [
+            { name: "Goblin's Lucky Charm" }
+        ]
+    },
+    Wolf: {
+        common: [
+            { name: "Wolf Pelt" },
+            { name: "Wolf Tooth" },
+            { name: "Coarse Fur" }
+        ],
+        uncommon: [
+            { name: "Wolf Claw" },
+            { name: "Thick Fur" }
+        ],
+        rare: [
+            { name: "Alpha Wolf Fang" }
+        ]
+    },
+    // Add more enemy types here...
+};
+
+// Function to generate loot from a defeated enemy
+function generateLoot(enemyType) {
+    const loot = [];
+    const enemyLootTable = lootTables[enemyType];
+
+    if (!enemyLootTable) {
+        console.warn(`No loot table found for enemy type: ${enemyType}`);
+        return loot;
+    }
+
+    // Define drop chances for each tier
+    const tierChances = {
+        common: 0.7,
+        uncommon: 0.3,
+        rare: 0.1
+    };
+
+    // Define maximum number of items that can drop per tier
+    const maxItemsPerTier = {
+        common: 2,
+        uncommon: 1,
+        rare: 1
+    };
+
+    Object.entries(tierChances).forEach(([tier, chance]) => {
+        if (Math.random() < chance) {
+            const tierLoot = enemyLootTable[tier];
+            const itemsToDrop = Math.min(
+                maxItemsPerTier[tier],
+                Math.floor(Math.random() * tierLoot.length) + 1
+            );
+
+            const shuffledLoot = tierLoot.sort(() => 0.5 - Math.random());
+            for (let i = 0; i < itemsToDrop; i++) {
+                loot.push({ name: shuffledLoot[i].name, tier: tier });
+            }
+        }
+    });
+
+    console.log(`Generated loot for ${enemyType}:`, loot);
+    return loot;
+}
+
+function checkInventoryState() {
+    console.log("Checking Inventory State");
+    if (typeof player === 'undefined' || player === null) {
+        console.error("Player object is not defined");
+        return;
+    }
+    
+    if (!Array.isArray(player.inventory)) {
+        console.error("Player inventory is not properly initialized");
+        player.inventory = []; // Initialize it as an empty array
+    }
+    
+    if (typeof player.inventoryCapacity !== 'number') {
+        console.warn("Inventory capacity is not set. Setting to default value of 50.");
+        player.inventoryCapacity = 50;
+    }
+    
+    console.log("Inventory:", player.inventory);
+    console.log("Inventory Length:", player.inventory.length);
+    console.log("Inventory Capacity:", player.inventoryCapacity);
+}
+
+
+
+function ensureInventoryInitialized() {
+    if (!Array.isArray(player.inventory)) {
+        console.warn("Initializing player inventory as empty array");
+        player.inventory = [];
+    }
+    if (typeof player.inventoryCapacity !== 'number') {
+        console.warn("Setting default inventory capacity to 50");
+        player.inventoryCapacity = 50;
+    }
+}
+
+// Function to add loot to player's inventory
+function addLootToInventory(loot) {
+    console.log("Current inventory size:", player.inventory.length);
+    console.log("Inventory capacity:", player.inventoryCapacity);
+    console.log("Loot to add:", loot);
+
+    const remainingSpace = player.inventoryCapacity - player.inventory.length;
+    const itemsToAdd = loot.slice(0, remainingSpace);
+    
+    player.inventory = player.inventory.concat(itemsToAdd);
+    
+    if (itemsToAdd.length < loot.length) {
+        console.log(`Inventory full. ${loot.length - itemsToAdd.length} items discarded.`);
+        alert(`Your inventory is full! ${loot.length - itemsToAdd.length} items were discarded.`);
+    }
+    
+    console.log("New inventory size:", player.inventory.length);
+}
+
         function startGame(isNewGame = true) {
     console.log("startGame function called, isNewGame:", isNewGame);
     
     if (isNewGame) {
         // Reset player and game state to initial values
-        player = {
-            class: '',
-            specialSkills: {},
+        let player = {
+			class: '',
+			specialSkills: {},
 			specialAttackCooldown: 0,
 			health: 50,
 			maxHealth: 50,
@@ -933,9 +1174,12 @@ function initGame() {
 			recruitedCharacters: [],
 			party: [],  // New party array
 			tents: 1,
-			poisonCounter: 0
-            // Add any other initial player properties here
-        };
+			poisonCounter: 0,
+			hpRegen: 0,
+			craftersTent: false,
+			inventoryCapacity: 50,
+			inventory: [] // Assign InventoryManager to player.inventory
+		};
         
         gameState = 'characterSelect';
         currentStory = null;
@@ -963,6 +1207,8 @@ function initGame() {
     console.log("Starting battle with class:", characterClass || player.class);
     console.log("Player special skill:", player.specialSkill);
     showLoadingScreen();
+	currentBattleExpGained = 0;
+	resetShopItems();
 
    // Ensure we have a valid character class
     const selectedClass = characterClass || player.class;
@@ -1377,66 +1623,84 @@ function drawParty(ctx) {
         }
 
         function playerAttack() {
-    if (gameState === 'playerTurn') {
-        showPlayerTurnNotification();
-        
-        if (player.specialAttackCooldown > 0) {
-            player.specialAttackCooldown--;
-            console.log("Special attack cooldown decreased to:", player.specialAttackCooldown);
+    if (gameState !== 'playerTurn') {
+        console.warn("Attempted to attack outside of player's turn");
+        return;
+    }
+
+    showPlayerTurnNotification();
+    
+    if (player.specialAttackCooldown > 0) {
+        player.specialAttackCooldown--;
+        console.log("Special attack cooldown decreased to:", player.specialAttackCooldown);
+    }
+    
+    if (selectedEnemyIndex < 0 || selectedEnemyIndex >= enemies.length) {
+        console.error("Invalid enemy index:", selectedEnemyIndex);
+        return;
+    }
+
+    const targetEnemy = enemies[selectedEnemyIndex];
+    if (!targetEnemy) {
+        console.error("Target enemy is undefined");
+        return;
+    }
+
+    let damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
+    
+    if (targetEnemy.parryNextAttack) {
+        console.log("Enemy parried the attack!");
+        damageDisplay.player.damage = damage;
+        damageDisplay.player.x = 75;
+        damageDisplay.player.y = 150;
+        damageDisplay.player.alpha = 1;
+        player.health -= damage;
+        targetEnemy.parryNextAttack = false;
+        damage = 0;
+    } else {
+        if (targetEnemy.exposed) {
+            damage *= 2;
+            targetEnemy.exposed = false;
         }
         
-        const targetEnemy = enemies[selectedEnemyIndex];
-        let damage = Math.floor(Math.random() * (player.maxDamage - player.minDamage + 1)) + player.minDamage;
-        
-        if (targetEnemy.parryNextAttack) {
-            console.log("Enemy parried the attack!");
-            damageDisplay.player.damage = damage;
-            damageDisplay.player.x = 75;
-            damageDisplay.player.y = 150;
-            damageDisplay.player.alpha = 1;
-            player.health -= damage;
-            targetEnemy.parryNextAttack = false;
-            damage = 0;
-        } else {
-            if (targetEnemy.exposed) {
-                damage *= 2;
-                targetEnemy.exposed = false;
-            }
-            
-            if (targetEnemy.defending) {
-                damage = Math.floor(damage / 2);
-                targetEnemy.defending = false;
-            }
-            targetEnemy.health -= damage;
-            damageDisplay.enemy.damage = damage;
-            damageDisplay.enemy.x = 725;
-            damageDisplay.enemy.y = 150 + (selectedEnemyIndex * 130);
-            damageDisplay.enemy.alpha = 1;
+        if (targetEnemy.defending) {
+            damage = Math.floor(damage / 2);
+            targetEnemy.defending = false;
         }
-        
-        // Apply poison damage to the enemy at the end of player's turn
-        if (targetEnemy.poisonCounter > 0) {
-            const poisonDamage = targetEnemy.poisonCounter;
-            targetEnemy.health -= poisonDamage;
-            console.log(`Enemy takes ${poisonDamage} poison damage`);
-            targetEnemy.poisonCounter++;
-        }
-        
-        applyPoisonDamage(); // Apply poison damage at the end of the turn
-        checkEnemyDefeat();
-        if (gameState !== 'victory' && gameState !== 'duelVictory') {
-            gameState = 'enemyTurn';
-            updateButtonStates();
-            drawGame();
-            animateDamage();
-            setTimeout(() => {
-                handleEnemyTurn();
-            }, 500);
-        }
+        targetEnemy.health -= damage;
+        damageDisplay.enemy.damage = damage;
+        damageDisplay.enemy.x = 725;
+        damageDisplay.enemy.y = 150 + (selectedEnemyIndex * 130);
+        damageDisplay.enemy.alpha = 1;
+    }
+    
+    // Apply poison damage to the enemy at the end of player's turn
+    if (targetEnemy.poisonCounter > 0) {
+        const poisonDamage = targetEnemy.poisonCounter;
+        targetEnemy.health -= poisonDamage;
+        console.log(`Enemy takes ${poisonDamage} poison damage`);
+        targetEnemy.poisonCounter++;
+    }
+    
+    applyPoisonDamage(); // Apply poison damage at the end of the turn
+
+    if (targetEnemy.health <= 0) {
+        const defeatedEnemy = enemies.splice(selectedEnemyIndex, 1)[0];
+        handleEnemyDefeat(defeatedEnemy);
+    }
+
+    if (gameState !== 'victory' && gameState !== 'duelVictory') {
+        gameState = 'enemyTurn';
+        updateButtonStates();
+        drawGame();
+        animateDamage();
+        setTimeout(() => {
+            handleEnemyTurn();
+        }, 500);
     }
 }
-  
-        function playerSpecialAttack() {
+
+function playerSpecialAttack() {
     console.log("playerSpecialAttack function called");
     console.log("Current game state:", gameState);
     console.log("Special attack cooldown:", player.specialAttackCooldown);
@@ -1456,10 +1720,8 @@ function drawParty(ctx) {
                 console.error("No valid target enemy");
                 return;
             }
-
             const result = player.specialSkill.use(player, targetEnemy);
             console.log("Skill use result:", result);
-
             if (result.damage > 0) {
                 let finalDamage = result.damage;
                 if (targetEnemy.exposed) {
@@ -1474,19 +1736,22 @@ function drawParty(ctx) {
                 damageDisplay.enemy.y = 150;
                 damageDisplay.enemy.alpha = 1;
             }
-
             if (result.applyEffect) {
                 result.applyEffect(targetEnemy);
             }
-
             displayMessage(result.effect);
             
             player.specialAttackCooldown = 3; // Set cooldown after using the skill
             console.log("Set special attack cooldown to:", player.specialAttackCooldown);
             
             applyPoisonDamage(); // Apply poison damage at the end of the turn
-            checkEnemyDefeat();
-            if (gameState !== 'victory') {
+
+            if (targetEnemy.health <= 0) {
+                const defeatedEnemy = enemies.splice(selectedEnemyIndex, 1)[0];
+                handleEnemyDefeat(defeatedEnemy);
+            }
+
+            if (gameState !== 'victory' && gameState !== 'duelVictory') {
                 gameState = 'enemyTurn';
                 updateButtonStates();
                 drawGame();
@@ -1509,37 +1774,53 @@ function drawParty(ctx) {
     }
 }
 
-        function checkEnemyDefeat() {
-    if (enemies[selectedEnemyIndex].health <= 0) {
-        let defeatedEnemyXP = 0;
-        const isDuelEnemy = enemies[selectedEnemyIndex].class != null;
-
-        if (isDuelEnemy) {
-            // This is a duel enemy
-            defeatedEnemyXP = 20; // Set a fixed XP for duel enemies, or calculate based on level
-        } else {
-            // This is a regular enemy
-            const enemyType = enemyTypes.find(type => type.type === enemies[selectedEnemyIndex].type);
-            defeatedEnemyXP = enemyType ? enemyType.xp : 0;
-        }
-
-        currentBattleExpGained += defeatedEnemyXP;
-        const defeatedEnemy = enemies.splice(selectedEnemyIndex, 1)[0];
-        resetDamageDisplay();
-        selectedEnemyIndex = 0;
-
-        if (enemies.length === 0) {
-            if (isDuelEnemy) {
-                gameState = 'duelVictory';
-                clearNotification();
-                showDuelVictoryScreen(defeatedEnemy);
-            } else {
-                gameState = 'victory';
-                clearNotification();
-                showVictoryScreen(currentBattleExpGained > defeatedEnemyXP); // Pass true if it was a double battle
-            }
-        }
+// Helper function to handle enemy defeat
+function handleEnemyDefeat(defeatedEnemy) {
+    console.log("Enemy defeated:", defeatedEnemy.type);
+    
+    // Generate loot
+    const newLoot = generateLoot(defeatedEnemy.type);
+    console.log("Generated loot:", newLoot);
+    
+    // Handle XP gain
+    const xpGained = calculateXPGain(defeatedEnemy);
+    player.experience += xpGained;
+    currentBattleExpGained += xpGained;
+    
+    console.log("XP gained:", xpGained);
+    console.log("Current player XP:", player.experience);
+    console.log("Current battle XP gained:", currentBattleExpGained);
+    
+    // Determine if it's a double battle
+    const isDoubleBattle = enemies.length > 1;
+    
+    if (enemies.length === 0) {
+        gameState = defeatedEnemy.class ? 'duelVictory' : 'victory';
+        addLootToInventory(newLoot); // Add loot to inventory here
+        showVictoryScreen(currentBattleExpGained, defeatedEnemy, isDoubleBattle, newLoot);
+    } else {
+        selectedEnemyIndex = 0; // Reset to first enemy if there are more
     }
+    
+    checkInventoryState();
+}
+
+      
+function calculateXPGain(enemy) {
+    // You can customize this based on enemy type, level, etc.
+    const xpGained = enemy.class ? 20 : (enemyTypes.find(t => t.type === enemy.type)?.xp || 10);
+	currentBattleExpGained += xpGained;
+    return xpGained;
+}
+
+function resetShopItems() {
+    currentVictoryScreenPurchases = {
+        healingPotion: 0,
+        expBooster: false,
+        antidote: false,
+        lotus: false,
+        redPill: false
+    };
 }
 
         function playerDefend() {
@@ -1742,7 +2023,7 @@ function drawParty(ctx) {
                 if (enemies.length === 0) {
                     gameState = 'victory';
                     clearNotification();
-                    showVictoryScreen();
+                    showVictoryScreen(currentBattleExpGained, defeatedEnemy, isDoubleBattle, newLoot);
                     return;
                 }
             }
@@ -1769,69 +2050,86 @@ function drawParty(ctx) {
 }
 
         function checkVictory() {
-			if (enemies.length === 0) {
-				gameState = 'victory';
-				clearNotification();
-				console.log("Checking victory. currentStoryContext:", currentStoryContext);
-				showVictoryScreen(false, currentStoryContext);
-			}
-		}
+    if (enemies.length === 0) {
+        gameState = 'victory';
+        clearNotification();
+        console.log("Checking victory. currentStoryContext:", currentStoryContext);
+        
+        // Calculate total experience gained in this battle
+        const totalExpGained = currentBattleExpGained;
+        
+        // Determine if it was a double battle (you may need to adjust this logic)
+        const isDoubleBattle = false; // Set this to true if it was a double battle
+        
+        // Get the last defeated enemy (if available)
+        const lastDefeatedEnemy = null; // You may need to track this during the battle
+        
+        // Get the new loot (if available)
+        const newLoot = []; // You may need to track this during the battle
+        
+        showVictoryScreen(totalExpGained, lastDefeatedEnemy, isDoubleBattle, newLoot);
+    }
+}
 		
-		function showVictoryScreen(isDoubleBattle = false, currentStory = null) {
-			const storyContext = currentStory || currentStoryContext;
-			console.log("Showing victory screen. Story context:", storyContext);
-
-			let goldEarned = Math.floor(Math.random() * 201) + 100;
-			resetPurchasedItems(); // Reset purchased items for the new victory screen
-			
-			if (isDoubleBattle) {
-				goldEarned += 100;
-			}
-			
-			player.gold += goldEarned;
-			let totalExpGained = currentBattleExpGained;
-			if (player.expBooster) {
-				totalExpGained *= 2;
-				player.expBooster = false;
-			}
-			player.experience += totalExpGained;
-			victoryExpGained = totalExpGained;
-			
-			if (player.experience >= player.xpToNextLevel) {
-				checkBattleLevelUp();
-			}
-			
-			updateVictoryScreenStats(storyContext === STORY_CHILLING_SCREAM);
-			
-			updateVictoryShopButtons();
-			canvas.style.display = 'none';
-			document.getElementById('gameButtons').style.display = 'none';
-			document.getElementById('gameVictoryScreen').style.display = 'block';
-			
-			if (storyContext === STORY_CHILLING_SCREAM) {
-				handleChillingScreamVictory();
-			} else {
-				showNormalVictoryButtons();
-			}
-			
-			if (player.level >= 3 && !player.specialSkill) {
-				document.getElementById('skillSelection').style.display = 'block';
-				document.getElementById('continueJourneyButton').style.display = 'none';
-				document.getElementById('returnToCampButton').style.display = 'none';
-				showBattleSkillSelection();
-			} else {
-				document.getElementById('skillSelection').style.display = 'none';
-			}
-			
-			currentBattleExpGained = 0;
-			resetDamageDisplay();
-			autoSave();
-			updateLoadGameButton();
-			ensureButtonVisibility();
-
-			// Clear the story context
-			currentStoryContext = null;
-		}
+		function showVictoryScreen(expGained, defeatedEnemy = null, isDoubleBattle = false, newLoot = []) {
+    resetShopItems();
+    const storyContext = currentStoryContext;
+    console.log("Showing victory screen. Story context:", storyContext);
+    console.log("Experience gained:", expGained);
+    console.log("Is double battle:", isDoubleBattle);
+    console.log("New loot acquired:", newLoot);
+    
+    let goldEarned = Math.floor(Math.random() * 201) + 100;
+    
+    if (isDoubleBattle) {
+        goldEarned += 100;
+        console.log("Double battle bonus applied: +100 gold");
+    }
+    
+    player.gold += goldEarned;
+    console.log("Total gold earned:", goldEarned);
+    
+    const levelUpInfo = checkBattleLevelUp();
+    
+    updateVictoryScreenStats(storyContext === STORY_CHILLING_SCREAM, newLoot, defeatedEnemy, expGained, isDoubleBattle, goldEarned, levelUpInfo);
+    
+    updateVictoryShopButtons();
+    canvas.style.display = 'none';
+    document.getElementById('gameButtons').style.display = 'none';
+    document.getElementById('gameVictoryScreen').style.display = 'block';
+    
+    if (storyContext === STORY_CHILLING_SCREAM) {
+        handleChillingScreamVictory();
+    } else {
+        showNormalVictoryButtons();
+    }
+    
+    if (player.level >= 3 && !player.specialSkill) {
+        document.getElementById('skillSelection').style.display = 'block';
+        document.getElementById('continueJourneyButton').style.display = 'none';
+        document.getElementById('returnToCampButton').style.display = 'none';
+        showBattleSkillSelection();
+    } else {
+        document.getElementById('skillSelection').style.display = 'none';
+    }
+    
+    currentBattleExpGained = 0;
+    resetDamageDisplay();
+    autoSave();
+    updateLoadGameButton();
+    ensureButtonVisibility();
+    
+    // Clear the story context
+    currentStoryContext = null;
+    
+    // Log the final state for debugging
+    console.log("Final player state:", {
+        gold: player.gold,
+        experience: player.experience,
+        level: player.level,
+        inventorySize: player.inventory ? player.inventory.lenght : 'N/A'
+    });
+}
 
 			function handleChillingScreamVictory() {
 				console.log("Handling Chilling Scream Victory");
@@ -1971,8 +2269,9 @@ function showNormalVictoryButtons() {
     hideStoryEventScreen();
     updateCampScreen();
     updateCampBankDisplay();
-	updatePartyDisplay();
-	logButtonStates();
+    updatePartyDisplay();
+    logButtonStates();
+
     canvas.style.display = 'none';
     document.getElementById('gameButtons').style.display = 'none';
     
@@ -1982,13 +2281,19 @@ function showNormalVictoryButtons() {
     
     updatePlayerTents();
     updateCommercialTents();
-	updateTentButtons();
-	updateTentButtonStates();
+    updateTentButtons();
+    updateTentButtonStates();
     
     // Update merchant tent button visibility
     const merchantTentButton = document.getElementById('merchantTentButton');
     if (merchantTentButton) {
         merchantTentButton.style.display = player.merchantTent ? 'none' : 'block';
+    }
+    
+    // Update crafter's tent button visibility
+    const craftersTentButton = document.getElementById('craftersTentButton');
+    if (craftersTentButton) {
+        craftersTentButton.style.display = player.craftersTent ? 'none' : 'block';
     }
     
     // Ensure the continue journey button is visible
@@ -2005,11 +2310,34 @@ function showNormalVictoryButtons() {
         showShopInCamp();
     }
     
+    if (player.craftersTent) {
+        showCraftersTentInCamp();
+    }
+    
     updateCampMessage();
+    createCraftersTentButton();
     updateTentButtons();
+    updateTentButtonStates();
     updateCampShopButtons();
 
+    // Ensure the Crafter's Tent button is in the correct place
+    const tentUpgrades = document.getElementById('tentUpgrades');
+    if (tentUpgrades && craftersTentButton && merchantTentButton) {
+        tentUpgrades.insertBefore(craftersTentButton, merchantTentButton.nextSibling);
+    }
+
     console.log("Camp screen updated. Player tents:", player.tents, "Recruited characters:", player.recruitedCharacters);
+}
+
+function showCraftersTentInCamp() {
+    const craftersTentArea = document.getElementById('craftersTentArea');
+    if (craftersTentArea) {
+        craftersTentArea.style.display = 'block';
+        const craftButton = document.getElementById('craftButton');
+        if (craftButton) {
+            craftButton.onclick = showCraftingPopup;
+        }
+    }
 }
 
 function createPartyMember(characterClass) {
@@ -2077,7 +2405,260 @@ function createPartyMember(characterClass) {
         commercialTentsRow.appendChild(merchantTentElement);
         updateMerchantTentContent(merchantTentElement);
     }
+
+    if (player.craftersTent) {
+        const craftersTentElement = createTentElement('Crafter');
+        commercialTentsRow.appendChild(craftersTentElement);
+        updateCraftersTentContent(craftersTentElement);
+    }
 }
+
+function updateCraftersTentContent(tentElement) {
+    tentElement.innerHTML = `
+        <strong>Crafter's Tent</strong><br>
+        <span class="tent-occupant">Crafter</span><br>
+        <button id="craftButton">Craft</button>
+    `;
+    
+    setTimeout(() => {
+        const craftButton = document.getElementById('craftButton');
+        if (craftButton) {
+            craftButton.onclick = showCraftingPopup;
+        } else {
+            console.error('Craft button not found');
+        }
+    }, 0);
+}
+
+// Add this function to show the crafting popup
+function showCraftingPopup() {
+    const popup = document.createElement('div');
+    popup.id = 'craftingPopup';
+    popup.style.position = 'fixed';
+    popup.style.left = '50%';
+    popup.style.top = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.backgroundColor = 'white';
+    popup.style.padding = '20px';
+    popup.style.border = '2px solid black';
+    popup.style.zIndex = '1000';
+    popup.style.maxWidth = '90%';
+    popup.style.maxHeight = '80%';
+    popup.style.overflowY = 'auto';
+    popup.style.boxSizing = 'border-box';
+
+    popup.innerHTML = `
+        <h2 style="text-align: center; margin-top: 0;">Crafting</h2>
+        <div id="craftingOptions"></div>
+        <h3>Inventory</h3>
+        <div id="inventoryDisplay"></div>
+        <button id="closeCraftingPopup" style="display: block; margin: 20px auto 0;">Close</button>
+    `;
+
+    document.body.appendChild(popup);
+    document.getElementById('closeCraftingPopup').onclick = closeCraftingPopup;
+    
+    updateCraftingOptions();
+    updateInventoryDisplay();
+
+    // Adjust popup size for mobile devices
+    const adjustPopupSize = () => {
+        const windowHeight = window.innerHeight;
+        const windowWidth = window.innerWidth;
+        const isLandscape = windowWidth > windowHeight;
+
+        if (windowWidth <= 768) { // Mobile breakpoint
+            popup.style.width = isLandscape ? '70%' : '90%';
+            popup.style.height = isLandscape ? '90%' : '70%';
+            popup.style.maxHeight = isLandscape ? '90%' : '70%';
+        } else {
+            popup.style.width = 'auto';
+            popup.style.height = 'auto';
+            popup.style.maxHeight = '80%';
+        }
+    };
+
+    adjustPopupSize();
+    window.addEventListener('resize', adjustPopupSize);
+}
+
+function closeCraftingPopup() {
+    const popup = document.getElementById('craftingPopup');
+    if (popup) {
+        window.removeEventListener('resize', popup.adjustPopupSize);
+        popup.remove();
+    }
+}
+
+// Add these crafting-related functions
+const craftingRecipes = {
+    'Health Potion': {
+        ingredients: [
+            { name: 'Tattered Cloth', quantity: 2 },
+            { name: 'Wolf Tooth', quantity: 1 }
+        ],
+        result: { name: 'Health Potion', tier: 'uncommon' }
+    },
+    'Sharp Dagger': {
+        ingredients: [
+            { name: 'Crude Dagger', quantity: 1 },
+            { name: 'Wolf Claw', quantity: 2 }
+        ],
+        result: { name: 'Sharp Dagger', tier: 'uncommon' }
+    }
+    // Add more recipes as needed
+};
+
+function canCraftItem(recipeName) {
+    const recipe = craftingRecipes[recipeName];
+    if (!recipe) return false;
+
+    return recipe.ingredients.every(ingredient => 
+        player.inventory.filter(item => item.name === ingredient.name).length >= ingredient.quantity
+    );
+}
+
+function craftItem(recipeName) {
+    if (!canCraftItem(recipeName)) {
+        alert("Not enough materials to craft this item!");
+        return;
+    }
+
+    const recipe = craftingRecipes[recipeName];
+    
+    // Remove ingredients from inventory
+    recipe.ingredients.forEach(ingredient => {
+        for (let i = 0; i < ingredient.quantity; i++) {
+            const index = player.inventory.findIndex(item => item.name === ingredient.name);
+            player.inventory.splice(index, 1);
+        }
+    });
+
+    // Add crafted item to inventory
+    player.inventory.push(recipe.result);
+
+    alert(`Successfully crafted ${recipe.result.name}!`);
+    updateCraftingOptions();
+    updateInventoryDisplay();
+}
+
+function updateCraftingOptions() {
+    const craftingOptions = document.getElementById('craftingOptions');
+    if (!craftingOptions) return;
+
+    craftingOptions.innerHTML = Object.entries(craftingRecipes).map(([recipeName, recipe]) => `
+        <div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+            <h3>${recipeName}</h3>
+            <p>Ingredients: ${recipe.ingredients.map(ing => `${ing.quantity} ${ing.name}`).join(', ')}</p>
+            <button onclick="craftItem('${recipeName}')" ${canCraftItem(recipeName) ? '' : 'disabled'}>
+                Craft ${recipeName}
+            </button>
+        </div>
+    `).join('');
+}
+
+function upgradeInventory() {
+    const upgradeCost = Math.floor(100 * Math.pow(1.5, (player.inventoryCapacity - 50) / 10));
+    
+    if (player.gold >= upgradeCost) {
+        player.gold -= upgradeCost;
+        player.inventoryCapacity += 10;
+        updateInventoryDisplay();
+        updateGoldDisplay(); // Make sure this function exists in your code
+        alert(`Inventory capacity increased to ${player.inventoryCapacity}!`);
+    } else {
+        alert(`Not enough gold! You need ${upgradeCost} gold to upgrade.`);
+    }
+}
+
+function showInventoryScreen() {
+    const gameContainer = document.getElementById('gameContainer');
+    gameContainer.innerHTML = `
+        <div id="inventoryScreen">
+            <h2>Inventory</h2>
+            <div id="inventoryList"></div>
+            <button id="upgradeInventoryButton">Upgrade Inventory</button>
+            <button id="closeInventoryButton">Close Inventory</button>
+        </div>
+    `;
+
+    updateInventoryDisplay();
+
+    document.getElementById('closeInventoryButton').addEventListener('click', closeInventoryScreen);
+    document.getElementById('upgradeInventoryButton').addEventListener('click', upgradeInventory);
+}
+
+function showInventoryPopup() {
+    const popup = document.createElement('div');
+    popup.id = 'inventoryPopup';
+    popup.style.position = 'fixed';
+    popup.style.left = '50%';
+    popup.style.top = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.backgroundColor = 'white';
+    popup.style.padding = '20px';
+    popup.style.border = '2px solid black';
+    popup.style.borderRadius = '10px';
+    popup.style.zIndex = '1000';
+    popup.style.maxWidth = '90%';
+    popup.style.maxHeight = '80%';
+    popup.style.overflowY = 'auto';
+    popup.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+
+    let content = '<h2>Inventory</h2>';
+    content += `<p>Capacity: ${player.inventory.length}/${player.inventoryCapacity}</p>`;
+    
+    const itemCounts = {};
+    player.inventory.forEach(item => {
+        itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+    });
+
+    if (Object.keys(itemCounts).length > 0) {
+        content += '<ul style="list-style-type: none; padding: 0;">';
+        for (const [itemName, count] of Object.entries(itemCounts)) {
+            content += `<li>${itemName}: ${count}</li>`;
+        }
+        content += '</ul>';
+    } else {
+        content += '<p>Your inventory is empty.</p>';
+    }
+
+    content += '<button id="closeInventoryPopup">Close</button>';
+
+    popup.innerHTML = content;
+    document.body.appendChild(popup);
+
+    document.getElementById('closeInventoryPopup').onclick = () => {
+        document.body.removeChild(popup);
+    };
+}
+
+document.getElementById('inventoryButton').addEventListener('click', showInventoryPopup);
+
+function updateInventoryDisplay() {
+    const inventoryList = document.getElementById('inventoryList');
+    if (!inventoryList) return;
+
+    const itemCounts = {};
+    player.inventory.forEach(item => {
+        itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+    });
+
+    inventoryList.innerHTML = `
+        <h3>Inventory (${player.inventory.length}/${player.inventoryCapacity})</h3>
+        ${Object.entries(itemCounts).map(([itemName, count]) => `
+            <div class="inventory-item">
+                <span class="item-name">${itemName}</span>
+                <span class="item-count">x${count}</span>
+            </div>
+        `).join('')}
+    `;
+
+    if (Object.keys(itemCounts).length === 0) {
+        inventoryList.innerHTML += '<p>Your inventory is empty.</p>';
+    }
+}
+
 
 function updateMerchantTentContent(tentElement) {
     tentElement.innerHTML = `
@@ -2086,7 +2667,6 @@ function updateMerchantTentContent(tentElement) {
         <button id="upgradesButton">Upgrades</button>
     `;
     
-    // Use setTimeout to ensure the button is in the DOM before we try to access it
     setTimeout(() => {
         const upgradesButton = document.getElementById('upgradesButton');
         if (upgradesButton) {
@@ -2243,19 +2823,14 @@ function updateUpgradeOptions() {
         
        function createTentElement(number) {
     const tent = document.createElement('div');
-    tent.id = number === 'Merchant' ? 'merchantTent' : `tent${number}`;
-    tent.className = 'tent';
+    tent.id = number === 'Merchant' ? 'merchantTent' : 
+               number === 'Crafter' ? 'crafterTent' : `tent${number}`;
+    tent.className = 'tent tentSquare';
     tent.innerHTML = `
-        <strong>${number === 'Merchant' ? 'Merchant Tent' : `Tent ${number}`}</strong><br>
+        <strong>${number === 'Merchant' ? 'Merchant Tent' : 
+                  number === 'Crafter' ? 'Crafter\'s Tent' : `Tent ${number}`}</strong><br>
         <span class="tent-occupant">Empty</span>
     `;
-    // Add any CSS styles here to make it look like a square
-    tent.style.width = '100px';
-    tent.style.height = '100px';
-    tent.style.border = '2px solid black';
-    tent.style.display = 'inline-block';
-    tent.style.margin = '5px';
-    tent.style.padding = '5px';
     return tent;
 }
 
@@ -2339,9 +2914,6 @@ function updatePartyDisplay() {
 						return;
 					}
 					currentVictoryScreenPurchases[item]++;
-				} else if (currentVictoryScreenPurchases[item]) {
-					alert(`${itemName} is already sold out!`);
-					return;
 				} else {
 					currentVictoryScreenPurchases[item] = true;
 				}
@@ -2353,8 +2925,7 @@ function updatePartyDisplay() {
 				}
 
 				const effectMessage = applyItemEffect(item);
-				updateGoldMessage();
-				updateVictoryScreenStats();
+				updateVictoryScreenStats(false, [], null, 0, false, -cost);
 				updateVictoryShopButtons();
 				alert(`You bought ${itemName} for ${cost} gold ${purchaseResult.usingCampBank ? 'from your Camp Bank' : ''}. ${effectMessage}`);
 			}
@@ -2379,12 +2950,56 @@ function updatePartyDisplay() {
         if (button) {
             if (index + 2 === player.tents + 1 && player.tents < 5) {
                 button.style.display = 'block';
-            } else if (button.style.display === 'block') {
+            } else {
                 button.style.display = 'none';
             }
-            // If the button is already hidden, we don't change its display property
         }
     });
+
+    // Update Merchant Tent button
+    const merchantTentButton = document.getElementById('merchantTentButton');
+    if (merchantTentButton) {
+        merchantTentButton.style.display = player.merchantTent ? 'none' : 'block';
+    }
+
+    // Update Crafter's Tent button
+    const craftersTentButton = document.getElementById('craftersTentButton');
+    if (craftersTentButton) {
+        craftersTentButton.style.display = player.craftersTent ? 'none' : 'block';
+    }
+}
+
+function createCraftersTentButton() {
+    const tentUpgrades = document.getElementById('tentUpgrades');
+    if (!tentUpgrades) return;
+
+    if (!document.getElementById('craftersTentButton')) {
+        const craftersTentButton = document.createElement('button');
+        craftersTentButton.id = 'craftersTentButton';
+        craftersTentButton.className = 'tentButton';
+        craftersTentButton.textContent = `Buy Crafter's Tent (${CRAFTERS_TENT_COST} Gold)`;
+        craftersTentButton.onclick = buyCraftersTent;
+        
+        // Set inline styles to match other buttons
+        craftersTentButton.style.display = 'block';
+        craftersTentButton.style.width = '200px';
+        craftersTentButton.style.height = '50px';
+        craftersTentButton.style.margin = '10px auto';
+        craftersTentButton.style.fontSize = '16px';
+        craftersTentButton.style.backgroundColor = '#4CAF50';
+        craftersTentButton.style.color = 'white';
+        craftersTentButton.style.border = 'none';
+        craftersTentButton.style.cursor = 'pointer';
+        craftersTentButton.style.textAlign = 'center';
+
+        // Insert the Crafter's Tent button after the Merchant Tent button
+        const merchantTentButton = document.getElementById('merchantTentButton');
+        if (merchantTentButton && merchantTentButton.nextSibling) {
+            tentUpgrades.insertBefore(craftersTentButton, merchantTentButton.nextSibling);
+        } else {
+            tentUpgrades.appendChild(craftersTentButton);
+        }
+    }
 }
 
 function logButtonStates() {
@@ -2705,49 +3320,38 @@ function logButtonStates() {
 }
 
         function checkBattleLevelUp() {
-    let leveledUp = false;
+    let levelUpInfo = [];
     while (player.experience >= player.xpToNextLevel) {
-        leveledUp = true;
         player.level++;
         player.experience -= player.xpToNextLevel;
         player.xpToNextLevel += 20;
 
-        player.healthGain = Math.floor(Math.random() * 5) + 3;
-        player.maxHealth += player.healthGain;
+        const healthGain = Math.floor(Math.random() * 5) + 3;
+        player.maxHealth += healthGain;
         player.health = player.maxHealth;
 
-        player.minDamageGain = 0;
-        player.maxDamageGain = 0;
+        let minDamageGain = 0;
+        let maxDamageGain = 0;
         if (Math.random() <= 0.25) {
             player.minDamage += 1;
-            player.minDamageGain = 1;
+            minDamageGain = 1;
         }
 
         const maxDamageIncreaseRoll = Math.random() * 100;
         if (maxDamageIncreaseRoll <= 60) {
             player.maxDamage += 1;
-            player.maxDamageGain = 1;
+            maxDamageGain = 1;
         } else if (maxDamageIncreaseRoll <= 90) {
             player.maxDamage += 2;
-            player.maxDamageGain = 2;
+            maxDamageGain = 2;
         } else {
             player.maxDamage += 3;
-            player.maxDamageGain = 3;
+            maxDamageGain = 3;
         }
 
-        let levelUpMessage = `You leveled up! Gained ${player.healthGain} health, +${player.minDamageGain} min damage, +${player.maxDamageGain} max damage.`;
-        victoryLevelUpMessage += levelUpMessage + '<br>';
-
-        // Show special skill selection when reaching level 3
-        if (player.level === 3 && !player.specialSkillUnlocked) {
-			console.log("Player reached level 3, setting up class skills");
-			setupClassSkills();
-			player.specialSkillUnlocked = true;
-			showBattleSkillSelection();
-			break; // Exit the loop after showing skill selection
-		}
+        levelUpInfo.push({ level: player.level, healthGain, minDamageGain, maxDamageGain });
     }
-    return leveledUp;
+    return levelUpInfo;
 }
 
 function checkLevelUp() {
@@ -2800,25 +3404,54 @@ function checkLevelUp() {
             document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
         }
 
-        function updateVictoryScreenStats(includeStoryConclusion = false) {
-			let victoryMessage = `You earned ${victoryExpGained} XP for winning this battle.<br>`;
-			if (victoryLevelUpMessage) {
-				victoryMessage += `${victoryLevelUpMessage}<br>`;
-			}
-			victoryMessage += `Current Stats:<br>
-			Health: ${player.health}/${player.maxHealth}<br>
-			Min Damage: ${player.minDamage}<br>
-			Max Damage: ${player.maxDamage}<br>
-			XP: ${player.experience}/${player.xpToNextLevel}`;
+        function updateVictoryScreenStats(includeStoryConclusion = false, newLoot = [], defeatedEnemy = null, expGained = 0, isDoubleBattle = false, goldEarned = 0, levelUpInfo = []) {
+    console.log("Updating victory screen stats:", {includeStoryConclusion, newLoot, defeatedEnemy, expGained, isDoubleBattle, goldEarned, levelUpInfo});
+    
+    let victoryMessage = `You earned ${expGained} XP for winning this battle.<br>`;
+    victoryMessage += `Gold earned: ${goldEarned}<br>`;
+    
+    if (isDoubleBattle) {
+        victoryMessage += "Double battle bonus: +100 gold!<br>";
+    }
+    
+    if (levelUpInfo && levelUpInfo.length > 0) {
+        victoryMessage += "<br>Level Up!<br>";
+        levelUpInfo.forEach(info => {
+            victoryMessage += `Reached level ${info.level}:<br>`;
+            victoryMessage += `+${info.healthGain} Max HP, `;
+            victoryMessage += `+${info.minDamageGain} Min Damage, `;
+            victoryMessage += `+${info.maxDamageGain} Max Damage<br>`;
+        });
+    }
+    
+    victoryMessage += `<br>Current Stats:<br>
+    Health: ${player.health}/${player.maxHealth}<br>
+    Min Damage: ${player.minDamage}<br>
+    Max Damage: ${player.maxDamage}<br>
+    XP: ${player.experience}/${player.xpToNextLevel}`;
 
-			if (includeStoryConclusion && currentStoryContext === STORY_CHILLING_SCREAM) {
-				let storyConclusion = "You walk up to the terrified woman and help her stand. She starts crying and thanks you for helping her. She says she would have died if not for you. She doesn't have much on her, but she offers you a strange amulet or all her gold and a Premium HP Cookie.";
-				victoryMessage += `<br><br>${storyConclusion}`;
-			}
+    // Add new loot information
+    if (newLoot && newLoot.length > 0) {
+        victoryMessage += `<br><br>New Loot acquired:<br>`;
+        const itemCounts = {};
+        newLoot.forEach(item => {
+            itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+        });
+        Object.entries(itemCounts).forEach(([itemName, count]) => {
+            victoryMessage += `- ${itemName} x${count}<br>`;
+        });
+    } else {
+        victoryMessage += `<br><br>No new loot acquired.`;
+    }
 
-			document.getElementById('victoryMessage').innerHTML = victoryMessage;
-			document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
-		}
+    if (includeStoryConclusion && currentStoryContext === STORY_CHILLING_SCREAM) {
+        let storyConclusion = "You walk up to the terrified woman and help her stand. She starts crying and thanks you for helping her. She says she would have died if not for you. She doesn't have much on her, but she offers you a strange amulet or all her gold and a Premium HP Cookie.";
+        victoryMessage += `<br><br>${storyConclusion}`;
+    }
+    
+    document.getElementById('victoryMessage').innerHTML = victoryMessage;
+    document.getElementById('goldMessage').innerHTML = `Current Gold: ${player.gold}<br><br>Camp Bank: ${player.campBank} Gold`;
+}
 
         function clearNotification() {
             const notificationElement = document.getElementById('notificationText');
@@ -4046,6 +4679,20 @@ function updateCampBankDisplay() {
     return words[number - 1] || '';
 }
 
+function buyCraftersTent() {
+    if (player.campBank >= CRAFTERS_TENT_COST) {
+        player.campBank -= CRAFTERS_TENT_COST;
+        player.craftersTent = true;
+        updateCampMessage();
+        updateCommercialTents();
+        updateTentButtons();
+        updateTentButtonStates();
+        alert("You've purchased the Crafter's Tent!");
+    } else {
+        alert("Not enough gold in the Camp Bank!");
+    }
+}
+
 function buyMerchantTent() {
     const merchantTentCost = 1000;
     if (player.campBank >= merchantTentCost) {
@@ -4079,7 +4726,7 @@ function buyMerchantTent() {
 }
 
 function updateTentButtonStates() {
-    const tentCosts = [1500, 2000, 2500, 3000]; // Costs for 2nd, 3rd, 4th, and 5th tents
+    const tentCosts = [1500, 2000, 2500, 3000];
     const tentWords = ['second', 'third', 'fourth', 'fifth'];
     
     for (let i = 0; i < tentWords.length; i++) {
@@ -4102,9 +4749,21 @@ function updateTentButtonStates() {
         merchantButton.disabled = !canAffordMerchant;
         merchantButton.textContent = `Buy Merchant Tent (1000 Gold)`;
         merchantButton.style.opacity = canAffordMerchant ? '1' : '0.5';
+    } else if (merchantButton && player.merchantTent) {
+        merchantButton.style.display = 'none';
+    }
+
+    // Update crafter's tent button
+    const craftersButton = document.getElementById('craftersTentButton');
+    if (craftersButton && !player.craftersTent) {
+        const canAffordCrafters = player.campBank >= CRAFTERS_TENT_COST;
+        craftersButton.disabled = !canAffordCrafters;
+        craftersButton.textContent = `Buy Crafter's Tent (${CRAFTERS_TENT_COST} Gold)`;
+        craftersButton.style.opacity = canAffordCrafters ? '1' : '0.5';
+    } else if (craftersButton && player.craftersTent) {
+        craftersButton.style.display = 'none';
     }
 }
-
         function updateCampMessage() {
     const campMessageElement = document.getElementById('campMessage');
     if (campMessageElement) {
@@ -5027,11 +5686,10 @@ function loadGame() {
   
   
   			function addDeveloperGold() {
-  				player.gold += 1500;
-  				updateGoldMessage();
-  				updateVictoryScreenStats();
-  				alert("Added 1500 gold to the player!");
-  			}
+    player.gold += 1500;
+    updateVictoryScreenStats(false, [], null, 0, false, 1500);
+    alert("Added 1500 gold to the player!");
+}
 
         document.getElementById('developerGoldButton').onclick = addDeveloperGold;
 
