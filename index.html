@@ -589,6 +589,7 @@
     <h1>Camp</h1>
     <p>Store your gold in the Camp Bank for safekeeping.</p>
     <button id="storeGoldButton">Store All Gold</button>
+	<p id="campBankDisplay"></p>
     <p id="campMessage"></p>
     <div id="tentSquares">
     <div id="playerTentsRow" class="tentRow">
@@ -861,14 +862,31 @@ function loadCharacterAssets(characterClass) {
 
 function loadEnemySprite(enemyType) {
     return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-            enemySprites[enemyType] = img;
-            resolve(img);
-        };
-        img.onerror = reject;
-        img.src = `images/${enemyType.toLowerCase()}-sprite.png`;
+        if (enemySprites[enemyType]) {
+            resolve(enemySprites[enemyType]);
+        } else {
+            const img = new Image();
+            img.onload = () => {
+                enemySprites[enemyType] = img;
+                resolve(img);
+            };
+            img.onerror = reject;
+            img.src = `images/${enemyType.toLowerCase()}-sprite.png`;
+        }
     });
+}
+
+function preloadAllImages() {
+    const characterClasses = ['Warrior', 'Mage', 'Cleric', 'Rogue'];
+    const enemyTypes = ['Wolf', 'Goblin', 'Orc', 'Poisonous Plant', 'Werewolf', 'Troll', 'Treant', 'Skeletal Warrior'];
+
+    const characterPromises = characterClasses.map(loadCharacterSprite);
+    const enemyPromises = enemyTypes.map(loadEnemySprite);
+
+    return Promise.all([...characterPromises, ...enemyPromises].map(p => p.catch(e => {
+        console.warn('Failed to load an image:', e);
+        return null; // Return null for failed loads
+    })));
 }
 
 // Modify your existing initGame function
@@ -919,19 +937,20 @@ function initGame() {
             
 
         function loadCharacterSprite(characterClass) {
-            if (!characterSprites[characterClass]) {
-                return new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        characterSprites[characterClass] = img;
-                        resolve(img);
-                    };
-                    img.onerror = reject;
-                    img.src = `images/${characterClass.toLowerCase()}-sprite.png`;
-                });
-            }
-            return Promise.resolve(characterSprites[characterClass]);
+    return new Promise((resolve, reject) => {
+        if (characterSprites[characterClass]) {
+            resolve(characterSprites[characterClass]);
+        } else {
+            const img = new Image();
+            img.onload = () => {
+                characterSprites[characterClass] = img;
+                resolve(img);
+            };
+            img.onerror = reject;
+            img.src = `images/${characterClass.toLowerCase()}-sprite.png`;
         }
+    });
+}
 
         // Call initGame when the page loads
         window.onload = initGame;
@@ -1020,33 +1039,144 @@ function initGame() {
 const lootTables = {
     Goblin: {
         common: [
-            { name: "Tattered Cloth" },
-            { name: "Rusty Nail" },
-            { name: "Bent Copper Coin" }
+            { name: "Tattered Cloth", chance: 0.7 },
+            { name: "Rusty Nail", chance: 0.6 },
+            { name: "Bent Copper Coin", chance: 0.5 }
         ],
         uncommon: [
-            { name: "Goblin Ear" },
-            { name: "Crude Dagger" }
+            { name: "Goblin Ear", chance: 0.3 },
+            { name: "Crude Dagger", chance: 0.2 }
         ],
         rare: [
-            { name: "Goblin's Lucky Charm" }
+            { name: "Goblin's Lucky Charm", chance: 0.05 }
         ]
     },
     Wolf: {
         common: [
-            { name: "Wolf Pelt" },
-            { name: "Wolf Tooth" },
-            { name: "Coarse Fur" }
+            { name: "Wolf Pelt", chance: 0.7 },
+            { name: "Wolf Tooth", chance: 0.6 },
+            { name: "Coarse Fur", chance: 0.5 }
         ],
         uncommon: [
-            { name: "Wolf Claw" },
-            { name: "Thick Fur" }
+            { name: "Wolf Claw", chance: 0.3 },
+            { name: "Thick Fur", chance: 0.2 }
         ],
         rare: [
-            { name: "Alpha Wolf Fang" }
+            { name: "Alpha Wolf Fang", chance: 0.05 }
         ]
     },
-    // Add more enemy types here...
+    Orc: {
+        common: [
+            { name: "Orc Tusk", chance: 0.7 },
+            { name: "Crude Armor Piece", chance: 0.6 },
+            { name: "Bone Fragment", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Orcish Weapon", chance: 0.3 },
+            { name: "War Paint", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Orc Chieftain's Medallion", chance: 0.05 }
+        ]
+    },
+    "Poisonous Plant": {
+        common: [
+            { name: "Toxic Leaf", chance: 0.7 },
+            { name: "Thorny Stem", chance: 0.6 },
+            { name: "Wilted Petal", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Poison Sac", chance: 0.3 },
+            { name: "Vibrant Blossom", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Legendary Seed", chance: 0.05 }
+        ]
+    },
+    Werewolf: {
+        common: [
+            { name: "Werewolf Fur", chance: 0.7 },
+            { name: "Cracked Claw", chance: 0.6 },
+            { name: "Fang Fragment", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Moonlit Pelt", chance: 0.3 },
+            { name: "Cursed Blood Vial", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Lycanthrope's Heart", chance: 0.05 }
+        ]
+    },
+    Troll: {
+        common: [
+            { name: "Troll Hide", chance: 0.7 },
+            { name: "Mossy Stone", chance: 0.6 },
+            { name: "Troll Tooth", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Regenerative Tissue", chance: 0.3 },
+            { name: "Troll Club", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Troll King's Crown", chance: 0.05 }
+        ]
+    },
+    Dragon: {
+        common: [
+            { name: "Dragon Scale", chance: 0.7 },
+            { name: "Charred Bone", chance: 0.6 },
+            { name: "Ash Remnant", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Dragon Claw", chance: 0.3 },
+            { name: "Fire Gland", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Dragon's Heart", chance: 0.05 }
+        ]
+    },
+    "Skeletal Warrior": {
+        common: [
+            { name: "Bone Shard", chance: 0.7 },
+            { name: "Rusted Armor Piece", chance: 0.6 },
+            { name: "Ancient Coin", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Enchanted Bone", chance: 0.3 },
+            { name: "Spectral Essence", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Warrior's Lost Soul", chance: 0.05 }
+        ]
+    },
+    Treant: {
+        common: [
+            { name: "Ancient Bark", chance: 0.7 },
+            { name: "Mystical Leaf", chance: 0.6 },
+            { name: "Gnarled Root", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Amber Sap", chance: 0.3 },
+            { name: "Whispering Acorn", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Heart of the Forest", chance: 0.05 }
+        ]
+    },
+    "Angry Spirit": {
+        common: [
+            { name: "Ectoplasm", chance: 0.7 },
+            { name: "Ghostly Chain", chance: 0.6 },
+            { name: "Spectral Residue", chance: 0.5 }
+        ],
+        uncommon: [
+            { name: "Bottled Wail", chance: 0.3 },
+            { name: "Ethereal Cloth", chance: 0.2 }
+        ],
+        rare: [
+            { name: "Spirit's Lament", chance: 0.05 }
+        ]
+    }
 };
 
 // Function to generate loot from a defeated enemy
@@ -5387,11 +5517,11 @@ function loadGame() {
             party: gameData.player.party || [],
             tents: gameData.player.tents || 1
         };
-		
-		const savedMerchantUpgrades = localStorage.getItem('merchantUpgrades');
-		if (savedMerchantUpgrades) {
-			merchantUpgrades = JSON.parse(savedMerchantUpgrades);
-		}
+        
+        const savedMerchantUpgrades = localStorage.getItem('merchantUpgrades');
+        if (savedMerchantUpgrades) {
+            merchantUpgrades = JSON.parse(savedMerchantUpgrades);
+        }
         enemies = gameData.enemies;
         gameState = gameData.gameState;
         currentStory = gameData.currentStory;
@@ -5412,10 +5542,26 @@ function loadGame() {
             }
         });
 
-        setupGameAfterLoad();
-        startGame(false); // Call startGame with isNewGame set to false
-        updateCampScreen(); // Update the camp screen
-        updatePartyDisplay(); // New function to update party display
+        // Show loading screen
+        showLoadingScreen();
+
+        // Preload all images before setting up the game
+        preloadAllImages().then(() => {
+            hideLoadingScreen();
+            setupGameAfterLoad();
+            startGame(false); // Call startGame with isNewGame set to false
+            updateCampScreen(); // Update the camp screen
+            updatePartyDisplay(); // New function to update party display
+        }).catch(error => {
+            hideLoadingScreen();
+            console.error('Failed to load game assets:', error);
+            alert('Failed to load some game assets. The game may not display correctly.');
+            // Still proceed with game setup
+            setupGameAfterLoad();
+            startGame(false);
+            updateCampScreen();
+            updatePartyDisplay();
+        });
     } else {
         alert('No saved game found!');
     }
