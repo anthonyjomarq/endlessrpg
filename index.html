@@ -780,6 +780,8 @@ player.purchasedItems = {
         
         let isProcessingPurchase = false;
 		
+		let initialGoldEarned = 0;
+		
         let selectedEnemyIndex = 0; // Track the selected enemy
 
         let damageDisplay = {
@@ -1913,12 +1915,12 @@ function handleEnemyDefeat(defeatedEnemy) {
     console.log("Generated loot:", newLoot);
     
     // Handle XP gain
-    const xpGained = calculateXPGain(defeatedEnemy);
-    player.experience += xpGained;
+    const baseXPGained = calculateXPGain(defeatedEnemy);
+    const xpGained = player.expBooster ? baseXPGained * 2 : baseXPGained;
     currentBattleExpGained += xpGained;
     
-    console.log("XP gained:", xpGained);
-    console.log("Current player XP:", player.experience);
+    console.log("Base XP gained:", baseXPGained);
+    console.log("Actual XP gained (after booster if applicable):", xpGained);
     console.log("Current battle XP gained:", currentBattleExpGained);
     
     // Determine if it's a double battle
@@ -1926,7 +1928,7 @@ function handleEnemyDefeat(defeatedEnemy) {
     
     if (enemies.length === 0) {
         gameState = defeatedEnemy.class ? 'duelVictory' : 'victory';
-        addLootToInventory(newLoot); // Add loot to inventory here
+        addLootToInventory(newLoot);
         showVictoryScreen(currentBattleExpGained, defeatedEnemy, isDoubleBattle, newLoot);
     } else {
         selectedEnemyIndex = 0; // Reset to first enemy if there are more
@@ -1937,10 +1939,7 @@ function handleEnemyDefeat(defeatedEnemy) {
 
       
 function calculateXPGain(enemy) {
-    // You can customize this based on enemy type, level, etc.
-    const xpGained = enemy.class ? 20 : (enemyTypes.find(t => t.type === enemy.type)?.xp || 10);
-	currentBattleExpGained += xpGained;
-    return xpGained;
+    return enemy.class ? 20 : (enemyTypes.find(t => t.type === enemy.type)?.xp || 10);
 }
 
 function resetShopItems() {
@@ -2206,8 +2205,6 @@ function resetShopItems() {
     const storyContext = currentStoryContext;
     console.log("Showing victory screen. Story context:", storyContext);
     console.log("Experience gained:", expGained);
-    console.log("Is double battle:", isDoubleBattle);
-    console.log("New loot acquired:", newLoot);
     
     let goldEarned = Math.floor(Math.random() * 201) + 100;
     
@@ -2217,7 +2214,12 @@ function resetShopItems() {
     }
     
     player.gold += goldEarned;
+    initialGoldEarned = goldEarned;
     console.log("Total gold earned:", goldEarned);
+    
+    // Apply the experience
+    player.experience += expGained;
+    console.log("Experience added to player. New total:", player.experience);
     
     const levelUpInfo = checkBattleLevelUp();
     
@@ -2257,7 +2259,7 @@ function resetShopItems() {
         gold: player.gold,
         experience: player.experience,
         level: player.level,
-        inventorySize: player.inventory ? player.inventory.lenght : 'N/A'
+        inventorySize: player.inventory ? player.inventory.length : 'N/A'
     });
 }
 
@@ -3054,10 +3056,16 @@ function updatePartyDisplay() {
 					player.gold -= cost;
 				}
 
-				const effectMessage = applyItemEffect(item);
-				updateVictoryScreenStats(false, [], null, 0, false, -cost);
+				const effect = applyItemEffect(item);
+				
+				if (effect.levelUp) {
+					updateVictoryScreenStats(false, [], null, 0, false, 0, [effect.levelUp]);
+				} else {
+					updateVictoryScreenStats();
+				}
+				
 				updateVictoryShopButtons();
-				alert(`You bought ${itemName} for ${cost} gold ${purchaseResult.usingCampBank ? 'from your Camp Bank' : ''}. ${effectMessage}`);
+				alert(`You bought ${itemName} for ${cost} gold ${purchaseResult.usingCampBank ? 'from your Camp Bank' : ''}. ${effect.message}`);
 			}
 
         
@@ -3346,23 +3354,35 @@ function logButtonStates() {
 					const oldHealth = player.health;
 					player.health = Math.min(player.health + healAmount, player.maxHealth);
 					const actualHeal = player.health - oldHealth;
-					return `You've been healed for ${actualHeal} HP.`;
+					return { message: `You've been healed for ${actualHeal} HP.`, levelUp: null };
 				case 'expBooster':
 					player.expBooster = true;
-					return "Your next XP gain will be doubled.";
+					return { message: "Your next XP gain will be doubled.", levelUp: null };
 				case 'antidote':
 					player.poisonCounter = 0;
-					return "You've been cured of poison.";
+					return { message: "You've been cured of poison.", levelUp: null };
 				case 'lotus':
 					const lotusXP = merchantUpgrades.improvedLotusHarvesting ? 20 : 10;
+					const oldLevel = player.level;
 					player.experience += lotusXP;
 					const leveledUp = checkLevelUp();
-					return `You gained ${lotusXP} XP.${leveledUp ? ' You leveled up!' : ''}`;
+					if (leveledUp) {
+						return {
+							message: `You gained ${lotusXP} XP and leveled up!`,
+							levelUp: {
+								level: player.level,
+								healthGain: player.healthGain,
+								minDamageGain: player.minDamageGain,
+								maxDamageGain: player.maxDamageGain
+							}
+						};
+					}
+					return { message: `You gained ${lotusXP} XP.`, levelUp: null };
 				case 'redPill':
 					player.minDamage += 1;
-					return "Your minimum damage has increased by 1.";
+					return { message: "Your minimum damage has increased by 1.", levelUp: null };
 				default:
-					return "";
+					return { message: "", levelUp: null };
 			}
 		}
         
@@ -3515,16 +3535,12 @@ function checkLevelUp() {
             player.maxDamageGain = 3;
         }
 
-        let levelUpMessage = `You leveled up! Gained ${player.healthGain} health, +${player.minDamageGain} min damage, +${player.maxDamageGain} max damage.`;
-        alert(levelUpMessage);
-
-        // Show special skill selection when reaching level 3
         if (player.level === 3 && !player.specialSkillUnlocked) {
             console.log("Player reached level 3, setting up class skills");
             setupClassSkills();
             player.specialSkillUnlocked = true;
             showBattleSkillSelection();
-            break; // Exit the loop after showing skill selection
+            break;
         }
     }
     return leveledUp;
@@ -3538,7 +3554,7 @@ function checkLevelUp() {
     console.log("Updating victory screen stats:", {includeStoryConclusion, newLoot, defeatedEnemy, expGained, isDoubleBattle, goldEarned, levelUpInfo});
     
     let victoryMessage = `You earned ${expGained} XP for winning this battle.<br>`;
-    victoryMessage += `Gold earned: ${goldEarned}<br>`;
+    victoryMessage += `Gold earned: ${initialGoldEarned}<br>`; // Use initialGoldEarned here
     
     if (isDoubleBattle) {
         victoryMessage += "Double battle bonus: +100 gold!<br>";
@@ -5832,10 +5848,10 @@ function loadGame() {
   
   
   			function addDeveloperGold() {
-    player.gold += 1500;
-    updateVictoryScreenStats(false, [], null, 0, false, 1500);
-    alert("Added 1500 gold to the player!");
-}
+				player.gold += 1500;
+				updateVictoryScreenStats();
+				alert("Added 1500 gold to the player!");
+			}
 
         document.getElementById('developerGoldButton').onclick = addDeveloperGold;
 
