@@ -182,6 +182,52 @@
             70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
             100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
         }
+		.boss-card {
+			background-color: #800000;
+			padding: 20px;
+			border-radius: 8px;
+			text-align: center;
+			position: relative;
+			border: 2px solid #ff4444;
+			box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
+		}
+
+		.boss-intent {
+			margin-top: 10px;
+			padding: 8px;
+			border-radius: 4px;
+			font-weight: bold;
+		}
+
+		.intent-attack {
+			background-color: rgba(255, 68, 68, 0.2);
+			color: #ff4444;
+		}
+
+		.intent-spawn {
+			background-color: rgba(76, 175, 80, 0.2);
+			color: #4CAF50;
+		}
+
+		.intent-weaken {
+			background-color: rgba(139, 0, 0, 0.2);
+			color: #8b0000;
+		}
+
+		.status-effect.weakened {
+			background-color: #8b0000;
+			color: white;
+		}
+
+		.phase-transition {
+			animation: pulsate 1s ease-in-out infinite;
+		}
+
+		@keyframes pulsate {
+			0% { transform: scale(1); }
+			50% { transform: scale(1.05); }
+			100% { transform: scale(1); }
+		}
         .hand-container {
             margin-top: auto;
             padding: 20px;
@@ -404,6 +450,17 @@
 			position: relative;
 			/* ... rest of your existing enemy-card styles ... */
 		}
+		.status-effect.weakened {
+			background-color: #8b0000;
+			color: white;
+			animation: pulse 2s infinite;
+		}
+
+		@keyframes pulse {
+			0% { opacity: 1; }
+			50% { opacity: 0.7; }
+			100% { opacity: 1; }
+		}
 		
 
 				
@@ -450,12 +507,53 @@
 			const [specialRewardOptions, setSpecialRewardOptions] = useState([]);
 			const [showSpecialRewards, setShowSpecialRewards] = useState(false);
 			const [showCardRemoval, setShowCardRemoval] = useState(false);
+			const [playerWeakened, setPlayerWeakened] = useState(false);
+			const [bossLastAction, setBossLastAction] = useState(null);
 
 			// Helper to create a unique card instance
 			const createCardInstance = (cardType) => ({
 				id: cardIdCounter + 1,
 				type: cardType
 			});
+			
+			const bossEnemy = {
+				health: 150,
+				maxHealth: 150,
+				intent: 'spawn',
+				damage: 15,
+				damageNumbers: [],
+				isBoss: true,
+				turnsUntilSpawn: 2,
+				phase: 1,
+				spawnedMinions: 0
+			};
+
+			const minionEnemy = {
+				health: 12,
+				maxHealth: 12,
+				intent: 'attack',
+				damage: 4,
+				damageNumbers: [],
+				isMinion: true
+			};
+
+			// Add this helper function after your constants
+			const calculateDamage = (baseDamage, empowered = false) => {
+				let damage = baseDamage;
+				if (empowered) {
+					damage += 2;
+				}
+				if (playerWeakened) {
+					damage = Math.max(1, damage - 1); // Ensure damage doesn't go below 1
+				}
+				return damage;
+			};
+
+			// Add this helper function as well
+			const getAvailableBossActions = (lastAction) => {
+				const allActions = ['attack', 'spawn', 'weaken'];
+				return allActions.filter(action => action !== lastAction);
+			};
 			
             // Card definitions
             const cardTypes = {
@@ -465,7 +563,9 @@
 			description: 'Hit all enemies for 3 damage',
 			needsTarget: false,
 			effect: (enemies) => {
-				const damage = empowerActive ? 5 : 3;
+				const baseDamage = 3;
+				const damage = calculateDamage(baseDamage, empowerActive);
+				
 				return enemies.map(enemy => ({
 					...enemy,
 					health: Math.max(0, enemy.health - damage),
@@ -476,28 +576,30 @@
 				}));
 			}
 		},
-    singleAttack: {
-		name: 'Single Attack',
-		cost: 1,
-		description: 'Hit one enemy for 5 damage',
-		needsTarget: true,
-		effect: (enemies, targetIndex) => {
-			const damage = empowerActive ? 7 : 5;
-			return enemies.map((enemy, index) => {
-				if (index === targetIndex) {
-					return {
-						...enemy,
-						health: Math.max(0, enemy.health - damage),
-						damageNumbers: [
-							...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
-							createDamageNumber(damage, Date.now())
-						]
-					};
-				}
-				return enemy;
-			});
-		}
-	},
+		singleAttack: {
+			name: 'Single Attack',
+			cost: 1,
+			description: 'Hit one enemy for 5 damage',
+			needsTarget: true,
+			effect: (enemies, targetIndex) => {
+				const baseDamage = 5;
+				const damage = calculateDamage(baseDamage, empowerActive);
+				
+				return enemies.map((enemy, index) => {
+					if (index === targetIndex) {
+						return {
+							...enemy,
+							health: Math.max(0, enemy.health - damage),
+							damageNumbers: [
+								...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
+								createDamageNumber(damage, Date.now())
+							]
+						};
+					}
+					return enemy;
+				});
+			}
+		},
 		empower: {
 			name: 'Empower',
 			cost: 1,
@@ -524,71 +626,69 @@
 	},
 
 	heavyAttack: {
-		name: 'Heavy Attack',
-		cost: 2,
-		description: 'Deal 8 damage to one enemy',
-		needsTarget: true,
-		effect: (enemies, targetIndex) => {
-			const damage = empowerActive ? 10 : 8;
-			return enemies.map((enemy, index) => 
-				index === targetIndex 
-					? {
-						...enemy,
-						health: Math.max(0, enemy.health - damage),
-						damageNumbers: [
-							...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
-							createDamageNumber(damage, Date.now())
-						]
-					}
-					: enemy
-			);
-		}
-	},
+        name: 'Heavy Attack',
+        cost: 2,
+        description: 'Deal 8 damage to one enemy',
+        needsTarget: true,
+        effect: (enemies, targetIndex) => {
+            const baseDamage = 8;
+            const damage = calculateDamage(baseDamage, empowerActive);
+            
+            return enemies.map((enemy, index) => 
+                index === targetIndex 
+                    ? {
+                        ...enemy,
+                        health: Math.max(0, enemy.health - damage),
+                        damageNumbers: [
+                            ...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
+                            createDamageNumber(damage, Date.now())
+                        ]
+                    }
+                    : enemy
+            );
+        }
+    },
 
 	quickStrike: {
-		name: 'Quick Strike',
-		cost: 1,
-		description: 'Deal 3 damage to one enemy and draw a card',
-		needsTarget: true,
-		effect: (enemies, targetIndex) => {
-			// Calculate damage with empower bonus
-			const damage = empowerActive ? 5 : 3;
-			
-			// First deal damage
-			const updatedEnemies = enemies.map((enemy, index) => 
-				index === targetIndex 
-					? {
-						...enemy,
-						health: Math.max(0, enemy.health - damage),
-						damageNumbers: [
-							...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
-							createDamageNumber(damage, Date.now())
-						]
-					}
-					: enemy
-			);
+        name: 'Quick Strike',
+        cost: 1,
+        description: 'Deal 3 damage to one enemy and draw a card',
+        needsTarget: true,
+        effect: (enemies, targetIndex) => {
+            const baseDamage = 3;
+            const damage = calculateDamage(baseDamage, empowerActive);
+            
+            const updatedEnemies = enemies.map((enemy, index) => 
+                index === targetIndex 
+                    ? {
+                        ...enemy,
+                        health: Math.max(0, enemy.health - damage),
+                        damageNumbers: [
+                            ...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
+                            createDamageNumber(damage, Date.now())
+                        ]
+                    }
+                    : enemy
+            );
 
-			// Handle drawing a card
-			setTimeout(() => {
-				// Draw from deck if possible
-				if (deck.length > 0) {
-					const cardToDraw = deck[0];
-					setDeck(prev => prev.slice(1));
-					setHand(prev => [...prev, cardToDraw]);
-				}
-				// If deck is empty, draw from shuffled discard pile
-				else if (discardPile.length > 0) {
-					const shuffledDiscard = shuffleArray([...discardPile]);
-					const cardToDraw = shuffledDiscard[0];
-					setDeck(prev => shuffledDiscard.slice(1));
-					setDiscardPile([]);
-					setHand(prev => [...prev, cardToDraw]);
-				}
-			}, 0);
+            // Handle drawing a card
+            setTimeout(() => {
+                if (deck.length > 0) {
+                    const cardToDraw = deck[0];
+                    setDeck(prev => prev.slice(1));
+                    setHand(prev => [...prev, cardToDraw]);
+                } else if (discardPile.length > 0) {
+                    const shuffledDiscard = shuffleArray([...discardPile]);
+                    const cardToDraw = shuffledDiscard[0];
+                    setDeck(prev => shuffledDiscard.slice(1));
+                    setDiscardPile([]);
+                    setHand(prev => [...prev, cardToDraw]);
+                }
+            }, 0);
 
-			return updatedEnemies;
-		}
-	},
+            return updatedEnemies;
+        }
+    },
      doubleEnergy: {
         name: 'Energize',
         cost: 1,
@@ -853,17 +953,9 @@
 				const initialHand = shuffledCards.slice(0, 3);
 				const remainingDeck = shuffledCards.slice(3);
 				
-				// Set initial states
-				setDeck(remainingDeck);
-				setHand(initialHand);
-				setDiscardPile([]);
-				setExhaustedCards([]);
-				setGameStarted(true);
-				setTotalDeckSize(initialDeck.length);
-				
-				// Create initial enemies
-				const numberOfEnemies = Math.floor(Math.random() * 3) + 1;
-				const initialEnemies = Array(numberOfEnemies).fill().map(() => ({
+				// Initial enemies setup
+				const initialEnemyCount = Math.floor(Math.random() * 2) + 1; // 1 or 2 enemies
+				const initialEnemies = Array(initialEnemyCount).fill().map(() => ({
 					health: 20,
 					maxHealth: 20,
 					intent: 'attack',
@@ -871,15 +963,20 @@
 					damageNumbers: []
 				}));
 				
+				// Set all initial states at once to prevent race conditions
+				setRound(1);
+				setDeck(remainingDeck);
+				setHand(initialHand);
+				setDiscardPile([]);
+				setExhaustedCards([]);
 				setEnemies(initialEnemies);
-				
-				// Log initial state
-				console.log('Game Initialized:', {
-					totalCards: initialDeck.length,
-					handCards: initialHand.map(card => `${card.type}(${card.id})`),
-					deckCards: remainingDeck.map(card => `${card.type}(${card.id})`),
-					allCardIds: initialDeck.map(card => card.id)
-				});
+				setGameStarted(true);
+				setTotalDeckSize(initialDeck.length);
+				setPlayerHealth(100);
+				setPlayerEnergy(3);
+				setEmpowerActive(false);
+				setCounterActive(false);
+				setShowVictory(false);
 			};
 
             // Initialize game on mount
@@ -887,12 +984,12 @@
 				initializeGame();
 			}, []);
 
-			// Victory check
 			useEffect(() => {
-				if (enemies.length === 0 && !showVictory && gameStarted && round > 0) {
+				if (enemies.length === 0 && !showVictory && gameStarted && round > 0 && enemies !== undefined) {
+					// Only handle victory if we've actually defeated enemies, not during initialization
 					handleVictory();
 				}
-			}, [enemies, gameStarted]);
+			}, [enemies, gameStarted, round]);
 
 			// Debug logging
 			useEffect(() => {
@@ -1138,7 +1235,88 @@
 			setCurrentScreen('menu');
 		};
 		
-		const PreBossFight = ({ onHeal, onIncreaseMaxHp, currentHealth, maxHealth }) => {
+		const updateBossIntents = (boss) => {
+			// Phase transition check
+			if (boss.health <= boss.maxHealth * 0.5 && boss.phase === 1) {
+				boss.phase = 2;
+				setStatusMessage('The boss becomes enraged!');
+				setShowStatusMessage(true);
+				setTimeout(() => setShowStatusMessage(false), 2000);
+				
+				return {
+					...boss,
+					damage: boss.damage + 5,
+					phase: 2,
+					intents: [{
+						type: 'attack',
+						description: `Preparing to attack for ${boss.damage + 5} damage`
+					}]
+				};
+			}
+
+			if (boss.phase === 2) {
+				// Get available actions excluding the last one used
+				const availableActions = getAvailableBossActions(bossLastAction);
+				const randomAction = availableActions[Math.floor(Math.random() * availableActions.length)];
+				
+				let newBoss = { ...boss };
+				
+				switch (randomAction) {
+					case 'attack':
+						setBossLastAction('attack');
+						newBoss.intents = [{
+							type: 'attack',
+							description: `Preparing to attack for ${boss.damage} damage`
+						}];
+						break;
+						
+					case 'spawn':
+						setBossLastAction('spawn');
+						newBoss.intents = [{
+							type: 'spawn',
+							description: 'Summoning reinforcements...'
+						}];
+						break;
+						
+					case 'weaken':
+						setBossLastAction('weaken');
+						newBoss.intents = [{
+							type: 'weaken',
+							description: 'Preparing to weaken you...'
+						}];
+						break;
+				}
+				
+				return newBoss;
+			}
+
+			// Phase 1 behavior
+			if (boss.turnsUntilSpawn <= 0) {
+				return {
+					...boss,
+					turnsUntilSpawn: 2,
+					intents: [{
+						type: 'spawn',
+						description: 'Summoning minions...'
+					}]
+				};
+			} else {
+				return {
+					...boss,
+					turnsUntilSpawn: boss.turnsUntilSpawn - 1,
+					intents: [{
+						type: 'attack',
+						description: `Preparing to attack for ${boss.damage} damage`
+					}]
+				};
+			}
+		};
+		
+		const PreBossFight = ({ currentHealth, maxHealth }) => {
+			const isFullHealth = currentHealth === maxHealth;
+			const actualHealAmount = Math.min(50, maxHealth - currentHealth);
+
+			// Define button styles
 			const ButtonStyle = {
 				fontFamily: 'Cinzel, serif',
 				fontSize: '1.5rem',
@@ -1169,10 +1347,29 @@
 					e.target.style.boxShadow = '0 0 15px rgba(231, 76, 60, 0.3)';
 				}
 			};
-			
-			// Calculate how much healing would actually occur (don't exceed max HP)
-			const actualHealAmount = Math.min(50, maxHealth - currentHealth);
-			const isFullHealth = currentHealth === maxHealth;
+
+			const handlePreBossAction = (action) => {
+				// Execute the chosen action
+				action();
+				
+				// Progress to round 15
+				setRound(15);
+				setPlayerEnergy(3);
+				setEmpowerActive(false);
+				setCounterActive(false);
+				setShowPreBossFight(false);
+				
+				// Spawn boss enemies
+				spawnEnemies();
+				
+				// Draw new hand
+				setTimeout(() => {
+					const newHand = deck.slice(0, 3);
+					const remainingDeck = deck.slice(3);
+					setHand(newHand);
+					setDeck(remainingDeck);
+				}, 0);
+			};
 
 			return React.createElement('div', { className: 'victory-overlay' },
 				React.createElement('div', { 
@@ -1218,7 +1415,9 @@
 								cursor: isFullHealth ? 'not-allowed' : 'pointer',
 								backgroundColor: isFullHealth ? '#666' : '#e74c3c'
 							},
-							onClick: isFullHealth ? null : onHeal,
+							onClick: isFullHealth ? null : () => handlePreBossAction(() => {
+								setPlayerHealth(prev => Math.min(maxHealth, prev + 50));
+							}),
 							disabled: isFullHealth,
 							...ButtonHoverHandlers
 						},
@@ -1233,9 +1432,12 @@
 						),
 						
 						// Max HP Button
-						 React.createElement('button', {
+						React.createElement('button', {
 							style: ButtonStyle,
-							onClick: onIncreaseMaxHp,
+							onClick: () => handlePreBossAction(() => {
+								setMaxHealth(prev => prev + 25);
+								setPlayerHealth(prev => prev + 25);
+							}),
 							...ButtonHoverHandlers
 						},
 							React.createElement('div', null, 'Increase Max HP'),
@@ -1250,7 +1452,9 @@
 						// Double Rewards Button
 						React.createElement('button', {
 							style: ButtonStyle,
-							onClick: onDoubleRewards,
+							onClick: () => handlePreBossAction(() => {
+								onDoubleRewards();
+							}),
 							...ButtonHoverHandlers
 						},
 							React.createElement('div', null, 'Double Rewards'),
@@ -1262,10 +1466,9 @@
 						// Remove Card Button
 						React.createElement('button', {
 							style: ButtonStyle,
-							onClick: () => {
+							onClick: () => handlePreBossAction(() => {
 								setShowCardRemoval(true);
-								setShowPreBossFight(false);
-							},
+							}),
 							...ButtonHoverHandlers
 						},
 							React.createElement('div', null, 'Remove Card'),
@@ -1279,23 +1482,37 @@
 		};
 
 		
-			
-					
-
 				const spawnEnemies = () => {
-					// Determine number of enemies based on round
+					// Skip spawning if we're still in initialization
+					if (!gameStarted) return;
+					
+					// Boss fight at round 15
+					if (round === 15) {
+						const boss = {
+							...bossEnemy,
+							intents: [{
+								type: 'spawn',
+								description: 'Summoning reinforcements...',
+								turnsAway: 2
+							}]
+						};
+						setEnemies([boss]);
+						return;
+					}
+					
+					// Regular enemy spawning logic
 					let minEnemies = 1;
 					let maxEnemies;
 					
 					if (round <= 5) {
-						maxEnemies = 2;  // Rounds 1-5: 1-2 enemies
+						maxEnemies = 2;
 					} else if (round <= 10) {
-						maxEnemies = 3;  // Rounds 6-10: 1-3 enemies
+						maxEnemies = 3;
 					} else {
-						maxEnemies = 4;  // Rounds 11+: 1-4 enemies
+						maxEnemies = 4;
 					}
 					
-					const numberOfEnemies = Math.floor(Math.random() * (maxEnemies - minEnemies + 1)) + minEnemies;
+					const numberOfEnemies = minEnemies + Math.floor(Math.random() * (maxEnemies - minEnemies + 1));
 					
 					const newEnemies = Array(numberOfEnemies).fill().map(() => ({
 						health: 20,
@@ -1305,16 +1522,9 @@
 						damageNumbers: []
 					}));
 					
-					console.log('Spawning enemies:', {
-						round: round,
-						count: numberOfEnemies,
-						possibleEnemies: maxEnemies,
-						enemies: newEnemies
-					});
-					
 					setEnemies(newEnemies);
 				};
-			
+		
 			const createDamageNumber = (amount, id) => ({
 				amount,
 				id,
@@ -1355,16 +1565,25 @@
 
             const selectCard = (card, index) => {
 				const cardDef = cardTypes[card.type];
-				const isDiscounted = discountedCards.has(card.id);
-				const currentCost = isDiscounted ? Math.max(0, cardDef.cost - 1) : cardDef.cost;
+				const discountType = discountedCards.get(card.id);
+				
+				// Calculate cost consistently
+				let currentCost = cardDef.cost;
+				if (discountType === "zero") {
+					currentCost = 0;
+				} else if (discountType === "reduced") {
+					currentCost = Math.max(0, cardDef.cost - 1);
+				}
 				
 				if (playerEnergy >= currentCost) {
 					console.log('Card Selected:', {
 						type: card.type,
 						id: card.id,
-						cost: currentCost,
-						isDiscounted,
-						needsTarget: cardDef.needsTarget
+						baseCost: cardDef.cost,
+						discountType,
+						finalCost: currentCost,
+						needsTarget: cardDef.needsTarget,
+						energy: playerEnergy
 					});
 					
 					if (cardDef.needsTarget) {
@@ -1404,19 +1623,28 @@
 				if (gameOver) return;
 
 				const cardDef = cardTypes[card.type];
-				const isDiscounted = discountedCards.has(card.id);
-				const currentCost = isDiscounted ? Math.max(0, cardDef.cost - 1) : cardDef.cost;
+				const discountType = discountedCards.get(card.id);
+				
+				// Use the same cost calculation logic as selectCard
+				let currentCost = cardDef.cost;
+				if (discountType === "zero") {
+					currentCost = 0;
+				} else if (discountType === "reduced") {
+					currentCost = Math.max(0, cardDef.cost - 1);
+				}
+
+				console.log('Playing card:', {
+					type: card.type,
+					id: card.id,
+					baseCost: cardDef.cost,
+					discountType,
+					finalCost: currentCost,
+					targetIndex,
+					energy: playerEnergy
+				});
 
 				if (playerEnergy >= currentCost) {
-					// Log before state
-					console.log('Card Play Start:', {
-						card: `${card.type}(${card.id})`,
-						handIndex,
-						deckCount: deck.length,
-						discardCount: discardPile.length
-					});
-
-					// Deduct energy
+					// Deduct energy using the calculated cost
 					setPlayerEnergy(prev => prev - currentCost);
 					
 					// Remove the discount from the played card
@@ -1427,40 +1655,42 @@
 					});
 
 					if (card.type === 'freshStart') {
-						// Fresh Start effect handles its own card movement
 						cardDef.effect(enemies, handIndex);
 					} else {
-						// Normal card handling...
 						const newHand = [...hand];
 						const playedCard = newHand.splice(handIndex, 1)[0];
 						setHand(newHand);
 
-						// Play effect
 						const updatedEnemies = cardDef.effect(enemies, targetIndex);
 						setEnemies(updatedEnemies.filter(enemy => enemy.health > 0));
 
-						// Move card
 						if (cardDef.exhausts) {
 							setExhaustedCards(prev => [...prev, playedCard]);
 						} else {
 							setDiscardPile(prev => [...prev, playedCard]);
 						}
 
-						// Handle empower
 						const attackCards = ['singleAttack', 'multiAttack', 'quickStrike', 'heavyAttack', 'doubleHit', 'healthSiphon'];
 						if (attackCards.includes(card.type)) {
 							setEmpowerActive(false);
 						}
 					}
 
-					// Log after state
-					console.log('Card Play Complete:', {
-						card: `${card.type}(${card.id})`,
-						deckCount: deck.length,
-						discardCount: discardPile.length,
-						handCount: hand.length
-					});
+					// Always clear targeting state after playing a card
+					setIsTargeting(false);
+					setSelectedCard(null);
+					setSelectedCardIndex(null);
 				}
+			};
+			
+			// Add this helper function to calculate card cost consistently
+			const calculateCardCost = (card) => {
+				const cardDef = cardTypes[card.type];
+				const discountType = discountedCards.get(card.id);
+				
+				if (discountType === "zero") return 0;
+				if (discountType === "reduced") return Math.max(0, cardDef.cost - 1);
+				return cardDef.cost;
 			};
 			
 			const getUniqueCards = (cards) => {
@@ -1475,84 +1705,131 @@
 						
 			
 
-            const endTurn = () => {
-				if (gameOver) return;
-				
-				const currentState = {
-					hand: [...hand],
-					deck: [...deck],
-					discard: [...discardPile],
-					exhausted: [...exhaustedCards],
-					wasEmpowered: empowerActive  // Store empower state
-				};
-				
-				// Move hand to discard, preserving card objects
-				setDiscardPile([...currentState.discard, ...currentState.hand]);
-				setHand([]);
-				
-				// Reset states but preserve empower
-				setDiscountedCards(new Map());
-				setPlayerEnergy(3);
-				setCounterActive(false);
-				// Removed setEmpowerActive(false) to preserve empower between turns
-				setIsTargeting(false);
-				setSelectedCard(null);
-				setSelectedCardIndex(null);
-				
-				// Process enemy actions
-				enemies.forEach((enemy, index) => {
-					if (enemy.intent === 'attack') {
-						if (counterActive) {
-							const updatedEnemies = [...enemies];
-							updatedEnemies[index] = {
-								...enemy,
-								health: enemy.health - enemy.damage,
-								damageNumbers: [
-									...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
-									createDamageNumber(enemy.damage, Date.now())
-								]
-							};
-							setEnemies(updatedEnemies.filter(enemy => enemy.health > 0));
-							setCounterActive(false);
-							return;
-						} else {
-							const newHealth = playerHealth - enemy.damage;
-							setPlayerHealth(newHealth);
-							if (newHealth <= 0) {
-								setGameOver(true);
-							}
-						}
-					}
-				});
-				
-				// Draw new hand
-				setTimeout(() => {
-					let newDeck = [...currentState.deck];
-					const currentDiscard = [...currentState.discard, ...currentState.hand];
+            
+				const endTurn = () => {
+					if (gameOver) return;
+
+					// Clear weakened status at end of player turn
+					setPlayerWeakened(false);
 					
-					// If deck too small, shuffle in discard
-					if (newDeck.length < 3 && currentDiscard.length > 0) {
-						newDeck = shuffleArray([...newDeck, ...currentDiscard]);
+					// Store current card states before processing
+					const currentHand = [...hand];
+					const currentDeck = [...deck];
+					const currentDiscard = [...discardPile];
+					
+					// Process enemy actions
+					let updatedEnemies = [...enemies];
+					let counterUsed = false;
+					
+					updatedEnemies = updatedEnemies.map(enemy => {
+						if (enemy.isBoss) {
+							const updatedBoss = updateBossIntents(enemy);
+							
+							// Process boss intents
+							const currentIntent = updatedBoss.intents[0];
+							switch (currentIntent.type) {
+								case 'attack':
+									if (!counterActive) {
+										const newHealth = playerHealth - updatedBoss.damage;
+										setPlayerHealth(newHealth);
+										if (newHealth <= 0) {
+											setGameOver(true);
+										}
+									} else if (!counterUsed) {
+										counterUsed = true;
+										updatedBoss.health -= updatedBoss.damage;
+										updatedBoss.damageNumbers = [
+											...updatedBoss.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
+											createDamageNumber(updatedBoss.damage, Date.now())
+										];
+									}
+									break;
+									
+									
+								case 'spawn':
+									if (updatedEnemies.length < 4) {
+										const minionsToSpawn = updatedBoss.phase === 1 ? 
+											Math.floor(Math.random() * 2) + 1 : 
+											Math.floor(Math.random() * 2) + 2;
+											
+										const availableSpace = 4 - updatedEnemies.length;
+										const actualSpawns = Math.min(minionsToSpawn, availableSpace);
+										
+										const newMinions = Array(actualSpawns).fill().map(() => ({
+											...minionEnemy,
+											damageNumbers: []
+										}));
+										
+										updatedEnemies = [...updatedEnemies, ...newMinions];
+									}
+									break;
+									
+								case 'weaken':
+									setPlayerWeakened(true);
+									setStatusMessage('You have been weakened! -1 damage this turn');
+									setShowStatusMessage(true);
+									setTimeout(() => setShowStatusMessage(false), 2000);
+									break;
+							}
+							
+							return updatedBoss;
+						} else {
+							// Regular enemy and minion processing
+							if (enemy.intent === 'attack') {
+								if (counterActive && !counterUsed) {
+									counterUsed = true;
+									return {
+										...enemy,
+										health: Math.max(0, enemy.health - enemy.damage),
+										damageNumbers: [
+											...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
+											createDamageNumber(enemy.damage, Date.now())
+										]
+									};
+								} else {
+									const newHealth = playerHealth - enemy.damage;
+									setPlayerHealth(newHealth);
+									if (newHealth <= 0) {
+										setGameOver(true);
+									}
+								}
+							}
+							return enemy;
+						}
+					}).filter(enemy => enemy.health > 0);
+					
+					setEnemies(updatedEnemies);
+    
+					// Clear current hand to discard pile
+					const newDiscard = [...currentDiscard, ...currentHand];
+					
+					// If deck has enough cards, draw from it
+					if (currentDeck.length >= 3) {
+						const newHand = currentDeck.slice(0, 3);
+						const remainingDeck = currentDeck.slice(3);
+						setHand(newHand);
+						setDeck(remainingDeck);
+						setDiscardPile(newDiscard);
+					} else {
+						// If deck doesn't have enough cards, shuffle in the discard pile
+						const allCards = [...currentDeck, ...newDiscard];
+						const shuffledCards = shuffleArray(allCards);
+						const newHand = shuffledCards.slice(0, 3);
+						const remainingDeck = shuffledCards.slice(3);
+						setHand(newHand);
+						setDeck(remainingDeck);
 						setDiscardPile([]);
 					}
 					
-					// Draw new hand
-					const newHand = newDeck.slice(0, 3);
-					const remainingDeck = newDeck.slice(3);
-					
-					setDeck(remainingDeck);
-					setHand(newHand);
-					
-					console.log('End Turn:', {
-						newHandSize: newHand.length,
-						remainingDeckSize: remainingDeck.length,
-						totalCards: newHand.length + remainingDeck.length + exhaustedCards.length,
-						handCards: newHand.map(c => `${c.type}(${c.id})`),
-						empowerState: currentState.wasEmpowered
-					});
-				}, 0);
-			};
-
+					// Reset states
+					setCounterActive(false);
+					setPlayerEnergy(3);
+					setIsTargeting(false);
+					setSelectedCard(null);
+					setSelectedCardIndex(null);
+					setDiscountedCards(new Map());
+				};
+			
 
 			
 			const validateCardCount = () => {
@@ -1671,29 +1948,39 @@
 			);
 			
 			const handleVictory = () => {
-				// Check if next round will be round 15
+				// First check if it's round 14 and pre-boss hasn't been shown
 				if (round === 14) {
-					setShowPreBossFight(true);
-					return;
-				}
-
-				setShowVictory(true);
-				setEmpowerActive(false);
-				
-				// Your existing reward logic
-				const possibleRewards = Object.keys(cardTypes);
-				const rewards = [];
-				while (rewards.length < 3) {
-					const randomCard = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
-					if (!rewards.includes(randomCard)) {
-						rewards.push(randomCard);
+					// Set up the possible rewards
+					const possibleRewards = Object.keys(cardTypes);
+					const rewards = [];
+					while (rewards.length < 3) {
+						const randomCard = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
+						if (!rewards.includes(randomCard)) {
+							rewards.push(randomCard);
+						}
 					}
+					setRewardOptions(rewards);
+					setShowVictory(true);
+					setEmpowerActive(false);
+				} else {
+					// Normal victory handling
+					const possibleRewards = Object.keys(cardTypes);
+					const rewards = [];
+					while (rewards.length < 3) {
+						const randomCard = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
+						if (!rewards.includes(randomCard)) {
+							rewards.push(randomCard);
+						}
+					}
+					setRewardOptions(rewards);
+					setShowVictory(true);
+					setEmpowerActive(false);
 				}
-				
-				setRewardOptions(rewards);
 			};
 
 			const selectReward = (cardType) => {
+				console.log('Selecting reward for round:', round);
+				
 				// Create new card with unique ID
 				const newCard = {
 					id: cardIdCounter + 1,
@@ -1701,38 +1988,58 @@
 				};
 				setCardIdCounter(prev => prev + 1);
 				
-				// Get current cards
+				// Get current cards and add new one
 				const currentCards = [...deck, ...discardPile, ...hand, ...exhaustedCards];
-				
-				console.log('Reward Debug:', {
-					beforeTotal: currentCards.length,
-					newCard: `${newCard.type}(${newCard.id})`,
-					expectedTotal: currentCards.length + 1
-				});
-
-				// Add new card and shuffle
 				const allCards = [...currentCards, newCard];
 				const shuffledDeck = shuffleArray(allCards);
 				
-				// Reset game state
+				// Reset basic game state
 				setDeck(shuffledDeck);
 				setHand([]);
 				setDiscardPile([]);
 				setExhaustedCards([]);
+				setDiscountedCards(new Map());
 				setTotalDeckSize(prev => prev + 1);
 				setShowVictory(false);
-				setRound(prev => prev + 1);
 				setPlayerEnergy(3);
 				setEmpowerActive(false);
 				setCounterActive(false);
+
+				if (round === 14) {
+					// After round 14 reward, show pre-boss screen
+					setShowPreBossFight(true);
+				} else {
+					// Normal round progression
+					setRound(prev => prev + 1);
+					spawnEnemies();
+					
+					// Draw new hand
+					setTimeout(() => {
+						const newHand = shuffledDeck.slice(0, 3);
+						const remainingDeck = shuffledDeck.slice(3);
+						setHand(newHand);
+						setDeck(remainingDeck);
+					}, 0);
+				}
+			};
+			
+			const handlePreBossAction = (action) => {
+				// Execute the chosen action
+				action();
 				
-				// Spawn new enemies
+				// Progress to round 15
+				setRound(15);
+				setPlayerEnergy(3);
+				setEmpowerActive(false);
+				setCounterActive(false);
+				setShowPreBossFight(false);
+				
+				// Spawn boss enemies and draw new hand
 				spawnEnemies();
 				
-				// Draw new hand
 				setTimeout(() => {
-					const newHand = shuffledDeck.slice(0, 3);
-					const remainingDeck = shuffledDeck.slice(3);
+					const newHand = deck.slice(0, 3);
+					const remainingDeck = deck.slice(3);
 					setHand(newHand);
 					setDeck(remainingDeck);
 				}, 0);
@@ -1909,71 +2216,41 @@
 				);
 			};
 
-            return React.createElement('div', { className: 'game-container' },
-					currentScreen === 'splash' ? React.createElement('div', { 
-						className: 'main-menu',
-						style: { cursor: 'pointer' }
-					},
-						React.createElement('div', { className: 'game-title' }, 'RAID BOSS'),
-						React.createElement('div', { className: 'press-any-key' }, 'Press Any Key or Click to Start Game')
-					) : 
-					currentScreen === 'menu' ? React.createElement(MainMenu, {
-						onStartRun: handleStartRun,
-						onTalents: handleTalents
-					}) :
-					currentScreen === 'talents' ? React.createElement(TalentsScreen, {
-						onBack: handleBackToMenu
-					}) :
-					React.createElement(React.Fragment, null,
-					
+            // Replace the return statement in your Game component with this fixed version:
+			return React.createElement('div', { className: 'game-container' },
+				// Main screen handling
+				currentScreen === 'splash' ? React.createElement('div', { 
+					className: 'main-menu',
+					style: { cursor: 'pointer' }
+				},
+					React.createElement('div', { className: 'game-title' }, 'RAID BOSS'),
+					React.createElement('div', { className: 'press-any-key' }, 'Press Any Key or Click to Start Game')
+				) : 
+				currentScreen === 'menu' ? React.createElement(MainMenu, {
+					onStartRun: handleStartRun,
+					onTalents: handleTalents
+				}) :
+				currentScreen === 'talents' ? React.createElement(TalentsScreen, {
+					onBack: handleBackToMenu
+				}) :
+				// Main game UI
+				React.createElement(React.Fragment, null,
+					// Overlays
 					showPreBossFight && React.createElement(PreBossFight, {
-					onHeal: () => {
-						setPlayerHealth(prev => Math.min(maxHealth, prev + 50));
-						setShowPreBossFight(false);
-						setShowVictory(true);
-						setEmpowerActive(false);
-						const possibleRewards = Object.keys(cardTypes);
-						const rewards = [];
-						while (rewards.length < 3) {
-							const randomCard = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
-							if (!rewards.includes(randomCard)) {
-								rewards.push(randomCard);
-							}
-						}
-						setRewardOptions(rewards);
-					},
-					onIncreaseMaxHp: () => {
-						setMaxHealth(prev => prev + 25);
-						setPlayerHealth(prev => prev + 25); // Also heal for the increased amount
-						setShowPreBossFight(false);
-						setShowVictory(true);
-						setEmpowerActive(false);
-						const possibleRewards = Object.keys(cardTypes);
-						const rewards = [];
-						while (rewards.length < 3) {
-							const randomCard = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
-							if (!rewards.includes(randomCard)) {
-								rewards.push(randomCard);
-							}
-						}
-						setRewardOptions(rewards);
-					},
-					currentHealth: playerHealth,
-					maxHealth: maxHealth,
-				}),
-				showCardRemoval && React.createElement(CardRemovalOverlay, {
+						currentHealth: playerHealth,
+						maxHealth: maxHealth
+					}),
+					showCardRemoval && React.createElement(CardRemovalOverlay, {
 						deck: deck,
 						hand: hand,
 						discardPile: discardPile,
 						onRemoveCard: handleCardRemoval
-				}),
-				
-				showSpecialRewards && React.createElement(SpecialRewardsOverlay, {
-					rewards: specialRewardOptions,
-					onSelectReward: handleSpecialReward,
-					remainingPicks: specialRewardOptions.length === 5 ? 2 : 1
-				}),
-					// Your existing game elements here
+					}),
+					showSpecialRewards && React.createElement(SpecialRewardsOverlay, {
+						rewards: specialRewardOptions,
+						onSelectReward: handleSpecialReward,
+						remainingPicks: specialRewardOptions.length === 5 ? 2 : 1
+					}),
 					isTargeting && React.createElement('div', { 
 						className: 'targeting-message'
 					}, 'Select an enemy to target'),
@@ -1986,119 +2263,160 @@
 						className: 'energy-gain' 
 					}, '+2 Energy'),
 
-                React.createElement('div', { className: 'status-bar' },
-					React.createElement('div', null,
-						React.createElement('h2', null, `Player Health: ${playerHealth}`),
-						React.createElement('div', { 
-							style: { 
-								display: 'flex', 
-								alignItems: 'center' 
-							} 
-						}, 
-							Array(3).fill().map((_, i) => 
-								React.createElement('span', {
-									key: i,
-									className: `energy-orb ${i >= Math.min(playerEnergy, 3) ? 'empty' : ''}`
-								})
-							),
-							playerEnergy > 3 && React.createElement('span', {
-								style: {
-									marginLeft: '10px',
-									color: '#3498db',
-									fontWeight: 'bold',
-									fontSize: '1.2em'
-								}
-							}, `+${playerEnergy - 3}`)
-						)
-					),
-					// Add round counter here
-					React.createElement('div', { className: 'round-counter' },
-						`Round ${round}`
-					),
-					React.createElement('button', {
-						className: 'button',
-						onClick: endTurn,
-						disabled: !canEndTurn
-					}, 'End Turn')
-					)
-				),
-				
-				React.createElement('div', { className: 'enemies-container' },
-					enemies.length > 0 ? enemies.map((enemy, index) => 
-						React.createElement('div', { 
-							key: index,
-							className: `enemy-card ${isTargeting ? 'targetable' : ''}`,
-							onClick: () => isTargeting && selectTarget(index)
-						},
-							React.createElement('p', null, `Enemy ${index + 1}`),
-							React.createElement('div', { className: 'health-bar' },
-								React.createElement('div', {
-									className: 'health-bar-fill',
-									style: { width: `${(enemy.health / enemy.maxHealth) * 100}%` }
-								})
-							),
-							React.createElement('p', null, `HP: ${enemy.health}/${enemy.maxHealth}`),
-							React.createElement('p', null, `Intent: ${enemy.intent}`),
-							enemy.damageNumbers && enemy.damageNumbers.map(damageNum => 
-								React.createElement('div', {
-									key: damageNum.id,
-									className: 'damage-number',
+					// Top status bar
+					React.createElement('div', { className: 'status-bar' },
+						React.createElement('div', null,
+							React.createElement('h2', null, `Player Health: ${playerHealth}`),
+							React.createElement('div', { 
+								style: { display: 'flex', alignItems: 'center' }
+							}, 
+								Array(3).fill().map((_, i) => 
+									React.createElement('span', {
+										key: i,
+										className: `energy-orb ${i >= Math.min(playerEnergy, 3) ? 'empty' : ''}`
+									})
+								),
+								playerEnergy > 3 && React.createElement('span', {
 									style: {
-										left: `${Math.random() * 60 + 20}%`
+										marginLeft: '10px',
+										color: '#3498db',
+										fontWeight: 'bold',
+										fontSize: '1.2em'
 									}
-								}, `-${damageNum.amount}`)
+								}, `+${playerEnergy - 3}`)
 							)
-						)
-					) : React.createElement('p', null, 'Summoning enemies...')
-				),
-
-               React.createElement('div', { className: 'hand-container' },
-					hand.map((card, index) => {
-						const cardType = cardTypes[card.type];
-						const discountType = discountedCards.get(card.id);
-						const currentCost = discountType === "zero" ? 0 : 
-										  discountType === "reduced" ? Math.max(0, cardType.cost - 1) : 
-										  cardType.cost;
-						const canPlay = playerEnergy >= currentCost;
-						
-						return React.createElement('div', {
-							key: card.id,
-							className: `card ${!canPlay ? 'disabled' : ''} ${selectedCardIndex === index ? 'selected' : ''}`,
-							onClick: () => canPlay && selectCard(card, index)
-						},
-							React.createElement('h3', null, cardType.name),
-							React.createElement('p', null, 
-								discountType === "zero" ? 
-									React.createElement('span', { style: { color: '#4CAF50' } }, 
-										'Cost: 0 Energy (reduced)') :
-								discountType === "reduced" ? 
-									React.createElement('span', { style: { color: '#4CAF50' } }, 
-										`Cost: ${currentCost} Energy (reduced)`) :
-									`Cost: ${currentCost} Energy`
-							),
-							React.createElement('p', null, cardType.description)
-						);
-					})
-				),
-
-               
-               React.createElement('div', { className: 'status-bar' },
-					React.createElement('div', { style: { display: 'flex', gap: '20px' } },
-						React.createElement('p', null, `Total Cards: ${deck.length + hand.length + discardPile.length + exhaustedCards.length}`),
-						React.createElement('p', null, `Deck: ${deck.length}`),
-						React.createElement('p', null, `Hand: ${hand.length}`),
-						React.createElement('p', null, `Discard: ${discardPile.length}`),
-						React.createElement('p', null, `Exhausted: ${exhaustedCards.length}`)
+						),
+						React.createElement('div', { className: 'round-counter' },
+							`Round ${round}`
+						),
+						React.createElement('button', {
+							className: 'button',
+							onClick: endTurn,
+							disabled: !canEndTurn
+						}, 'End Turn')
 					),
-					React.createElement('div', { style: { display: 'flex', gap: '10px' } },
-						empowerActive && React.createElement('span', { className: 'status-effect empower' }, 'Empower Active!'),
-						counterActive && React.createElement('span', { className: 'status-effect counter' }, 'Counter Active!')
+
+					// Enemies container
+					React.createElement('div', { className: 'enemies-container' },
+						enemies.length > 0 ? enemies.map((enemy, index) => 
+							React.createElement('div', { 
+								key: index,
+								className: `${enemy.isBoss ? 'boss-card' : 'enemy-card'} ${isTargeting ? 'targetable' : ''}`,
+								onClick: () => {
+									if (isTargeting && selectedCard) {
+										const cardDef = cardTypes[selectedCard.type];
+										const discountType = discountedCards.get(selectedCard.id);
+										let currentCost = cardDef.cost;
+										if (discountType === "zero") {
+											currentCost = 0;
+										} else if (discountType === "reduced") {
+											currentCost = Math.max(0, cardDef.cost - 1);
+										}
+										if (playerEnergy >= currentCost) {
+											selectTarget(index);
+										}
+									}
+								}
+							},
+								React.createElement('p', {
+									style: enemy.isBoss ? {
+										fontSize: '1.5em',
+										color: '#ff4444',
+										fontWeight: 'bold',
+										marginBottom: '10px'
+									} : null
+								}, enemy.isBoss ? 'Raid Boss' : `Enemy ${index + 1}`),
+								React.createElement('div', { className: 'health-bar' },
+									React.createElement('div', {
+										className: 'health-bar-fill',
+										style: { 
+											width: `${(enemy.health / enemy.maxHealth) * 100}%`,
+											backgroundColor: enemy.isBoss ? '#ff4444' : '#4CAF50'
+										}
+									})
+								),
+								React.createElement('p', null, `HP: ${enemy.health}/${enemy.maxHealth}`),
+								enemy.isBoss && React.createElement('p', {
+									style: {
+										color: '#ff4444',
+										fontWeight: 'bold'
+									}
+								}, `Phase ${enemy.phase}`),
+								enemy.isBoss && enemy.intents && enemy.intents[0] && 
+									React.createElement('div', {
+										className: `boss-intent intent-${enemy.intents[0].type}`
+									}, enemy.intents[0].description),
+								!enemy.isBoss && React.createElement('p', null, `Intent: ${enemy.intent}`),
+								enemy.damageNumbers && enemy.damageNumbers.map(damageNum => 
+									React.createElement('div', {
+										key: damageNum.id,
+										className: 'damage-number',
+										style: {
+											left: `${Math.random() * 60 + 20}%`
+										}
+									}, `-${damageNum.amount}`)
+								)
+							)
+						) : React.createElement('p', null, 'Summoning enemies...')
+					),
+
+					// Hand container
+					React.createElement('div', { className: 'hand-container' },
+						hand.map((card, index) => {
+							const cardType = cardTypes[card.type];
+							const discountType = discountedCards.get(card.id);
+							let currentCost = cardType.cost;
+							if (discountType === "zero") {
+								currentCost = 0;
+							} else if (discountType === "reduced") {
+								currentCost = Math.max(0, cardType.cost - 1);
+							}
+							const canPlay = playerEnergy >= currentCost;
+							
+							return React.createElement('div', {
+								key: card.id,
+								className: `card ${!canPlay ? 'disabled' : ''} ${selectedCardIndex === index ? 'selected' : ''}`,
+								onClick: () => canPlay && selectCard(card, index)
+							},
+								React.createElement('h3', null, cardType.name),
+								React.createElement('p', null, 
+									discountType === "zero" ? 
+										React.createElement('span', { style: { color: '#4CAF50' } }, 'Cost: 0 Energy (free)') :
+									discountType === "reduced" ? 
+										React.createElement('span', { style: { color: '#4CAF50' } }, `Cost: ${currentCost} Energy (reduced)`) :
+										`Cost: ${currentCost} Energy`
+								),
+								React.createElement('p', null, cardType.description)
+							);
+						})
+					),
+
+					// Bottom status bar
+					React.createElement('div', { className: 'status-bar' },
+						React.createElement('div', { style: { display: 'flex', gap: '20px' } },
+							React.createElement('p', null, `Total Cards: ${deck.length + hand.length + discardPile.length + exhaustedCards.length}`),
+							React.createElement('p', null, `Deck: ${deck.length}`),
+							React.createElement('p', null, `Hand: ${hand.length}`),
+							React.createElement('p', null, `Discard: ${discardPile.length}`),
+							React.createElement('p', null, `Exhausted: ${exhaustedCards.length}`)
+						),
+						React.createElement('div', { style: { display: 'flex', gap: '10px' } },
+							empowerActive && React.createElement('span', { className: 'status-effect empower' }, 'Empower Active!'),
+							counterActive && React.createElement('span', { className: 'status-effect counter' }, 'Counter Active!'),
+							playerWeakened && React.createElement('span', { 
+								className: 'status-effect weakened',
+								style: {
+									backgroundColor: '#8b0000',
+									color: 'white',
+									padding: '5px 10px',
+									borderRadius: '4px'
+								}
+							}, 'Weakened: -1 Damage')
+						)
 					)
 				)
 			);
-		
         };
-        
 		
 				
 		
