@@ -793,36 +793,37 @@
 				const freshStartCard = hand[handIndex];
 				const otherCards = hand.filter((_, index) => index !== handIndex);
 
-				// Log initial state
-				console.log('Fresh Start Before:', {
-					handCards: hand.map(c => `${c.type}(${c.id})`),
-					deckCount: deck.length,
-					discardCount: discardPile.length
-				});
-
 				// Move all hand cards to discard
 				const newDiscard = [...discardPile, freshStartCard, ...otherCards];
 				setDiscardPile(newDiscard);
 				setHand([]);
 
-				// Get cards to shuffle (just deck cards)
-				const cardsToShuffle = [...deck];
-				const shuffledCards = shuffleArray(cardsToShuffle);
+				// Initial draw from current deck
+				const cardsNeeded = 3;
+				let newHand = [];
+				let remainingDeck = [...deck];
 
-				// Draw new hand and set remaining as deck
-				const newHand = shuffledCards.slice(0, 3);
-				const newDeck = shuffledCards.slice(3);
+				// Draw as many cards as we can from current deck
+				if (remainingDeck.length > 0) {
+					const cardsFromDeck = remainingDeck.slice(0, Math.min(cardsNeeded, remainingDeck.length));
+					newHand = [...cardsFromDeck];
+					remainingDeck = remainingDeck.slice(cardsFromDeck.length);
+				}
 
-				// Log operation
-				console.log('Fresh Start Operation:', {
-					freshStartCard: `${freshStartCard.type}(${freshStartCard.id})`,
-					discardedCards: otherCards.map(c => `${c.type}(${c.id})`),
-					newHandCards: newHand.map(c => `${c.type}(${c.id})`),
-					remainingDeckCount: newDeck.length
-				});
+				// If we still need more cards and have cards in discard, shuffle and draw
+				if (newHand.length < cardsNeeded && newDiscard.length > 0) {
+					const shuffledDiscard = shuffleArray([...newDiscard]);
+					const remainingCardsToDraw = cardsNeeded - newHand.length;
+					const cardsFromDiscard = shuffledDiscard.slice(0, remainingCardsToDraw);
+					const remainingDiscard = shuffledDiscard.slice(remainingCardsToDraw);
+
+					newHand = [...newHand, ...cardsFromDiscard];
+					remainingDeck = [...remainingDeck, ...remainingDiscard];
+					setDiscardPile([]);
+				}
 
 				// Update game state
-				setDeck(newDeck);
+				setDeck(remainingDeck);
 				setHand(newHand);
 				setPlayerEnergy(prev => prev + 3);
 
