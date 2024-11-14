@@ -509,6 +509,15 @@
 			const [showCardRemoval, setShowCardRemoval] = useState(false);
 			const [playerWeakened, setPlayerWeakened] = useState(false);
 			const [bossLastAction, setBossLastAction] = useState(null);
+			const [knowledgePoints, setKnowledgePoints] = useState(() => {
+			  const savedPoints = localStorage.getItem('knowledgePoints');
+			  return savedPoints ? parseInt(savedPoints) : 0;
+			});
+
+			const [skillPoints, setSkillPoints] = useState(() => {
+			  const savedPoints = localStorage.getItem('skillPoints');
+			  return savedPoints ? parseInt(savedPoints) : 0;
+			});
 
 			// Helper to create a unique card instance
 			const createCardInstance = (cardType) => ({
@@ -1032,9 +1041,7 @@
 		  },
 			React.createElement('div', {
 			  className: 'game-title',
-			  style: {
-				marginBottom: '4rem'  // Increased spacing between title and buttons
-			  }
+			  style: { marginBottom: '4rem' }
 			}, 'RAID BOSS'),
 			React.createElement('div', {
 			  style: {
@@ -1092,7 +1099,16 @@
 				  e.target.style.transform = 'scale(1)';
 				  e.target.style.boxShadow = '0 0 15px rgba(231, 76, 60, 0.3)';
 				}
-			  }, 'Talents')
+			  }, 'Talents'),
+
+			  // Add clear save button
+			  React.createElement('button', {
+				onClick: clearSaveData,
+				style: {
+				  padding: '10px',
+				  marginTop: '20px'
+				}
+			  }, 'Clear Save Data')
 			)
 		  );
 		};
@@ -1234,6 +1250,39 @@
 
 		const handleBackToMenu = () => {
 			setCurrentScreen('menu');
+		};
+		
+		const PointsDisplay = ({ knowledgePoints, skillPoints }) => {
+		  return React.createElement('div', {
+			style: {
+			  position: 'absolute',
+			  top: '10px',
+			  right: '20px',
+			  display: 'flex',
+			  gap: '20px',
+			  fontSize: '1.2em',
+			  color: '#fff'
+			}
+		  },
+			React.createElement('div', null,
+			  React.createElement('span', { 
+				style: { 
+				  color: '#4CAF50',
+				  marginRight: '5px' 
+				} 
+			  }, '🧠'),
+			  `Knowledge: ${knowledgePoints}`
+			),
+			React.createElement('div', null,
+			  React.createElement('span', { 
+				style: { 
+				  color: '#e74c3c',
+				  marginRight: '5px'
+				} 
+			  }, '⭐'),
+			  `Skill Points: ${skillPoints}`
+			)
+		  );
 		};
 		
 		const updateBossIntents = (boss) => {
@@ -1489,15 +1538,13 @@
 					
 					// Boss fight at round 15
 					if (round === 15) {
-						const boss = {
+						setEnemies([{
 							...bossEnemy,
 							intents: [{
 								type: 'spawn',
-								description: 'Summoning reinforcements...',
-								turnsAway: 2
+								description: 'Summoning reinforcements...'
 							}]
-						};
-						setEnemies([boss]);
+						}]);
 						return;
 					}
 					
@@ -1750,18 +1797,22 @@
 								case 'spawn':
 									if (updatedEnemies.length < 4) {
 										const minionsToSpawn = updatedBoss.phase === 1 ? 
-											Math.floor(Math.random() * 2) + 1 : 
-											Math.floor(Math.random() * 2) + 2;
+											Math.floor(Math.random() * 2) + 1 : // 1-2 minions in phase 1
+											Math.floor(Math.random() * 2) + 2;  // 2-3 minions in phase 2
 											
 										const availableSpace = 4 - updatedEnemies.length;
 										const actualSpawns = Math.min(minionsToSpawn, availableSpace);
 										
-										const newMinions = Array(actualSpawns).fill().map(() => ({
-											...minionEnemy,
-											damageNumbers: []
-										}));
-										
-										updatedEnemies = [...updatedEnemies, ...newMinions];
+										for (let i = 0; i < actualSpawns; i++) {
+											updatedEnemies.push({
+												health: 12,
+												maxHealth: 12,
+												intent: 'attack',
+												damage: 4,
+												damageNumbers: [],
+												isMinion: true
+											});
+										}
 									}
 									break;
 									
@@ -1948,7 +1999,40 @@
 				hand.every(card => cardTypes[card.type].cost > playerEnergy)
 			);
 			
+			const clearSaveData = () => {
+			  localStorage.removeItem('knowledgePoints');
+			  localStorage.removeItem('skillPoints');
+			  setKnowledgePoints(0);
+			  setSkillPoints(0);
+			};
+			
 			const handleVictory = () => {
+			
+				const pointsGained = round === 15 ? 100 : 10;
+				  let newKnowledgePoints = knowledgePoints + pointsGained;
+				  let additionalSkillPoints = Math.floor(newKnowledgePoints / 100);
+				  
+				  // Convert excess knowledge points to skill points
+				  if (additionalSkillPoints > 0) {
+					newKnowledgePoints = newKnowledgePoints % 100;
+					setSkillPoints(prev => {
+					  const newTotal = prev + additionalSkillPoints;
+					  localStorage.setItem('skillPoints', newTotal.toString());
+					  return newTotal;
+					});
+				  }
+				  
+				  setKnowledgePoints(newKnowledgePoints);
+				  localStorage.setItem('knowledgePoints', newKnowledgePoints.toString());
+
+				  // Show points gained message
+				  let message = `+${pointsGained} Knowledge Points!`;
+				  if (additionalSkillPoints > 0) {
+					message += ` +${additionalSkillPoints} Skill Points!`;
+				  }
+				  setStatusMessage(message);
+				  setShowStatusMessage(true);
+				  setTimeout(() => setShowStatusMessage(false), 2000);
 				// First check if it's round 14 and pre-boss hasn't been shown
 				if (round === 14) {
 					// Set up the possible rewards
@@ -2263,6 +2347,11 @@
 					showEnergyGain && React.createElement('div', { 
 						className: 'energy-gain' 
 					}, '+2 Energy'),
+					
+					React.createElement(PointsDisplay, {
+					  knowledgePoints: knowledgePoints,
+					  skillPoints: skillPoints
+					}),
 
 					// Top status bar
 					React.createElement('div', { className: 'status-bar' },
