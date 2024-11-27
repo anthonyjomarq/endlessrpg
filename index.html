@@ -470,8 +470,8 @@
     <div id="game-root"></div>
     <script type="text/javascript">
         const { useState, useEffect } = React;
-
-        const Game = () => {
+		
+		const Game = () => {
             // Game state
             const [playerHealth, setPlayerHealth] = useState(100);
             const [playerEnergy, setPlayerEnergy] = useState(3);
@@ -563,6 +563,8 @@
 				const allActions = ['attack', 'spawn', 'weaken'];
 				return allActions.filter(action => action !== lastAction);
 			};
+			
+			
 			
             // Card definitions
             const cardTypes = {
@@ -712,78 +714,78 @@
         }
 	},
 	// Add the Lucky Draw card type
-	luckyDraw: {
-		name: 'Lucky Draw',
-		cost: 2,
-		description: 'Draw a card and reduce its cost to 0 for this turn',
-		needsTarget: false,
-		effect: function() {
-			// First check if we can draw from deck
-			if (deck.length > 0) {
-				const cardToDraw = deck[0];
-				setDeck(prev => prev.slice(1));
-				// Add to hand and set zero cost
-				setHand(prev => [...prev, cardToDraw]);
-				setDiscountedCards(prev => {
-					const newDiscounts = new Map(prev);
-					newDiscounts.set(cardToDraw.id, "zero");
-					return newDiscounts;
-				});
-			}
-			// If deck is empty, try drawing from shuffled discard pile
-			else if (discardPile.length > 0) {
-				const shuffledDiscard = shuffleArray([...discardPile]);
-				const cardToDraw = shuffledDiscard[0];
-				setDeck(prev => shuffledDiscard.slice(1));
-				setDiscardPile([]);
-				setHand(prev => [...prev, cardToDraw]);
-				setDiscountedCards(prev => {
-					const newDiscounts = new Map(prev);
-					newDiscounts.set(cardToDraw.id, "zero");
-					return newDiscounts;
-				});
-			}
-			return enemies;
-		}
-	},
-	healthSiphon: {
-		name: 'Health Siphon',
-		cost: 2,
-		description: 'Deal 3 damage and heal for the damage dealt',
-		needsTarget: true,
-		effect: (enemies, targetIndex) => {
-			const damage = empowerActive ? 5 : 3;
-			
-			return enemies.map((enemy, index) => {
-				if (index === targetIndex) {
-					const actualDamage = Math.min(enemy.health, damage);
-					setPlayerHealth(prev => Math.min(100, prev + actualDamage));
-					return {
-						...enemy,
-						health: Math.max(0, enemy.health - damage),
-						damageNumbers: [
-							...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
-							createDamageNumber(damage, Date.now())
-						]
-					};
+		luckyDraw: {
+			name: 'Lucky Draw',
+			cost: 2,
+			description: 'Draw a card and reduce its cost to 0 for this turn',
+			needsTarget: false,
+			effect: function() {
+				// First check if we can draw from deck
+				if (deck.length > 0) {
+					const cardToDraw = deck[0];
+					setDeck(prev => prev.slice(1));
+					// Add to hand and set zero cost
+					setHand(prev => [...prev, cardToDraw]);
+					setDiscountedCards(prev => {
+						const newDiscounts = new Map(prev);
+						newDiscounts.set(cardToDraw.id, "zero");
+						return newDiscounts;
+					});
 				}
-				return enemy;
-			});
-		}
-	},
+				// If deck is empty, try drawing from shuffled discard pile
+				else if (discardPile.length > 0) {
+					const shuffledDiscard = shuffleArray([...discardPile]);
+					const cardToDraw = shuffledDiscard[0];
+					setDeck(prev => shuffledDiscard.slice(1));
+					setDiscardPile([]);
+					setHand(prev => [...prev, cardToDraw]);
+					setDiscountedCards(prev => {
+						const newDiscounts = new Map(prev);
+						newDiscounts.set(cardToDraw.id, "zero");
+						return newDiscounts;
+					});
+				}
+				return enemies;
+			}
+		},
+		healthSiphon: {
+			name: 'Health Siphon',
+			cost: 2,
+			description: 'Deal 3 damage and heal for the damage dealt',
+			needsTarget: true,
+			effect: (enemies, targetIndex) => {
+				const damage = empowerActive ? 5 : 3;
+				
+				return enemies.map((enemy, index) => {
+					if (index === targetIndex) {
+						const actualDamage = Math.min(enemy.health, damage);
+						setPlayerHealth(prev => Math.min(100, prev + actualDamage));
+						return {
+							...enemy,
+							health: Math.max(0, enemy.health - damage),
+							damageNumbers: [
+								...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
+								createDamageNumber(damage, Date.now())
+							]
+						};
+					}
+					return enemy;
+				});
+			}
+		},
 
-	divineBlessing: {
-		name: 'Divine Blessing',
-		cost: 1,
-		description: 'Heal 10 HP. Exhaust.',
-		needsTarget: false,
-		exhausts: true,
-		effect: (enemies) => {
-			// Heal player
-			setPlayerHealth(prev => Math.min(100, prev + 10));
-			return enemies;
-		}
-	},
+		divineBlessing: {
+			name: 'Divine Blessing',
+			cost: 1,
+			description: 'Heal 10 HP. Exhaust.',
+			needsTarget: false,
+			exhausts: true,
+			effect: (enemies) => {
+				// Heal player
+				setPlayerHealth(prev => Math.min(100, prev + 10));
+				return enemies;
+			}
+		},
 	
 		
 		freshStart: {
@@ -899,36 +901,442 @@
 		},
 
 		doubleHit: {
-		name: 'Double Hit',
-		cost: 2,
-		description: 'Hit the same enemy twice for 2-5 damage each hit',
-		needsTarget: true,
-		effect: (enemies, targetIndex) => {
-			const hit1 = Math.floor(Math.random() * 4) + 2;
-			const hit2 = Math.floor(Math.random() * 4) + 2;
-			const damage1 = empowerActive ? hit1 + 2 : hit1;
-			const damage2 = empowerActive ? hit2 + 2 : hit2;
-			
-			return enemies.map((enemy, index) => {
-				if (index === targetIndex) {
-					const afterFirstHit = Math.max(0, enemy.health - damage1);
-					const afterSecondHit = Math.max(0, afterFirstHit - damage2);
-					return {
-						...enemy,
-						health: afterSecondHit,
-						damageNumbers: [
-							...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
-							createDamageNumber(damage1, Date.now()),
-							createDamageNumber(damage2, Date.now() + 1) // Add 1ms to ensure unique IDs
-						]
-					};
-				}
-				return enemy;
-			});
+			name: 'Double Hit',
+			cost: 2,
+			description: 'Hit the same enemy twice for 2-5 damage each hit',
+			needsTarget: true,
+			effect: (enemies, targetIndex) => {
+				const hit1 = Math.floor(Math.random() * 4) + 2;
+				const hit2 = Math.floor(Math.random() * 4) + 2;
+				const damage1 = empowerActive ? hit1 + 2 : hit1;
+				const damage2 = empowerActive ? hit2 + 2 : hit2;
+				
+				return enemies.map((enemy, index) => {
+					if (index === targetIndex) {
+						const afterFirstHit = Math.max(0, enemy.health - damage1);
+						const afterSecondHit = Math.max(0, afterFirstHit - damage2);
+						return {
+							...enemy,
+							health: afterSecondHit,
+							damageNumbers: [
+								...enemy.damageNumbers.filter(dn => Date.now() - dn.createdAt < 2000),
+								createDamageNumber(damage1, Date.now()),
+								createDamageNumber(damage2, Date.now() + 1)
+							]
+						};
+					}
+					return enemy;
+				});
+			}
 		}
-	} // removed semicolon here
-};
+	}; // Close cardTypes with semicolon
+
+	// Then define talentCardUnlocks as a separate constant
+	const talentCardUnlocks = {
+		'cardDraw1': {
+			name: 'Generous Draw',
+			cost: 1,
+			description: 'Draw 2 cards',
+			needsTarget: false,
+			effect: function(enemies) {
+				if (deck.length > 0) {
+					const cardsToDraw = Math.min(2, deck.length);
+					const newCards = deck.slice(0, cardsToDraw);
+					setHand(prev => [...prev, ...newCards]);
+					setDeck(prev => prev.slice(cardsToDraw));
+				}
+				return enemies;
+			}
+		}
+	};
+
+	// Then define the helper functions
+	const unlockTalentCard = (nodeId) => {
+		const cardToUnlock = talentCardUnlocks[nodeId];
+		if (cardToUnlock) {
+			cardTypes[nodeId] = cardToUnlock;
+		}
+	};
+
+	const initializeUnlockedCards = () => {
+		const savedUnlocked = JSON.parse(localStorage.getItem('unlockedNodes') || '[]');
+		savedUnlocked.forEach(nodeId => {
+			if (talentCardUnlocks[nodeId]) {
+				cardTypes[nodeId] = talentCardUnlocks[nodeId];
+			}
+		});
+	};
 			
+			 const TalentsScreen = () => {
+			  const centerX = 800;
+			  const centerY = 600;
+			  
+			  // State declarations
+			  const [showConfirmation, setShowConfirmation] = useState(false);
+			  const [selectedNode, setSelectedNode] = useState(null);
+			  const [unlockedNodes, setUnlockedNodes] = useState(() => {
+				const saved = localStorage.getItem('unlockedNodes');
+				return saved ? JSON.parse(saved) : [];
+			  });
+			  const [mapPosition, setMapPosition] = useState({
+				x: window.innerWidth / 2 - centerX,
+				y: window.innerHeight / 2 - centerY
+			  });
+			  const [isDragging, setIsDragging] = useState(false);
+			  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+			  
+			    const resetPosition = () => {
+					setMapPosition({
+					  x: window.innerWidth / 2 - centerX,
+					  y: window.innerHeight / 2 - centerY
+					});
+				  };
+
+				  // Add resize effect to handle window resizing
+				  useEffect(() => {
+					const handleResize = () => {
+					  resetPosition();
+					};
+					
+					window.addEventListener('resize', handleResize);
+					return () => window.removeEventListener('resize', handleResize);
+				  }, []);
+
+			  // createPathNodes function should go here
+			  const createPathNodes = (startX, startY, direction, count) => {
+				const nodes = [];
+				const spacing = 80;
+				let dx = 0, dy = 0;
+				
+				switch(direction) {
+				  case 'north': dy = -spacing; break;
+				  case 'south': dy = spacing; break;
+				  case 'east': dx = spacing; break;
+				  case 'west': dx = -spacing; break;
+				}
+
+				// Add the identifier node first
+				nodes.push({
+				  id: 'cardDrawIdentifier',
+				  x: startX,
+				  y: startY,
+				  isIdentifier: true
+				});
+
+				// Then add all the actual talent nodes
+				for(let i = 1; i <= count; i++) {
+				  nodes.push({
+					id: `cardDraw${i}`,
+					x: startX + (dx * i),
+					y: startY + (dy * i)
+				  });
+				}
+				return nodes;
+			  };
+
+			  const cardDrawPath = createPathNodes(centerX, centerY, 'north', 10);
+
+			  // Then the rest of your component functions
+			  const handleMouseDown = (e) => {
+				setIsDragging(true);
+				setDragStart({ x: e.clientX - mapPosition.x, y: e.clientY - mapPosition.y });
+			  };
+
+				const handleMouseMove = (e) => {
+				  if (!isDragging) return;
+				  setMapPosition({
+					x: e.clientX - dragStart.x,
+					y: e.clientY - dragStart.y
+				  });
+				};
+
+				const handleMouseUp = () => setIsDragging(false);
+
+				const handleNodeClick = (e, node) => {
+				  e.stopPropagation();
+				  if (!isDragging) {
+					const nodeNumber = parseInt(node.id.replace('cardDraw', ''));
+					const isAvailable = nodeNumber === 1 || unlockedNodes.includes(`cardDraw${nodeNumber - 1}`);
+					
+					if (isAvailable && !unlockedNodes.includes(node.id)) {
+					  setSelectedNode(node);
+					  setShowConfirmation(true);
+					}
+				  }
+				};
+
+				const handlePurchase = () => {
+					if (skillPoints > 0) {
+						const nodeNumber = parseInt(selectedNode?.id.replace('cardDraw', ''));
+						const newUnlocked = [...unlockedNodes, selectedNode.id];
+						
+						// Unlock the card if it's available
+						unlockTalentCard(selectedNode.id);
+						
+						// Show unlock message
+						setStatusMessage(`New card unlocked: ${talentCardUnlocks[selectedNode.id]?.name || 'Card'}!`);
+						setShowStatusMessage(true);
+						setTimeout(() => setShowStatusMessage(false), 2000);
+						
+						// Update state
+						setUnlockedNodes(newUnlocked);
+						localStorage.setItem('unlockedNodes', JSON.stringify(newUnlocked));
+						setSkillPoints(prev => {
+							const newPoints = prev - 1;
+							localStorage.setItem('skillPoints', newPoints.toString());
+							return newPoints;
+						});
+					}
+					setShowConfirmation(false);
+				};
+
+				const NodePopup = () => React.createElement('div', { className: 'victory-overlay' },
+				  React.createElement('div', {
+					className: 'victory-content',
+					style: {
+					  maxWidth: '400px',
+					  backgroundColor: '#1a1a1a',
+					  border: '2px solid #4CAF50'
+					}
+				  }, [
+					React.createElement('h3', {
+					  key: 'title',
+					  style: {
+						color: '#4CAF50',
+						marginBottom: '20px',
+						fontSize: '24px',
+						textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
+					  }
+					}, selectedNode?.id === 'cardDraw1' ? 'Card Draw Talent Tree' : `Level ${parseInt(selectedNode?.id.replace('cardDraw', ''))}`),
+					React.createElement('p', {
+					  key: 'description',
+					  style: {
+						fontSize: '1.2em',
+						marginBottom: '30px',
+						color: '#fff',
+						lineHeight: '1.4'
+					  }
+					}, [
+					  'Generous Draw - Cost 1 - Draw 2 cards',
+					  'First card drawn each turn costs 1 less',
+					  'Draw 1 additional card when your deck runs out',
+					  'Start each combat with 4 cards instead of 3',
+					  'Draw 1 card when you play 3 cards in a turn',
+					  'Your maximum hand size is increased by 1',
+					  'First card drawn each turn is from the top 2 cards',
+					  'Draw 1 card when you exhaust a card',
+					  'Draw 2 additional cards at the start of boss fights',
+					  'Once per combat, draw until you have 5 cards'
+					][parseInt(selectedNode?.id.replace('cardDraw', '')) - 1]),
+					React.createElement('div', {
+					  key: 'buttons',
+					  style: {
+						display: 'flex',
+						justifyContent: 'space-around',
+						marginTop: '30px'
+					  }
+					}, [
+					  React.createElement('button', {
+						key: 'purchase',
+						onClick: handlePurchase,
+						className: 'button',
+						style: {
+						  backgroundColor: skillPoints > 0 ? '#4CAF50' : '#666',
+						  cursor: skillPoints > 0 ? 'pointer' : 'not-allowed',
+						  padding: '12px 30px',
+						  fontSize: '1.1em',
+						  transition: 'all 0.3s ease'
+						},
+						disabled: skillPoints <= 0
+					  }, 'Purchase'),
+					  React.createElement('button', {
+						key: 'cancel',
+						onClick: () => setShowConfirmation(false),
+						className: 'button',
+						style: {
+						  backgroundColor: '#e74c3c',
+						  padding: '12px 30px',
+						  fontSize: '1.1em',
+						  transition: 'all 0.3s ease'
+						}
+					  }, 'Cancel')
+					])
+				  ])
+				);
+
+				return React.createElement('div', { className: 'main-menu' }, [
+				  React.createElement('div', {
+					key: 'header',
+					style: {
+					  position: 'absolute',
+					  top: '20px',
+					  right: '20px',
+					  backgroundColor: '#2a2a2a',
+					  padding: '15px',
+					  borderRadius: '8px',
+					  zIndex: 3
+					}
+				  }, [
+					React.createElement('p', {
+					  key: 'points',
+					  style: {
+						color: '#4CAF50',
+						fontSize: '1.2em',
+						margin: 0
+					  }
+					}, `Available Skill Points: ${skillPoints}`),
+					React.createElement('button', {
+					  key: 'center',
+					  onClick: resetPosition,
+					  style: {
+						backgroundColor: '#1a1a1a',
+						padding: '8px 15px',
+						borderRadius: '4px',
+						cursor: 'pointer',
+						border: '1px solid #4CAF50',
+						color: '#4CAF50',
+						transition: 'all 0.2s ease'
+					  },
+					  onMouseOver: (e) => {
+						e.target.style.backgroundColor = '#2f2f2f';
+					  },
+					  onMouseOut: (e) => {
+						e.target.style.backgroundColor = '#1a1a1a';
+					  }
+					}, 'Center View')
+				  ]),
+				  React.createElement('div', {
+					key: 'title',
+					className: 'game-title'
+				  }, 'Talents'),
+				  React.createElement('div', {
+					key: 'map-container',
+					style: {
+					  width: '100%',
+					  height: '500px',
+					  overflow: 'hidden',
+					  position: 'relative',
+					  backgroundColor: '#1a1a1a',
+					  border: '2px solid #333',
+					  borderRadius: '8px'
+					}
+				  }, React.createElement('div', {
+					onMouseDown: (e) => !e.target.classList.contains('node') && handleMouseDown(e),
+					onMouseMove: handleMouseMove,
+					onMouseUp: handleMouseUp,
+					onMouseLeave: handleMouseUp,
+					style: {
+					  position: 'absolute',
+					  width: '2000px',
+					  height: '1500px',
+					  transform: `translate(${mapPosition.x}px, ${mapPosition.y}px)`,
+					  cursor: isDragging ? 'grabbing' : 'grab'
+					}
+				  }, [
+					React.createElement('svg', {
+					  key: 'paths',
+					  width: '100%',
+					  height: '100%',
+					  style: {
+						position: 'absolute',
+						top: 0,
+						left: 0,
+						pointerEvents: 'none'
+					  }
+					}, cardDrawPath.map((node, index) => {
+					  if (index === 0) {
+						return React.createElement('line', {
+						  key: `line-${node.id}`,
+						  x1: centerX,
+						  y1: centerY,
+						  x2: node.x,
+						  y2: node.y,
+						  stroke: unlockedNodes.includes(node.id) ? '#4CAF50' : '#666',
+						  strokeWidth: 2
+						});
+					  }
+					  const prevNode = cardDrawPath[index - 1];
+					  return React.createElement('line', {
+						key: `line-${node.id}`,
+						x1: prevNode.x,
+						y1: prevNode.y,
+						x2: node.x,
+						y2: node.y,
+						stroke: unlockedNodes.includes(node.id) ? '#4CAF50' : '#666',
+						strokeWidth: 2
+					  });
+					})),
+					...cardDrawPath.map(node => 
+					  React.createElement('div', {
+						key: node.id,
+						className: 'node',
+						onClick: (e) => node.isIdentifier ? null : handleNodeClick(e, node),
+						style: {
+						  position: 'absolute',
+						  left: node.x - 20,
+						  top: node.y - 20,
+						  width: 40,
+						  height: 40,
+						  borderRadius: '50%',
+						  backgroundColor: node.isIdentifier ? '#e74c3c' : // Special color for identifier
+							unlockedNodes.includes(node.id) ? '#4CAF50' : '#444',
+						  border: '2px solid ' + (
+							node.isIdentifier ? '#e74c3c' : // Special border for identifier
+							unlockedNodes.includes(node.id) ? '#4CAF50' : '#666'
+						  ),
+						  cursor: node.isIdentifier ? 'default' : // No pointer for identifier
+							(node.id === 'cardDraw1' || unlockedNodes.includes(`cardDraw${parseInt(node.id.replace('cardDraw', '')) - 1}`)) 
+							? 'pointer' : 'not-allowed',
+						  opacity: node.isIdentifier ? 1 : // Always full opacity for identifier
+							(node.id === 'cardDraw1' || unlockedNodes.includes(`cardDraw${parseInt(node.id.replace('cardDraw', '')) - 1}`))
+							? 1 : 0.5,
+						  transition: 'all 0.3s ease',
+						  zIndex: 2,
+						}
+					  })
+					)
+				  ])),
+				  React.createElement('div', {
+					  style: {
+						position: 'absolute',
+						width: '2000px',
+						height: '1500px',
+						transform: `translate(${mapPosition.x}px, ${mapPosition.y}px)`,
+						pointerEvents: 'none'
+					  }
+					}, 
+					  React.createElement('div', {
+						style: {
+						  position: 'absolute',
+						  left: `${cardDrawPath[0].x - 40}px`,
+						  top: `${cardDrawPath[0].y + 30}px`,
+						  width: 80,
+						  textAlign: 'center',
+						  color: '#e74c3c',
+						  fontWeight: 'bold',
+						  fontSize: '14px',
+						  zIndex: 3
+						}
+					  }, 'Card Draw')
+					),
+				  React.createElement('button', {
+					key: 'back-button',
+					onClick: handleBackToMenu,
+					style: {
+					  fontFamily: 'Cinzel, serif',
+					  fontSize: '1.5rem',
+					  color: '#fff',
+					  backgroundColor: '#e74c3c',
+					  border: 'none',
+					  padding: '1rem 3rem',
+					  borderRadius: '8px',
+					  cursor: 'pointer',
+					  marginTop: '2rem'
+					}
+				  }, 'Back'),
+				  showConfirmation && React.createElement(NodePopup)
+				]);
+			  };
 
             // Initialize game
             const shuffleArray = (array) => {
@@ -941,6 +1349,7 @@
             };
 
             const initializeGame = () => {
+				initializeUnlockedCards();
 				// Define initial deck composition
 				const initialDeckTypes = [
 					'multiAttack', 'multiAttack',  // 2 multi-attacks
@@ -1922,35 +2331,35 @@
 			};
 			
 			const handleVictory = () => {
-			
 				const pointsGained = round === 15 ? 100 : 10;
-				  let newKnowledgePoints = knowledgePoints + pointsGained;
-				  let additionalSkillPoints = Math.floor(newKnowledgePoints / 100);
-				  
-				  // Convert excess knowledge points to skill points
-				  if (additionalSkillPoints > 0) {
+				let newKnowledgePoints = knowledgePoints + pointsGained;
+				let additionalSkillPoints = Math.floor(newKnowledgePoints / 100);
+				
+				// Convert excess knowledge points to skill points
+				if (additionalSkillPoints > 0) {
 					newKnowledgePoints = newKnowledgePoints % 100;
 					setSkillPoints(prev => {
-					  const newTotal = prev + additionalSkillPoints;
-					  localStorage.setItem('skillPoints', newTotal.toString());
-					  return newTotal;
+						const newTotal = prev + additionalSkillPoints;
+						localStorage.setItem('skillPoints', newTotal.toString());
+						return newTotal;
 					});
-				  }
-				  
-				  setKnowledgePoints(newKnowledgePoints);
-				  localStorage.setItem('knowledgePoints', newKnowledgePoints.toString());
+				}
+				
+				setKnowledgePoints(newKnowledgePoints);
+				localStorage.setItem('knowledgePoints', newKnowledgePoints.toString());
 
-				  // Show points gained message
-				  let message = `+${pointsGained} Knowledge Points!`;
-				  if (additionalSkillPoints > 0) {
+				// Show points gained message
+				let message = `+${pointsGained} Knowledge Points!`;
+				if (additionalSkillPoints > 0) {
 					message += ` +${additionalSkillPoints} Skill Points!`;
-				  }
-				  setStatusMessage(message);
-				  setShowStatusMessage(true);
-				  setTimeout(() => setShowStatusMessage(false), 2000);
-				// First check if it's round 14 and pre-boss hasn't been shown
+				}
+				setStatusMessage(message);
+				setShowStatusMessage(true);
+				setTimeout(() => setShowStatusMessage(false), 2000);
+
+				// Handle rewards and victory state
 				if (round === 14) {
-					// Set up the possible rewards
+					// Set up pre-boss rewards
 					const possibleRewards = Object.keys(cardTypes);
 					const rewards = [];
 					while (rewards.length < 3) {
@@ -2157,404 +2566,7 @@
 				);
 			};
 			
-			const TalentsScreen = ({ onBack, skillPoints, setSkillPoints }) => {
-			    // Constants first
-				  const centerX = 800;
-				  const centerY = 600;
-
-				  // Then state declarations
-				  const [showConfirmation, setShowConfirmation] = useState(false);
-				  const [selectedNode, setSelectedNode] = useState(null);
-				  const [unlockedNodes, setUnlockedNodes] = useState(() => {
-					const saved = localStorage.getItem('unlockedNodes');
-					return saved ? JSON.parse(saved) : [];
-				  });
-				  const [mapPosition, setMapPosition] = useState({
-					x: window.innerWidth / 2 - centerX,
-					y: window.innerHeight / 2 - centerY
-				  });
-				  const [isDragging, setIsDragging] = useState(false);
-				  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-			  
-			    useEffect(() => {
-					const handleResize = () => {
-					  setMapPosition({
-						x: window.innerWidth / 2 - centerX,
-						y: window.innerHeight / 2 - centerY
-					  });
-					};
-
-					window.addEventListener('resize', handleResize);
-					return () => window.removeEventListener('resize', handleResize);
-				  }, []);
-				  
-				    const resetPosition = () => {
-						setMapPosition({
-						  x: window.innerWidth / 2 - centerX,
-						  y: window.innerHeight / 2 - centerY
-						});
-					  };
-
-			  // Node creation helpers remain the same
-			  const createPathNodes = (startX, startY, direction, count) => {
-				const nodes = [];
-				const spacing = 80;
-				let dx = 0, dy = 0;
-				
-				switch(direction) {
-				  case 'north': dy = -spacing; break;
-				  case 'south': dy = spacing; break;
-				  case 'east': dx = spacing; break;
-				  case 'west': dx = -spacing; break;
-				}
-
-				for(let i = 1; i <= count; i++) {
-				  nodes.push({
-					id: `cardDraw${i}`,
-					x: startX + (dx * i),
-					y: startY + (dy * i)
-				  });
-				}
-				return nodes;
-			  };
-
-			  //const centerX = 800;
-			  //const centerY = 600;
-			  const cardDrawPath = createPathNodes(centerX, centerY, 'north', 10);
-
-			  // Mouse event handlers for dragging
-			  const handleMouseDown = (e) => {
-				setIsDragging(true);
-				setDragStart({ x: e.clientX - mapPosition.x, y: e.clientY - mapPosition.y });
-			  };
-
-			  const handleMouseMove = (e) => {
-				if (!isDragging) return;
-				setMapPosition({
-				  x: e.clientX - dragStart.x,
-				  y: e.clientY - dragStart.y
-				});
-			  };
-
-			  const handleMouseUp = () => {
-				setIsDragging(false);
-			  };
-			  
-			  const handleNodeClick = (node) => {
-				  // Get the node number
-				  const nodeNumber = parseInt(node.id.replace('cardDraw', ''));
-				  
-				  // Check if node is available to purchase:
-				  // First node is always available, others require previous node to be unlocked
-				  const isAvailable = nodeNumber === 1 || unlockedNodes.includes(`cardDraw${nodeNumber - 1}`);
-				  
-				  // Only show confirmation if node is available and not already unlocked
-				  if (isAvailable && !unlockedNodes.includes(node.id)) {
-					setSelectedNode(node);
-					setShowConfirmation(true);
-				  }
-				};
-
-			  const NodePopup = () => { 
-				  const nodeNumber = parseInt(selectedNode?.id.replace('cardDraw', ''));
-				  const descriptions = [
-					'Draw 1 additional card at the start of combat',
-					'First card drawn each turn costs 1 less',
-					'Draw 1 additional card when your deck runs out',
-					'Start each combat with 4 cards instead of 3',
-					'Draw 1 card when you play 3 cards in a turn',
-					'Your maximum hand size is increased by 1',
-					'First card drawn each turn is from the top 2 cards',
-					'Draw 1 card when you exhaust a card',
-					'Draw 2 additional cards at the start of boss fights',
-					'Once per combat, draw until you have 5 cards'
-				  ];
-
-				  return React.createElement('div', {
-					className: 'victory-overlay'
-				  },
-					React.createElement('div', {
-					  className: 'victory-content',
-					  style: {
-						maxWidth: '400px',
-						backgroundColor: '#1a1a1a',
-						border: '2px solid #4CAF50'
-					  }
-					},
-					  React.createElement('h3', {
-						style: {
-						  color: '#4CAF50',
-						  marginBottom: '20px',
-						  fontSize: '24px',
-						  textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
-						}
-					  }, nodeNumber === 1 ? 'Card Draw' : `Level ${nodeNumber}`),
-					  React.createElement('p', {
-						style: {
-						  fontSize: '1.2em',
-						  marginBottom: '30px',
-						  color: '#fff',
-						  lineHeight: '1.4'
-						}
-					  }, descriptions[nodeNumber - 1]),
-					  React.createElement('div', {
-						style: {
-						  display: 'flex',
-						  justifyContent: 'space-around',
-						  marginTop: '30px'
-						}
-					  },
-						React.createElement('button', {
-						  onClick: () => {
-							if (skillPoints > 0) {
-							  const newUnlocked = [...unlockedNodes, selectedNode.id];
-							  setUnlockedNodes(newUnlocked);
-							  localStorage.setItem('unlockedNodes', JSON.stringify(newUnlocked));
-							  setSkillPoints(prev => {
-								const newPoints = prev - 1;
-								localStorage.setItem('skillPoints', newPoints.toString());
-								return newPoints;
-							  });
-							}
-							setShowConfirmation(false);
-						  },
-						  className: 'button',
-						  style: {
-							backgroundColor: skillPoints > 0 ? '#4CAF50' : '#666',
-							cursor: skillPoints > 0 ? 'pointer' : 'not-allowed',
-							padding: '12px 30px',
-							fontSize: '1.1em',
-							transition: 'all 0.3s ease',
-							transform: 'scale(1)',
-							'&:hover': {
-							  transform: skillPoints > 0 ? 'scale(1.05)' : 'scale(1)',
-							  boxShadow: skillPoints > 0 ? '0 0 15px rgba(76, 175, 80, 0.5)' : 'none'
-							}
-						  },
-						  disabled: skillPoints <= 0
-						}, 'Purchase'),
-						React.createElement('button', {
-						  onClick: () => setShowConfirmation(false),
-						  className: 'button',
-						  style: {
-							backgroundColor: '#e74c3c',
-							padding: '12px 30px',
-							fontSize: '1.1em',
-							transition: 'all 0.3s ease',
-							'&:hover': {
-							  transform: 'scale(1.05)',
-							  boxShadow: '0 0 15px rgba(231, 76, 60, 0.5)'
-							}
-						  }
-						}, 'Cancel')
-					  )
-					)
-				  );
-				};
-
-				const TalentMap = () => {
-				  const handleNodeClick = (e, node) => {
-					e.stopPropagation(); // Prevent drag handler from firing
-					if (!isDragging) {
-					  const nodeNumber = parseInt(node.id.replace('cardDraw', ''));
-					  const isAvailable = nodeNumber === 1 || unlockedNodes.includes(`cardDraw${nodeNumber - 1}`);
-					  
-					  if (isAvailable && !unlockedNodes.includes(node.id)) {
-						setSelectedNode(node);
-						setShowConfirmation(true);
-					  }
-					}
-				  };
-
-				  return React.createElement('div', {
-					style: {
-					  width: '100%',
-					  height: '500px',
-					  overflow: 'hidden',
-					  position: 'relative',
-					  backgroundColor: '#1a1a1a',
-					  border: '2px solid #333',
-					  borderRadius: '8px'
-					}
-				  },
-					React.createElement('div', {
-					  onMouseDown: (e) => !e.target.classList.contains('node') && handleMouseDown(e),
-					  onMouseMove: handleMouseMove,
-					  onMouseUp: handleMouseUp,
-					  onMouseLeave: handleMouseUp,
-					  style: {
-						position: 'absolute',
-						width: '2000px',
-						height: '1500px',
-						transform: `translate(${mapPosition.x}px, ${mapPosition.y}px)`,
-						cursor: isDragging ? 'grabbing' : 'grab'
-					  }
-					},
-					  // SVG lines
-					  React.createElement('svg', {
-						width: '100%',
-						height: '100%',
-						style: {
-						  position: 'absolute',
-						  top: 0,
-						  left: 0,
-						  pointerEvents: 'none'
-						}
-					  },
-						cardDrawPath.map((node, index) => {
-						  if (index === 0) {
-							return React.createElement('line', {
-							  key: `line-${node.id}`,
-							  x1: centerX,
-							  y1: centerY,
-							  x2: node.x,
-							  y2: node.y,
-							  stroke: unlockedNodes.includes(node.id) ? '#4CAF50' : '#666',
-							  strokeWidth: 2
-							});
-						  }
-						  const prevNode = cardDrawPath[index - 1];
-						  return React.createElement('line', {
-							key: `line-${node.id}`,
-							x1: prevNode.x,
-							y1: prevNode.y,
-							x2: node.x,
-							y2: node.y,
-							stroke: unlockedNodes.includes(node.id) ? '#4CAF50' : '#666',
-							strokeWidth: 2
-						  });
-						})
-					  ),
-					  // Center node
-					  React.createElement('div', {
-						style: {
-						  position: 'absolute',
-						  left: centerX - 30,
-						  top: centerY - 30,
-						  width: 60,
-						  height: 60,
-						  borderRadius: '50%',
-						  backgroundColor: '#e74c3c',
-						  boxShadow: '0 0 20px rgba(231, 76, 60, 0.7)',
-						  animation: 'pulse 2s infinite',
-						  cursor: 'pointer',
-						  display: 'flex',
-						  justifyContent: 'center',
-						  alignItems: 'center',
-						  color: 'white',
-						  fontSize: '24px',
-						  fontWeight: 'bold',
-						  zIndex: 2
-						}
-					  }, '★'),
-					  // Path name
-					  React.createElement('div', {
-						  style: {
-							position: 'absolute',
-							left: cardDrawPath[0].x + 30, // Position to the right of first node
-							top: cardDrawPath[0].y - 10, // Center vertically with the node
-							color: '#4CAF50',
-							fontSize: '18px',
-							fontWeight: 'bold',
-							whiteSpace: 'nowrap', // Prevent text wrapping
-							textShadow: '0 0 10px rgba(76, 175, 80, 0.3)',
-							zIndex: 2
-						  }
-						}, 'Card Draw Path'),
-					  // Talent nodes
-					   cardDrawPath.map(node => 
-						React.createElement('div', {
-						  key: node.id,
-						  className: 'node',
-						  onClick: (e) => handleNodeClick(e, node),
-						  style: {
-							position: 'absolute',
-							left: node.x - 20,
-							top: node.y - 20,
-							width: 40,
-							height: 40,
-							borderRadius: '50%',
-							backgroundColor: unlockedNodes.includes(node.id) ? '#4CAF50' : '#444',
-							border: '2px solid ' + (unlockedNodes.includes(node.id) ? '#4CAF50' : '#666'),
-							cursor: (node.id === 'cardDraw1' || unlockedNodes.includes(`cardDraw${parseInt(node.id.replace('cardDraw', '')) - 1}`)) 
-							  ? 'pointer' : 'not-allowed',
-							opacity: (node.id === 'cardDraw1' || unlockedNodes.includes(`cardDraw${parseInt(node.id.replace('cardDraw', '')) - 1}`))
-							  ? 1 : 0.5,
-							transition: 'all 0.3s ease',
-							zIndex: 2
-						  }
-						})
-					  )
-					)
-				  );
-				};
-
-				  return React.createElement('div', {
-					  className: 'main-menu'
-					},
-					  // Skill points counter
-					  React.createElement('div', {
-						style: {
-						  position: 'absolute',
-						  top: '20px',
-						  right: '20px',
-						  backgroundColor: '#2a2a2a',
-						  padding: '15px',
-						  borderRadius: '8px',
-						  zIndex: 3,
-						  display: 'flex',
-						  flexDirection: 'column',
-						  gap: '10px'
-						}
-					  },
-						React.createElement('p', {
-						  style: {
-							color: '#4CAF50',
-							fontSize: '1.2em',
-							margin: 0
-						  }
-						}, `Available Skill Points: ${skillPoints}`),
-						React.createElement('button', {
-						  onClick: resetPosition,
-						  style: {
-							backgroundColor: '#1a1a1a',
-							padding: '8px 15px',
-							borderRadius: '4px',
-							cursor: 'pointer',
-							border: '1px solid #4CAF50',
-							color: '#4CAF50',
-							transition: 'all 0.2s ease'
-						  },
-						  onMouseOver: (e) => {
-							e.target.style.backgroundColor = '#2f2f2f';
-						  },
-						  onMouseOut: (e) => {
-							e.target.style.backgroundColor = '#1a1a1a';
-						  }
-						}, 'Center View')
-					  ),
-					  React.createElement('div', {
-						className: 'game-title'
-					  }, 'Talents'),
-					  React.createElement(TalentMap),
-					  React.createElement('button', {
-						onClick: onBack,
-						style: {
-						  fontFamily: 'Cinzel, serif',
-						  fontSize: '1.5rem',
-						  color: '#fff',
-						  backgroundColor: '#e74c3c',
-						  border: 'none',
-						  padding: '1rem 3rem',
-						  borderRadius: '8px',
-						  cursor: 'pointer',
-						  marginTop: '2rem'
-						}
-					  }, 'Back'),
-					  showConfirmation && React.createElement(NodePopup)  // Remove the comma and object literal
-					);
-				  
-				};
+			
 			
 			const DefeatOverlay = () => {
 				const returnToMenu = () => {
@@ -2617,53 +2629,43 @@
 
             // Replace the return statement in your Game component with this fixed version:
 			return React.createElement('div', { className: 'game-container' },
-				// Main screen handling
-				currentScreen === 'splash' ? React.createElement('div', { 
-					className: 'main-menu',
-					style: { cursor: 'pointer' }
-				},
-					React.createElement('div', { className: 'game-title' }, 'RAID BOSS'),
-					React.createElement('div', { className: 'press-any-key' }, 'Press Any Key or Click to Start Game')
-				) : 
-				currentScreen === 'menu' ? React.createElement(MainMenu, {
-					onStartRun: handleStartRun,
-					onTalents: handleTalents
-				}) :
-				//Updated Game Component
-				currentScreen === 'talents' ? React.createElement(TalentsScreen, {
-				  onBack: handleBackToMenu,
-				  skillPoints: skillPoints,
-				  setSkillPoints: setSkillPoints
-				}) :
-				// Main game UI
-				React.createElement(React.Fragment, null,
-					// Overlays
-					showPreBossFight && React.createElement(PreBossFight, {
-						currentHealth: playerHealth,
-						maxHealth: maxHealth
-					}),
-					showCardRemoval && React.createElement(CardRemovalOverlay, {
-						deck: deck,
-						hand: hand,
-						discardPile: discardPile,
-						onRemoveCard: handleCardRemoval
-					}),
-					showSpecialRewards && React.createElement(SpecialRewardsOverlay, {
-						rewards: specialRewardOptions,
-						onSelectReward: handleSpecialReward,
-						remainingPicks: specialRewardOptions.length === 5 ? 2 : 1
-					}),
-					isTargeting && React.createElement('div', { 
-						className: 'targeting-message'
-					}, 'Select an enemy to target'),
-					showVictory && React.createElement(VictoryOverlay),
-					gameOver && React.createElement(DefeatOverlay),
-					showStatusMessage && React.createElement('div', { 
-						className: 'targeting-message'
-					}, statusMessage),
-					showEnergyGain && React.createElement('div', { 
-						className: 'energy-gain' 
-					}, '+2 Energy'),
+			  currentScreen === 'splash' ? React.createElement('div', { 
+				className: 'main-menu',
+				style: { cursor: 'pointer' }
+			  },
+				React.createElement('div', { className: 'game-title' }, 'RAID BOSS'),
+				React.createElement('div', { className: 'press-any-key' }, 'Press Any Key or Click to Start Game')
+			  ) : currentScreen === 'menu' ? React.createElement(MainMenu, {
+				onStartRun: handleStartRun,
+				onTalents: handleTalents
+			  }) : currentScreen === 'talents' ? React.createElement(TalentsScreen) : React.createElement(React.Fragment, null,
+				showPreBossFight && React.createElement(PreBossFight, {
+				  currentHealth: playerHealth,
+				  maxHealth: maxHealth
+				}),
+				showCardRemoval && React.createElement(CardRemovalOverlay, {
+				  deck: deck,
+				  hand: hand,
+				  discardPile: discardPile,
+				  onRemoveCard: handleCardRemoval
+				}),
+				showSpecialRewards && React.createElement(SpecialRewardsOverlay, {
+				  rewards: specialRewardOptions,
+				  onSelectReward: handleSpecialReward,
+				  remainingPicks: specialRewardOptions.length === 5 ? 2 : 1
+				}),
+				// Rest of your game UI elements
+				isTargeting && React.createElement('div', { 
+				  className: 'targeting-message'
+				}, 'Select an enemy to target'),
+				showVictory && React.createElement(VictoryOverlay),
+				gameOver && React.createElement(DefeatOverlay),
+				showStatusMessage && React.createElement('div', { 
+				  className: 'targeting-message'
+				}, statusMessage),
+				showEnergyGain && React.createElement('div', { 
+				  className: 'energy-gain' 
+				}, '+2 Energy'),
 					
 					
 
