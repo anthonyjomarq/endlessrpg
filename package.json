@@ -1,0 +1,30 @@
+{
+  "name": "endless-rpg",
+  "version": "1.0.0",
+  "description": "A card-based RPG game where players battle through endless rounds of enemies",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --ext .js,.jsx --fix"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "gh-pages": "^6.1.1",
+    "vite": "^5.2.0"
+  },
+  "keywords": ["game", "rpg", "card-game", "react", "javascript"],
+  "author": "InsaneReaper7",
+  "license": "MIT"
+}
